@@ -133,6 +133,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             "mp4" -> "video/mp4"
             "webm" -> "video/webm"
             "mkv" -> "video/x-matroska"
+            "m4a" -> "audio/mp4"
+            "mp3" -> "audio/mpeg"
+            "opus" -> "audio/ogg"
+            "ogg" -> "audio/ogg"
+            "aac" -> "audio/aac"
             else -> "application/octet-stream"
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
