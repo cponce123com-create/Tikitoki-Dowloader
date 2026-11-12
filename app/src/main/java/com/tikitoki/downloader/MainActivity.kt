@@ -72,6 +72,7 @@ import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.domain.LinkParseResult
+import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -120,6 +121,7 @@ private fun TikitokiApp(incomingLink: String) {
     }
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
+    var visiblePages by remember { mutableStateOf(1) }
     var exportFormat by rememberSaveable { mutableStateOf("json") }
     var monitorRevision by remember { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
@@ -240,6 +242,7 @@ private fun TikitokiApp(incomingLink: String) {
                             onValueChange = {
                                 url = it
                                 videos = emptyList()
+                                visiblePages = 1
                                 selected.clear()
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
@@ -260,6 +263,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     is LinkParseResult.Success -> {
                                         inspecting = true
                                         videos = emptyList()
+                                        visiblePages = 1
                                         selected.clear()
                                         message = "Consultando TikTok. La disponibilidad depende del extractor."
                                         scope.launch {
@@ -267,6 +271,7 @@ private fun TikitokiApp(incomingLink: String) {
                                                 val found = source.inspect(parsed.link, forceRefresh = forceRefresh)
                                                 forceRefresh = false
                                                 videos = found
+                                                visiblePages = 1
                                                 selected.addAll(found.map { it.id })
                                                 message = if (found.isEmpty()) {
                                                     "El extractor no devolvió videos; TikTok puede haber limitado el acceso."
@@ -292,6 +297,9 @@ private fun TikitokiApp(incomingLink: String) {
                                 (search.isBlank() || it.title.contains(search, ignoreCase = true) || it.id.contains(search)) &&
                                     (!onlyUndownloaded || it.id !in downloadedIds)
                             } }
+                            val visibleVideos = remember(filteredVideos, visiblePages) {
+                                filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
+                            }
                             val allSelected = selected.size == videos.size
                             Text("${videos.size} publicaciones detectadas · ${selected.size} seleccionadas", style = MaterialTheme.typography.titleSmall)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -322,7 +330,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    gridItems(filteredVideos, key = { it.id }) { video ->
+                                    gridItems(visibleVideos, key = { it.id }) { video ->
                                         Card(onClick = {
                                             if (video.id in selected) selected.remove(video.id) else selected.add(video.id)
                                             formats = listOf(defaultFormat)
@@ -343,7 +351,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 modifier = Modifier.fillMaxWidth().height(360.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(filteredVideos, key = { it.id }) { video ->
+                                items(visibleVideos, key = { it.id }) { video ->
                                     val checked = video.id in selected
                                     Card(modifier = Modifier.fillMaxWidth()) {
                                         Row(
@@ -377,6 +385,13 @@ private fun TikitokiApp(incomingLink: String) {
                                             }
                                         }
                                     }
+                                }
+                            }
+
+                            if (visibleVideos.size < filteredVideos.size) {
+                                Text("Mostrando ${visibleVideos.size} de ${filteredVideos.size} publicaciones")
+                                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { visiblePages++ }) {
+                                    Text("Mostrar 60 publicaciones más")
                                 }
                             }
 
