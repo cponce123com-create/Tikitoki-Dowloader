@@ -76,7 +76,7 @@ object DownloadQueue {
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_WORK,
             ExistingWorkPolicy.REPLACE,
-            OneTimeWorkRequestBuilder<DownloadWorker>().build(),
+            request(),
         )
     }
 
