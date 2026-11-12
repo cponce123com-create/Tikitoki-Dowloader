@@ -1,6 +1,7 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import com.tikitoki.downloader.domain.MetadataSanitizer
 import com.tikitoki.downloader.domain.TikTokLink
 import com.tikitoki.downloader.domain.TikTokLinkType
 import com.yausername.ffmpeg.FFmpeg
@@ -76,7 +77,7 @@ class TikTokVideoSource(private val context: Context) {
                 VideoEntry(
                     id = item.getString("id"),
                     url = item.getString("url"),
-                    title = item.optString("title"),
+                    title = MetadataSanitizer.title(item.optString("title")),
                     thumbnail = item.optString("thumbnail").takeIf { it.isNotBlank() },
                     durationSeconds = item.optInt("duration"),
                 )
@@ -106,7 +107,7 @@ class TikTokVideoSource(private val context: Context) {
         return VideoEntry(
             id = id,
             url = info.webpageUrl?.takeIf { it.startsWith("https://") } ?: url,
-            title = info.title?.takeIf { it.isNotBlank() } ?: "Video $id",
+            title = MetadataSanitizer.title(info.title?.takeIf { it.isNotBlank() } ?: "Video $id"),
             thumbnail = info.thumbnail,
             durationSeconds = info.duration,
         )
@@ -155,7 +156,7 @@ class TikTokVideoSource(private val context: Context) {
                     VideoEntry(
                         id = id,
                         url = "https://www.tiktok.com/@$username/video/$id",
-                        title = entry.optString("title").ifBlank { "Video $id" },
+                        title = MetadataSanitizer.title(entry.optString("title").ifBlank { "Video $id" }),
                         thumbnail = entry.optString("thumbnail").takeIf { it.startsWith("https://") },
                         durationSeconds = entry.optInt("duration"),
                     )
@@ -216,7 +217,7 @@ class TikTokVideoSource(private val context: Context) {
         }
         folder.listFiles()?.filter {
             it.isFile && it.length() > 0L && it.nameWithoutExtension == safeId &&
-                it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov")
+                it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac")
         }?.maxByOrNull { it.length() } ?: throw IllegalStateException("No se encontró el archivo descargado.")
     }
 
