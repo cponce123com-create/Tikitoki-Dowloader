@@ -27,6 +27,7 @@ data class FormatChoice(val id: String, val label: String)
  */
 class TikTokVideoSource(private val context: Context) {
     private var initialized = false
+    private var updateAttempted = false
 
     @Synchronized
     private fun ensureReady() {
@@ -34,6 +35,16 @@ class TikTokVideoSource(private val context: Context) {
             YoutubeDL.getInstance().init(context.applicationContext)
             FFmpeg.getInstance().init(context.applicationContext)
             initialized = true
+        }
+        if (!updateAttempted) {
+            updateAttempted = true
+            // Update the yt-dlp Python extractor independently of the Android wrapper.
+            // If offline, retain the bundled extractor and retry on the next app launch.
+            try {
+                YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, YoutubeDL.UpdateChannel.STABLE)
+            } catch (_: Exception) {
+                updateAttempted = false
+            }
         }
     }
 
