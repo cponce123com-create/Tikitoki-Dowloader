@@ -257,7 +257,7 @@ private fun TikitokiApp(incomingLink: String) {
 
                 when (tab) {
                     0 -> {
-                        Text("Analizar perfil o video", style = MaterialTheme.typography.titleLarge)
+                        Text("Analizar video, perfil o canal", style = MaterialTheme.typography.titleLarge)
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
@@ -287,7 +287,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         selected.clear()
                                         profileViewModel.inspect(url, forceRefresh)
                                         forceRefresh = false
-                                        message = "Consultando TikTok por bloques de 60."
+                                        message = "Consultando publicaciones con el extractor de la plataforma."
 
                                     }
                                 }
@@ -615,7 +615,7 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                     else -> {
                         Text("Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
-                        Text("Versión 0.3: extracción yt-dlp, formatos, descargas por lotes, historial Room, control de duplicados y cola WorkManager.")
+                        Text("Versión 0.5: extracción multiplataforma experimental, formatos de video y audio, descargas por lotes e historial Room.")
                         Text("Las descargas usan el servicio de primer plano Android; la carpeta final es visible en Descargas.")
                         Text("TikTok puede bloquear el acceso a publicaciones o no proporcionar formatos sin marca de agua. No se garantiza descargar todos los videos de un perfil.")
                         Text("Solo debe utilizarse con contenido propio o autorizado. El motor yt-dlp Android emplea componentes GPL-3.0.")
