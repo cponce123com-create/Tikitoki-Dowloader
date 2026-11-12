@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -109,6 +111,7 @@ private fun TikitokiApp(incomingLink: String) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
     var search by rememberSaveable { mutableStateOf("") }
+    var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
     var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
     var message by remember { mutableStateOf("Pega un enlace de TikTok para analizarlo.") }
     var inspecting by remember { mutableStateOf(false) }
@@ -178,8 +181,15 @@ private fun TikitokiApp(incomingLink: String) {
                     .verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Tikitoki Downloader", style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(color = Color(0xFF20202B), shape = MaterialTheme.shapes.large) {
+                        Text("♪", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), color = Color(0xFF59E4DE), style = MaterialTheme.typography.headlineMedium)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tikitoki", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Text("DOWNLOADER", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
                 Text(
                     "Kotlin · yt-dlp · v0.3",
                     color = MaterialTheme.colorScheme.secondary,
@@ -239,24 +249,23 @@ private fun TikitokiApp(incomingLink: String) {
                         Text(message)
 
                         if (videos.isNotEmpty()) {
-                            val filteredVideos = videos.filter {
-                                search.isBlank() || it.title.contains(search, ignoreCase = true) ||
-                                    it.id.contains(search)
-                            }
+                            val downloadedIds = remember(records) { records.asSequence().filter { it.status == DownloadState.COMPLETED }.map { it.videoId }.toSet() }
+                            val filteredVideos = remember(videos, search, onlyUndownloaded, downloadedIds) { videos.filter {
+                                (search.isBlank() || it.title.contains(search, ignoreCase = true) || it.id.contains(search)) &&
+                                    (!onlyUndownloaded || it.id !in downloadedIds)
+                            } }
                             val allSelected = selected.size == videos.size
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text("${videos.size} videos · ${selected.size} seleccionados",
-                                    style = MaterialTheme.typography.titleSmall)
-                                OutlinedButton(onClick = {
+                            Text("${videos.size} publicaciones detectadas · ${selected.size} seleccionadas", style = MaterialTheme.typography.titleSmall)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                                     selected.clear()
                                     if (!allSelected) selected.addAll(videos.map { it.id })
                                     formats = listOf(defaultFormat)
                                     chosenFormat = defaultFormat
-                                }) { Text(if (allSelected) "Deseleccionar" else "Seleccionar todos") }
+                                }) { Text(if (allSelected) "Quitar selección" else "Seleccionar todos", maxLines = 1) }
                             }
+                            Text("La lista del perfil no confirma si cada video sigue siendo público. Los videos privados que TikTok no expone no pueden identificarse desde aquí.", style = MaterialTheme.typography.bodySmall)
+                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded }, label = { Text("Solo pendientes de descargar") })
                             OutlinedTextField(
                                 value = search,
                                 onValueChange = { search = it },
@@ -298,12 +307,7 @@ private fun TikitokiApp(incomingLink: String) {
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.secondary,
                                                 )
-                                                if (records.any {
-                                                        it.videoId == video.id &&
-                                                            it.status == DownloadState.COMPLETED
-                                                    }) {
-                                                    Text("Ya descargado", style = MaterialTheme.typography.labelSmall)
-                                                }
+                                                Text(if (video.id in downloadedIds) "✓ Descargado" else "Sin verificar · listado público", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                                             }
                                         }
                                     }
