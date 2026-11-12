@@ -29,7 +29,7 @@ object DownloadQueue {
         var duplicates = 0
         for (video in videos.distinctBy { it.id }) {
             require(IncomingLinkValidator.validate(video.url) != null) { "URL de descarga no permitida" }
-            require(formatId.length <= 160 && !formatId.any { it.isISOControl() } && !formatId.contains("--")) { "Formato de descarga no permitido" }
+            require(formatId.length <= 160 && !formatId.any { Character.isISOControl(it) } && !formatId.contains("--")) { "Formato de descarga no permitido" }
             val previous = dao.find(video.id)
             if (previous?.status in listOf(
                     DownloadState.COMPLETED, DownloadState.QUEUED,
