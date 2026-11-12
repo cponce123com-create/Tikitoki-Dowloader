@@ -3,6 +3,7 @@ package com.tikitoki.downloader
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -30,14 +32,15 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -48,7 +51,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.tikitoki.downloader.data.DownloadDatabase
+import com.tikitoki.downloader.data.DownloadQueue
+import com.tikitoki.downloader.data.DownloadRecord
+import com.tikitoki.downloader.data.DownloadState
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -62,7 +71,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedLink = receivedText(intent)
-        setContent { TikitokiScreen(sharedLink) }
+        setContent { TikitokiApp(sharedLink) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -87,139 +96,136 @@ private val TikitokiColors = darkColorScheme(
 )
 
 @Composable
-private fun TikitokiScreen(incomingLink: String) {
+private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
-    val defaultFormat = FormatChoice("best[ext=mp4]/best", "Máxima disponible")
+    val dao = remember(context) { DownloadDatabase.get(context).downloads() }
+    val records by remember(dao) { dao.observeAll() }.collectAsState(initial = emptyList())
+
+    val defaultFormat = remember {
+        FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Máxima calidad disponible")
+    }
     var tab by rememberSaveable { mutableStateOf(0) }
-    var input by rememberSaveable { mutableStateOf(incomingLink) }
-    var status by remember { mutableStateOf("Pega un enlace de perfil o video para comenzar.") }
+    var url by rememberSaveable { mutableStateOf(incomingLink) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
+    var message by remember { mutableStateOf("Pega un enlace de TikTok para analizarlo.") }
     var inspecting by remember { mutableStateOf(false) }
-    var downloading by remember { mutableStateOf(false) }
-    var checkingFormats by remember { mutableStateOf(false) }
+    var formatsBusy by remember { mutableStateOf(false) }
+    var queueBusy by remember { mutableStateOf(false) }
     var videos by remember { mutableStateOf<List<VideoEntry>>(emptyList()) }
-    val selectedIds = remember { mutableStateListOf<String>() }
+    val selected = remember { mutableStateListOf<String>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
-    var selectedFormat by remember { mutableStateOf(defaultFormat) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    var completed by remember { mutableStateOf(0) }
-    var failed by remember { mutableStateOf(0) }
+    var chosenFormat by remember { mutableStateOf(defaultFormat) }
 
     LaunchedEffect(incomingLink) {
-        if (incomingLink.isNotBlank() && incomingLink != input) {
-            input = incomingLink
+        if (incomingLink.isNotBlank() && url != incomingLink) {
+            url = incomingLink
             videos = emptyList()
-            selectedIds.clear()
-            status = "Enlace compartido recibido."
+            selected.clear()
             tab = 0
+            message = "Enlace compartido recibido. Pulsa Analizar."
         }
     }
 
-    val runDownloads: () -> Unit = {
-        if (selectedIds.isNotEmpty() && !downloading && !inspecting) {
-            val batch = videos.filter { it.id in selectedIds }
-            val formatToUse = if (batch.size == 1) selectedFormat.id else defaultFormat.id
-            downloading = true
-            progress = 0f
-            completed = 0
-            failed = 0
+    val addToQueue: () -> Unit = {
+        if (!queueBusy && selected.isNotEmpty()) {
+            queueBusy = true
+            val batch = videos.filter { it.id in selected }
+            val formatId = if (batch.size == 1) chosenFormat.id else defaultFormat.id
             scope.launch {
-                for ((index, video) in batch.withIndex()) {
-                    status = "Descargando ${index + 1} de ${batch.size}: ${video.title}"
-                    progress = 0f
-                    try {
-                        val output = source.download(video, formatToUse) { value ->
-                            scope.launch { progress = value.coerceIn(0f, 100f) / 100f }
-                        }
-                        completed += 1
-                        status = "Guardado: ${output.name}"
-                    } catch (e: Exception) {
-                        failed += 1
-                        status = "Error en ${video.id}: ${e.message ?: "desconocido"}"
-                    }
+                try {
+                    val result = DownloadQueue.enqueue(context, batch, formatId)
+                    message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
+                    tab = 1
+                } catch (e: Exception) {
+                    message = "No se pudo crear la cola: ${e.message ?: "error desconocido"}"
+                } finally {
+                    queueBusy = false
                 }
-                downloading = false
-                status = "Lote finalizado. Guardados: $completed. Errores: $failed. Carpeta: Descargas/TikitokiDownloader."
             }
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
+    val storagePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) runDownloads() else status = "Se necesita permiso para guardar archivos en esta versión de Android."
+        if (granted) addToQueue()
+        else message = "Android necesita permiso para guardar en Descargas."
     }
+    val notificationsPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* Notificaciones opcionales: las descargas siguen aunque se denieguen. */ }
 
     MaterialTheme(colorScheme = TikitokiColors) {
         Scaffold(
             bottomBar = {
                 NavigationBar {
-                    listOf("Inicio", "Descargas", "Información").forEachIndexed { index, name ->
+                    listOf("Buscar", "Descargas", "Acerca de").forEachIndexed { index, name ->
                         NavigationBarItem(
                             selected = tab == index,
                             onClick = { tab = index },
-                            icon = { Text(listOf("⌂", "▤", "ⓘ")[index]) },
+                            icon = { Text(listOf("⌕", "↓", "ⓘ")[index]) },
                             label = { Text(name) },
                         )
                     }
                 }
-            },
+            }
         ) { insets ->
             Column(
                 modifier = Modifier.fillMaxSize().padding(insets)
-                    .verticalScroll(rememberScrollState()).padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("Tikitoki Downloader", style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold)
-                Text("Kotlin · yt-dlp · v0.2",
+                Text(
+                    "Kotlin · yt-dlp · v0.3",
                     color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.labelMedium)
+                    style = MaterialTheme.typography.labelMedium,
+                )
 
                 when (tab) {
                     0 -> {
-                        Text("Enlace de TikTok", style = MaterialTheme.typography.titleLarge)
+                        Text("Analizar perfil o video", style = MaterialTheme.typography.titleLarge)
                         OutlinedTextField(
-                            value = input,
+                            value = url,
                             onValueChange = {
-                                input = it
+                                url = it
                                 videos = emptyList()
-                                selectedIds.clear()
+                                selected.clear()
                                 formats = listOf(defaultFormat)
-                                selectedFormat = defaultFormat
+                                chosenFormat = defaultFormat
                             },
-                            label = { Text("Perfil o video") },
+                            label = { Text("Enlace de TikTok") },
                             placeholder = { Text("https://www.tiktok.com/@usuario") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
-                            maxLines = 4,
+                            maxLines = 3,
                         )
+
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = input.isNotBlank() && !inspecting && !downloading,
+                            enabled = !inspecting && url.isNotBlank(),
                             onClick = {
-                                when (val result = TikTokLinkParser.parse(input)) {
-                                    is LinkParseResult.Error -> status = result.message
+                                when (val parsed = TikTokLinkParser.parse(url)) {
+                                    is LinkParseResult.Error -> message = parsed.message
                                     is LinkParseResult.Success -> {
                                         inspecting = true
                                         videos = emptyList()
-                                        selectedIds.clear()
-                                        status = "Consultando TikTok. Esto depende de la disponibilidad del perfil y del extractor."
+                                        selected.clear()
+                                        message = "Consultando TikTok. La disponibilidad depende del extractor."
                                         scope.launch {
                                             try {
-                                                val results = source.inspect(result.link)
-                                                videos = results
-                                                selectedIds.addAll(results.map { it.id })
-                                                selectedFormat = defaultFormat
-                                                formats = listOf(defaultFormat)
-                                                status = if (results.isEmpty()) {
-                                                    "El extractor no devolvió videos. TikTok puede haber limitado el acceso."
-                                                } else {
-                                                    "${results.size} videos devueltos por el extractor."
-                                                }
+                                                val found = source.inspect(parsed.link)
+                                                videos = found
+                                                selected.addAll(found.map { it.id })
+                                                message = if (found.isEmpty()) {
+                                                    "El extractor no devolvió videos; TikTok puede haber limitado el acceso."
+                                                } else "${found.size} videos detectados por el extractor."
                                             } catch (e: Exception) {
-                                                status = "No se pudo analizar: ${e.message ?: "error de extracción"}"
+                                                message = "Error al analizar: ${e.message ?: "desconocido"}"
                                             } finally {
                                                 inspecting = false
                                             }
@@ -229,128 +235,288 @@ private fun TikitokiScreen(incomingLink: String) {
                             },
                         ) { Text(if (inspecting) "Analizando..." else "Analizar enlace") }
 
-                        if (inspecting || checkingFormats) CircularProgressIndicator()
-                        Text(status)
+                        if (inspecting || formatsBusy || queueBusy) CircularProgressIndicator()
+                        Text(message)
+
                         if (videos.isNotEmpty()) {
+                            val filteredVideos = videos.filter {
+                                search.isBlank() || it.title.contains(search, ignoreCase = true) ||
+                                    it.id.contains(search)
+                            }
+                            val allSelected = selected.size == videos.size
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text("${videos.size} videos", style = MaterialTheme.typography.titleMedium)
-                                Button(
-                                    enabled = !downloading,
-                                    onClick = {
-                                        selectedIds.clear()
-                                        if (selectedIds.size != videos.size) selectedIds.addAll(videos.map { it.id })
-                                    },
-                                ) {
-                                    Text(if (selectedIds.size == videos.size) "Quitar selección" else "Seleccionar todos")
-                                }
+                                Text("${videos.size} videos · ${selected.size} seleccionados",
+                                    style = MaterialTheme.typography.titleSmall)
+                                OutlinedButton(onClick = {
+                                    selected.clear()
+                                    if (!allSelected) selected.addAll(videos.map { it.id })
+                                    formats = listOf(defaultFormat)
+                                    chosenFormat = defaultFormat
+                                }) { Text(if (allSelected) "Deseleccionar" else "Seleccionar todos") }
                             }
+                            OutlinedTextField(
+                                value = search,
+                                onValueChange = { search = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Buscar entre los videos") },
+                                singleLine = true,
+                            )
                             LazyColumn(
-                                modifier = Modifier.fillMaxWidth().height(330.dp),
-                                verticalArrangement = Arrangement.spacedBy(7.dp),
+                                modifier = Modifier.fillMaxWidth().height(360.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(videos, key = { it.id }) { video ->
-                                    val checked = video.id in selectedIds
+                                items(filteredVideos, key = { it.id }) { video ->
+                                    val checked = video.id in selected
                                     Card(modifier = Modifier.fillMaxWidth()) {
                                         Row(
-                                            modifier = Modifier.fillMaxWidth().padding(9.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                            modifier = Modifier.padding(8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
                                             Checkbox(
                                                 checked = checked,
-                                                enabled = !downloading,
-                                                onCheckedChange = { isChecked ->
-                                                    if (isChecked && video.id !in selectedIds) {
-                                                        selectedIds.add(video.id)
-                                                    } else if (!isChecked) {
-                                                        selectedIds.remove(video.id)
-                                                    }
+                                                onCheckedChange = { value ->
+                                                    if (value && video.id !in selected) selected.add(video.id)
+                                                    else if (!value) selected.remove(video.id)
                                                     formats = listOf(defaultFormat)
-                                                    selectedFormat = defaultFormat
+                                                    chosenFormat = defaultFormat
                                                 },
                                             )
+                                            if (!video.thumbnail.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = video.thumbnail,
+                                                    contentDescription = "Miniatura",
+                                                    modifier = Modifier.size(66.dp),
+                                                )
+                                            }
                                             Column(modifier = Modifier.weight(1f)) {
-                                                Text(video.title, maxLines = 2)
-                                                Text(video.id, style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.secondary)
+                                                Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                Text(
+                                                    video.id,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                )
+                                                if (records.any {
+                                                        it.videoId == video.id &&
+                                                            it.status == DownloadState.COMPLETED
+                                                    }) {
+                                                    Text("Ya descargado", style = MaterialTheme.typography.labelSmall)
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
 
-                            if (selectedIds.size == 1) {
-                                Button(
-                                    enabled = !inspecting && !downloading && !checkingFormats,
+                            if (selected.size == 1) {
+                                OutlinedButton(
+                                    enabled = !formatsBusy && !inspecting,
                                     onClick = {
-                                        val video = videos.firstOrNull { it.id == selectedIds.first() }
+                                        val video = videos.firstOrNull { it.id == selected.first() }
                                         if (video != null) {
-                                            checkingFormats = true
-                                            status = "Consultando formatos disponibles..."
+                                            formatsBusy = true
                                             scope.launch {
                                                 try {
                                                     formats = source.formats(video)
-                                                    selectedFormat = formats.first()
-                                                    status = "${formats.size} opciones de calidad devueltas."
+                                                    chosenFormat = formats.first()
+                                                    message = "Formatos disponibles consultados."
                                                 } catch (e: Exception) {
-                                                    status = "No fue posible obtener formatos: ${e.message}"
+                                                    message = "No se pudieron consultar los formatos: ${e.message}"
                                                 } finally {
-                                                    checkingFormats = false
+                                                    formatsBusy = false
                                                 }
                                             }
                                         }
                                     },
                                 ) { Text("Consultar resoluciones") }
-                            }
 
-                            if (selectedIds.size == 1 && formats.size > 1) {
-                                Text("Formato", fontWeight = FontWeight.Bold)
-                                formats.forEach { option ->
-                                    FilterChip(
-                                        selected = option.id == selectedFormat.id,
-                                        onClick = { selectedFormat = option },
-                                        label = { Text(option.label) },
-                                    )
+                                if (formats.size > 1) {
+                                    formats.forEach { option ->
+                                        FilterChip(
+                                            selected = chosenFormat.id == option.id,
+                                            onClick = { chosenFormat = option },
+                                            label = { Text(option.label) },
+                                        )
+                                    }
                                 }
-                            } else if (selectedIds.size > 1) {
-                                Text("Para los lotes se utilizará la máxima calidad disponible de cada video.")
+                            } else if (selected.size > 1) {
+                                Text("Descarga por lotes: se elegirá automáticamente la mejor calidad de cada video.")
                             }
 
                             Button(
-                                enabled = selectedIds.isNotEmpty() && !downloading && !inspecting,
                                 modifier = Modifier.fillMaxWidth(),
+                                enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
                                 onClick = {
                                     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
                                         context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                                         != PackageManager.PERMISSION_GRANTED
                                     ) {
-                                        permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                        storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                                     } else {
-                                        runDownloads()
+                                        if (Build.VERSION.SDK_INT >= 33 &&
+                                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                            != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                        addToQueue()
                                     }
-                                },
-                            ) {
-                                Text(if (downloading) "Descargando..." else "Descargar seleccionados (${selectedIds.size})")
-                            }
-                            if (downloading) LinearProgressIndicator(progress = { progress },
-                                modifier = Modifier.fillMaxWidth())
+                                }
+                            ) { Text("Añadir ${selected.size} a descargas") }
                         }
                     }
+
                     1 -> {
-                        Text("Descargas", style = MaterialTheme.typography.titleLarge)
-                        Text("Guardados en esta sesión: $completed. Errores: $failed.")
-                        Text("Destino: Descargas/TikitokiDownloader.")
-                        Text("El historial persistente y las descargas con la app cerrada aún están pendientes.")
+                        val finished = records.count { it.status == DownloadState.COMPLETED }
+                        val pending = records.count { it.status == DownloadState.QUEUED || it.status == DownloadState.DOWNLOADING }
+                        val paused = records.count { it.status == DownloadState.PAUSED }
+                        val failed = records.count { it.status == DownloadState.FAILED }
+
+                        Text("Gestor de descargas", style = MaterialTheme.typography.titleLarge)
+                        Text("$finished completadas · $pending pendientes · $failed errores")
+                        Text("Los videos se guardan en Descargas/TikitokiDownloader.")
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                enabled = pending > 0,
+                                onClick = {
+                                    scope.launch {
+                                        DownloadQueue.pause(context)
+                                        message = "Cola pausada."
+                                    }
+                                },
+                            ) { Text("Pausar") }
+                            Button(
+                                enabled = paused > 0 || pending > 0,
+                                onClick = {
+                                    scope.launch {
+                                        DownloadQueue.resume(context)
+                                        message = "Cola reanudada."
+                                    }
+                                },
+                            ) { Text("Continuar") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                enabled = failed > 0,
+                                onClick = {
+                                    scope.launch {
+                                        DownloadQueue.retryFailed(context)
+                                        message = "Reintentando descargas fallidas."
+                                    }
+                                },
+                            ) { Text("Reintentar errores") }
+                            OutlinedButton(
+                                enabled = failed > 0,
+                                onClick = { scope.launch { dao.clearFailed() } },
+                            ) { Text("Limpiar errores") }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("TODOS", "COMPLETED", "FAILED").forEach { filter ->
+                                FilterChip(
+                                    selected = historyFilter == filter,
+                                    onClick = { historyFilter = filter },
+                                    label = {
+                                        Text(when (filter) {
+                                            "COMPLETED" -> "Listos"
+                                            "FAILED" -> "Errores"
+                                            else -> "Todos"
+                                        })
+                                    },
+                                )
+                            }
+                        }
+
+                        val displayed = records.filter {
+                            historyFilter == "TODOS" || it.status == historyFilter
+                        }
+                        if (displayed.isEmpty()) Text("Todavía no hay descargas en esta categoría.")
+                        else LazyColumn(
+                            modifier = Modifier.fillMaxWidth().height(440.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(displayed, key = { it.videoId }) { record ->
+                                DownloadHistoryCard(record, onOpen = {
+                                    val saved = record.savedUri ?: return@DownloadHistoryCard
+                                    try {
+                                        val uri = Uri.parse(saved)
+                                        if (uri.scheme != "content") {
+                                            message = "Archivo disponible en Descargas/TikitokiDownloader."
+                                        } else {
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(uri, "video/*")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    } catch (e: Exception) {
+                                        message = "No se pudo abrir el archivo: ${e.message}"
+                                    }
+                                })
+                            }
+                        }
+                        if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
                     }
+
                     else -> {
-                        Text("Información", style = MaterialTheme.typography.titleLarge)
-                        Text("Motor de extracción: yt-dlp vía youtubedl-android, licencia GPL-3.0.")
-                        Text("TikTok puede restringir la enumeración de perfiles, las calidades o la descarga. No se garantiza ausencia de marcas de agua.")
-                        Text("Úsalo solamente para contenido propio o con autorización de descarga.")
+                        Text("Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
+                        Text("Versión 0.3: extracción yt-dlp, formatos, descargas por lotes, historial Room, control de duplicados y cola WorkManager.")
+                        Text("Las descargas usan el servicio de primer plano Android; la carpeta final es visible en Descargas.")
+                        Text("TikTok puede bloquear el acceso a publicaciones o no proporcionar formatos sin marca de agua. No se garantiza descargar todos los videos de un perfil.")
+                        Text("Solo debe utilizarse con contenido propio o autorizado. El motor yt-dlp Android emplea componentes GPL-3.0.")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (!record.thumbnail.isNullOrBlank()) {
+                    AsyncImage(
+                        model = record.thumbnail,
+                        contentDescription = "Miniatura",
+                        modifier = Modifier.size(64.dp),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(record.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        when (record.status) {
+                            DownloadState.QUEUED -> "En cola"
+                            DownloadState.DOWNLOADING -> "Descargando ${record.progress}%"
+                            DownloadState.PAUSED -> "Pausado"
+                            DownloadState.COMPLETED -> "Completado"
+                            DownloadState.FAILED -> "Error"
+                            else -> record.status
+                        },
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            if (record.status == DownloadState.DOWNLOADING) {
+                LinearProgressIndicator(
+                    progress = { record.progress / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (!record.error.isNullOrBlank()) {
+                Text(record.error, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error)
+            }
+            if (record.status == DownloadState.COMPLETED && record.savedUri != null) {
+                OutlinedButton(onClick = onOpen) { Text("Abrir video") }
             }
         }
     }

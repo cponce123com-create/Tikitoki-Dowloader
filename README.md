@@ -1,27 +1,32 @@
 # Tikitoki Downloader
 
-Aplicación Android nativa con **Kotlin + Jetpack Compose**. Proyecto en desarrollo inspirado en la experiencia de 4K Tokkit y otras herramientas libres.
+Aplicación nativa Android en **Kotlin + Jetpack Compose**, inspirada en 4K Tokkit, Seal y YTDLnis. Repositorio: `cponce123com-create/Tikitoki-Dowloader` (el nombre del repositorio conserva la grafía original).
 
-## Estado v0.2 (motor yt-dlp integrado, pendiente de prueba en teléfono)
+## Funcionalidades implementadas en código (v0.3.0)
 
-- Reconocimiento y recepción de enlaces de TikTok.
-- Integración directa del motor `youtubedl-android` (yt-dlp + FFmpeg).
-- Intento de listar videos de un perfil usando `--flat-playlist --dump-single-json`.
-- Consulta real de formatos MP4 progresivos de videos individuales.
-- Descarga secuencial por lotes de videos seleccionados, con progreso y errores.
-- Carpeta `Downloads/TikitokiDownloader/`.
-- Compilación en GitHub Actions (`Android CI`).
+- Compartir o pegar enlaces de TikTok; validar enlaces y rechazar dominios falsificados.
+- Usar **yt-dlp mediante youtubedl-android** para consultar videos individuales y probar la enumeración de perfiles públicos.
+- Obtener formatos realmente disponibles por video y permitir seleccionar uno; descarga por lotes con la mejor calidad disponible.
+- Miniaturas cuando el extractor las proporcione; búsqueda en la lista y selección múltiple.
+- **Room** como base de datos local de historial, estados y ubicación de archivos descargados.
+- **WorkManager** para una cola persistente, ejecutada de forma serial, con servicio en primer plano y aviso de descarga.
+- Pausa, reanudación y reintentos; estados de error y progreso por video.
+- Detección de IDs duplicados para no repetir descargas completadas o pendientes.
+- Archivos visibles en `Descargas/TikitokiDownloader/`, publicados con MediaStore en Android 10+.
+- GitHub Actions compila el APK debug y ejecuta pruebas del reconocedor de enlaces.
 
-**Limitaciones importantes:** TikTok puede bloquear el listado completo de un perfil, aplicar limitaciones o no ofrecer una versión descargable sin marca de agua. La aplicación no garantiza obtener todos los videos de cualquier cuenta. No altera archivos para eliminar marcas de agua. La disponibilidad de formatos viene del extractor y no de valores inventados. Las descargas en segundo plano, la reanudación y la biblioteca persistente todavía no están implementadas. No se han realizado pruebas en dispositivos reales.
+## Limitaciones
+
+TikTok puede rechazar la recopilación de perfiles, incluso cuando sus videos son públicos. No se garantiza poder descargar todos los videos, la resolución máxima ni versiones sin marca de agua. No hay APKs hackeados, robo de cookies ni elusión de restricciones de autenticación. Se requieren pruebas en un dispositivo Android real con material propio o autorizado. Las opciones manuales de calidad se ofrecen por video; la cola aplica calidad automática al lote.
 
 ## Compilación
 
-Abre el repositorio en Android Studio con Java 17 y Android SDK 35. Alternativamente, en `Actions > Android CI` descarga el APK debug desde Artifacts de una ejecución **exitosa**.
+Abrir en Android Studio (JDK 17, SDK 35). Desde GitHub, pestaña **Actions > Android CI**: tras una ejecución exitosa, descargar el artifact **Tikitoki-Downloader-debug**.
 
-## Dependencia externa
+## Licencias
 
-Usamos [youtubedl-android](https://github.com/yausername/youtubedl-android) bajo GPL-3.0. Su integración trae obligaciones de distribución de código fuente y licencias que deben cumplirse antes de publicar la aplicación.
+El motor [youtubedl-android](https://github.com/yausername/youtubedl-android) usa GPL-3.0, con requisitos de divulgación de código fuente al redistribuir aplicaciones que lo incorporan. Evaluar obligaciones legales antes de publicar.
 
-## Uso permitido
+## Próximas validaciones
 
-Descarga únicamente publicaciones propias, autorizadas o cuya descarga esté permitida por el titular y la plataforma. Nunca introducir credenciales en bots de terceros ni utilizar APK modificados de origen desconocido.
+Pruebas manuales en Android 8-16, extracción en TikTok en tiempo real, compatibilidad con perfiles grandes, medios sin marca cuando sean proporcionados por el origen y tratamiento de restricciones de plataforma.
