@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.tikitoki.downloader.domain.ProfileDiff
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import kotlinx.coroutines.Dispatchers
@@ -73,8 +74,8 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
                 val ids = videos.map { it.id }.toSet()
                 val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty()
                 // A partial catalogue must not replace a previously larger baseline.
-                val newCount = if (old.isEmpty()) 0 else (ids - old).size
-                prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newCount)
+                val diff = ProfileDiff.compare(old, ids)
+                prefs.edit().putStringSet("ids:$url", diff.knownIds).putInt("new:$url", diff.newIds.size)
                     .putLong("checked:$url", System.currentTimeMillis())
                     .remove("error:$url").apply()
             } catch (e: Exception) {
