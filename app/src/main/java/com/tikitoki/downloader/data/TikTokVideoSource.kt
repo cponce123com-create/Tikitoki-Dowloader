@@ -197,7 +197,7 @@ class TikTokVideoSource(private val context: Context) {
         if (safeId.isBlank()) throw IllegalArgumentException("ID de video inválido.")
         // Remove completed remnants from an earlier run; keep .part files for --continue.
         folder.listFiles()?.filter { it.isFile && it.nameWithoutExtension == safeId &&
-            it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov") }?.forEach { it.delete() }
+            it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac") }?.forEach { it.delete() }
         val request = YoutubeDLRequest(video.url)
             .addOption("--no-playlist")
             .addOption("--newline")
