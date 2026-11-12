@@ -114,6 +114,7 @@ private fun TikitokiApp(incomingLink: String) {
     var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
     var message by remember { mutableStateOf("Pega un enlace de TikTok para analizarlo.") }
     var inspecting by remember { mutableStateOf(false) }
+    var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
     var queueBusy by remember { mutableStateOf(false) }
     var videos by remember { mutableStateOf<List<VideoEntry>>(emptyList()) }
@@ -227,7 +228,8 @@ private fun TikitokiApp(incomingLink: String) {
                                         message = "Consultando TikTok. La disponibilidad depende del extractor."
                                         scope.launch {
                                             try {
-                                                val found = source.inspect(parsed.link)
+                                                val found = source.inspect(parsed.link, forceRefresh = forceRefresh)
+                                                forceRefresh = false
                                                 videos = found
                                                 selected.addAll(found.map { it.id })
                                                 message = if (found.isEmpty()) {
@@ -244,6 +246,7 @@ private fun TikitokiApp(incomingLink: String) {
                             },
                         ) { Text(if (inspecting) "Analizando..." else "Analizar enlace") }
 
+                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar desde TikTok (ignorar caché)") })
                         if (inspecting || formatsBusy || queueBusy) CircularProgressIndicator()
                         Text(message)
 
