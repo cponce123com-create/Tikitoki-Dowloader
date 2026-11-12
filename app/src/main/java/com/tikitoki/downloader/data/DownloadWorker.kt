@@ -42,6 +42,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             while (!isStopped) {
                 val item = dao.nextQueued() ?: break
                 currentId = item.videoId
+                // A pause may have been requested after nextQueued() returned.
+                if (dao.find(item.videoId)?.status != DownloadState.QUEUED) continue
                 dao.setStatus(item.videoId, DownloadState.DOWNLOADING)
                 setForeground(notification("Descargando: ${item.title}"))
                 val stopMonitor = progressScope.launch {
@@ -71,6 +73,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     if (isStopped) {
                         dao.setStatus(item.videoId, DownloadState.PAUSED)
+                        file.delete()
+                        break
+                    }
+                    if (dao.find(item.videoId)?.status == DownloadState.PAUSED) {
                         file.delete()
                         break
                     }
