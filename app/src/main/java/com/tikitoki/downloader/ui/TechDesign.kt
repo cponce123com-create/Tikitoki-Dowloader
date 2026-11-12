@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -31,31 +32,32 @@ val TechGradient = Brush.horizontalGradient(listOf(Color(0xFF6B21ED), TechPurple
 
 @Composable
 fun TechHeader(onSettings: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(56.dp).background(TechGradient, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-            Text("↓", style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Black)
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(40.dp).background(TechGradient, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            Text("↓", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
         }
         Column(Modifier.weight(1f)) {
-            Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
+            Text("Tikitoki Downloader", style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
             
         }
-        TextButton(onClick = onSettings) { Text("⚙", color = Color.White, style = MaterialTheme.typography.headlineSmall) }
+        TextButton(onClick = onSettings) { Text("⚙", color = Color.White, style = MaterialTheme.typography.titleLarge) }
     }
 }
 
 @Composable
-fun TechPlatformStrip() {
+fun TechPlatformStrip(selected: String?, onSelect: (String) -> Unit) {
     val platforms = listOf("TikTok", "YouTube", "Facebook", "Instagram")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         platforms.forEach { platform ->
-            Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp),
-                color = TechPanel, border = BorderStroke(1.dp, TechBorder)) {
-                Column(Modifier.padding(vertical = 12.dp, horizontal = 2.dp),
+            Surface(modifier = Modifier.weight(1f).clickable { onSelect(platform) }, shape = RoundedCornerShape(12.dp),
+                color = if (selected == platform) TechPurple.copy(alpha = 0.25f) else TechPanel,
+                border = BorderStroke(1.dp, if (selected == platform) TechPink else TechBorder)) {
+                Column(Modifier.padding(vertical = 6.dp, horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PlatformLogo(platform, Modifier.size(36.dp))
+                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    PlatformLogo(platform, Modifier.size(25.dp))
                     Text(platform, style = MaterialTheme.typography.labelSmall,
                         color = Color.White, maxLines = 1)
                 }
@@ -102,11 +104,11 @@ private fun PlatformLogo(platform: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun TechShortcut(title: String, value: String, symbol: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(modifier = modifier.clickable(onClick = onClick), shape = RoundedCornerShape(17.dp),
+    Surface(modifier = modifier.clickable(onClick = onClick), shape = RoundedCornerShape(12.dp),
         color = TechPanel, border = BorderStroke(1.dp, TechBorder)) {
-        Column(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 3.dp),
+        Column(Modifier.fillMaxWidth().padding(vertical = 7.dp, horizontal = 3.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(symbol, color = TechPink, style = MaterialTheme.typography.headlineSmall)
+            Text(symbol, color = TechPink, style = MaterialTheme.typography.titleMedium)
             Text(title, style = MaterialTheme.typography.labelMedium, color = Color.White, textAlign = TextAlign.Center)
             Text(value, style = MaterialTheme.typography.labelSmall, color = TechMuted, textAlign = TextAlign.Center)
         }
@@ -115,12 +117,12 @@ fun TechShortcut(title: String, value: String, symbol: String, modifier: Modifie
 
 @Composable
 fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 52.dp),
+    Button(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 42.dp),
         colors = ButtonDefaults.buttonColors(containerColor = TechPurple, contentColor = Color.White),
-        shape = RoundedCornerShape(18.dp), contentPadding = PaddingValues(horizontal = 18.dp)) {
+        shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
         Box(Modifier.fillMaxWidth().background(if (enabled) TechGradient else Brush.horizontalGradient(listOf(TechBorder, TechBorder)),
-            RoundedCornerShape(12.dp)).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            RoundedCornerShape(10.dp)).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+            Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
