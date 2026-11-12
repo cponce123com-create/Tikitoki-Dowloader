@@ -75,6 +75,7 @@ import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaLinkParser
+import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -107,7 +108,8 @@ class MainActivity : ComponentActivity() {
 
     private fun receivedText(intent: Intent?): String =
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            val candidate = intent.getStringExtra(Intent.EXTRA_TEXT)
+            IncomingLinkValidator.validate(candidate)?.url.orEmpty()
         } else ""
 }
 
@@ -279,7 +281,7 @@ private fun TikitokiApp(incomingLink: String) {
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
-                                when (val parsed = MediaLinkParser.parse(url)) {
+                                when (val parsed = IncomingLinkValidator.validate(url)) {
                                     null -> message = "Pega un enlace HTTPS válido de TikTok, YouTube, Facebook o Instagram."
                                     else -> {
 
