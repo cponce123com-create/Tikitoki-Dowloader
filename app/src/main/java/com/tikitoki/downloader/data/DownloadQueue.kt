@@ -1,6 +1,10 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import java.util.concurrent.TimeUnit
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -47,12 +51,17 @@ object DownloadQueue {
         EnqueueSummary(added, duplicates)
     }
 
+    private fun request() = OneTimeWorkRequestBuilder<DownloadWorker>()
+        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+        .build()
+
     fun start(context: Context) {
         WorkManager.getInstance(context.applicationContext)
             .enqueueUniqueWork(
                 UNIQUE_WORK,
                 ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<DownloadWorker>().build(),
+                request(),
             )
     }
 
