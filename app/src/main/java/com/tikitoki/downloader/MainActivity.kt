@@ -383,7 +383,7 @@ private fun TikitokiApp(incomingLink: String) {
                         )
                         }
 
-                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar desde TikTok (ignorar caché)") })
+                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar datos (ignorar caché)") })
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         Text(message)
@@ -405,7 +405,8 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Videos detectados (${videos.size}) · ${selected.size} seleccionados", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("Videos detectados (${videos.size})", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("${selected.size} seleccionados · toca una tarjeta para cambiar la selección", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                                     selected.clear()
@@ -430,7 +431,7 @@ private fun TikitokiApp(incomingLink: String) {
                             if (gridMode) {
                                 LazyVerticalGrid(
                                     columns = GridCells.Adaptive(154.dp),
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp).height(520.dp),
+                                    modifier = Modifier.fillMaxWidth().height(600.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -450,7 +451,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             } else LazyColumn(
-                                modifier = Modifier.fillMaxWidth().height(480.dp),
+                                modifier = Modifier.fillMaxWidth().height(600.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(visibleVideos, key = { it.id }) { video ->
@@ -469,7 +470,7 @@ private fun TikitokiApp(incomingLink: String) {
                                                     chosenFormat = defaultFormat
                                                 },
                                             )
-                                            VideoThumbnail(video.thumbnail, video.title, Modifier.width(116.dp).aspectRatio(16f / 10f))
+                                            VideoThumbnail(video, thumbnailResolver, Modifier.width(116.dp).aspectRatio(16f / 10f))
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                                                 Text(
