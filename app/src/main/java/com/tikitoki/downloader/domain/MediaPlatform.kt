@@ -36,7 +36,7 @@ object MediaLinkParser {
             else -> false
         }
         val normalized = try {
-            URI("https", null, host, -1, uri.path.ifEmpty { "/" }, uri.query, null).toASCIIString()
+            URI.create("https://" + host + uri.rawPath.orEmpty().ifEmpty { "/" } + (uri.rawQuery?.let { "?$it" } ?: "")).toASCIIString()
         } catch (_: Exception) { return null }
         return MediaLink(normalized, platform, collection)
     }
