@@ -35,9 +35,11 @@ object MediaLinkParser {
             MediaPlatform.INSTAGRAM -> path.matches(Regex("^/[A-Za-z0-9._]+/?$"))
             else -> false
         }
-        val normalized = try {
+        // URI(text) has already validated the syntax. Preserve percent-encoding without
+        // double-escaping, and still fail closed if canonical reconstruction fails.
+        val normalized = runCatching {
             URI.create("https://" + host + uri.rawPath.orEmpty().ifEmpty { "/" } + (uri.rawQuery?.let { "?$it" } ?: "")).toASCIIString()
-        } catch (_: Exception) { return null }
+        }.getOrNull() ?: return null
         return MediaLink(normalized, platform, collection)
     }
 }
