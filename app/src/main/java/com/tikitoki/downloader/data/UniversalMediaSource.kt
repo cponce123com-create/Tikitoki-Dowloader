@@ -69,14 +69,11 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
 
     private fun parseEntry(json: JSONObject, link: MediaLink): VideoEntry? {
         val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
-        val original = json.optString("webpage_url").takeIf { it.startsWith("https://") }
+        val original = json.optString("webpage_url").takeIf { it.isNotBlank() }
             ?: json.optString("url").takeIf { it.startsWith("https://") }
-        val page = original ?: when (link.platform) {
-            MediaPlatform.YOUTUBE -> "https://www.youtube.com/watch?v=$id"
-            else -> if (!link.collection) link.url else return null
-        }
-        // Extractor JSON is untrusted: never propagate off-allowlist URLs to the queue.
-        val safePage = IncomingLinkValidator.validate(page)?.url ?: return null
+        val safePage = DownloadInputPolicy.extractorPage(
+            link.platform, id, original, link.url, link.collection
+        ) ?: return null
         val title = MetadataSanitizer.title(json.optString("title").ifBlank { "Video $id" })
         return VideoEntry(
             id = "${link.platform.name.lowercase()}:$id",
