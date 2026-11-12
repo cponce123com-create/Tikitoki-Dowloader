@@ -182,6 +182,9 @@ class TikTokVideoSource(private val context: Context) {
         }
         val safeId = video.id.filter { it.isLetterOrDigit() || it == '_' || it == '-' }
         if (safeId.isBlank()) throw IllegalArgumentException("ID de video inválido.")
+        // Remove completed remnants from an earlier run; keep .part files for --continue.
+        folder.listFiles()?.filter { it.isFile && it.nameWithoutExtension == safeId &&
+            it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov") }?.forEach { it.delete() }
         val request = YoutubeDLRequest(video.url)
             .addOption("--no-playlist")
             .addOption("--newline")
@@ -199,7 +202,7 @@ class TikTokVideoSource(private val context: Context) {
             throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
         }
         folder.listFiles()?.firstOrNull {
-            it.isFile && it.nameWithoutExtension == safeId &&
+            it.isFile && it.length() > 0L && it.nameWithoutExtension == safeId &&
                 it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov")
         } ?: throw IllegalStateException("No se encontró el archivo descargado.")
     }
