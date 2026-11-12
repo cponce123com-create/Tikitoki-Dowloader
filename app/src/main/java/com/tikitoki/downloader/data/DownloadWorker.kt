@@ -1,5 +1,7 @@
 package com.tikitoki.downloader.data
 
+import com.tikitoki.downloader.domain.DownloadInputPolicy
+import com.tikitoki.downloader.domain.MetadataSanitizer
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -58,8 +60,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 }
                 try {
                     val file = source.downloadToCache(
-                        VideoEntry(item.videoId, item.videoUrl, item.title, item.thumbnail),
-                        item.formatId
+                        VideoEntry(item.videoId, DownloadInputPolicy.canonicalUrl(item.videoUrl), item.title, item.thumbnail),
+                        DownloadInputPolicy.safeFormatId(item.formatId)
                     ) { percent ->
                         if (!isStopped) {
                             setProgressAsync(workDataOf("videoId" to item.videoId, "percent" to percent))
@@ -93,7 +95,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     throw e
                 } catch (e: Exception) {
                     if (isStopped) dao.pauseIfDownloading(item.videoId)
-                    else dao.failIfDownloading(item.videoId, e.message?.take(500) ?: "Error al descargar")
+                    else dao.failIfDownloading(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" })
                 } finally {
                     currentId = null
                     stopMonitor.cancel()
