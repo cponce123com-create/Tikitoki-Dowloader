@@ -74,6 +74,8 @@ import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 class MainActivity : ComponentActivity() {
     private var sharedLink by mutableStateOf("")
@@ -167,12 +169,16 @@ private fun TikitokiApp(incomingLink: String) {
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
-            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val snapshot = records.toList()
+            val format = exportFormat
+            scope.launch {
                 try {
-                    val content = if (exportFormat == "csv") LibraryExport.toCsv(records) else LibraryExport.toJson(records)
+                    withContext(Dispatchers.IO) {
+                    val content = if (format == "csv") LibraryExport.toCsv(snapshot) else LibraryExport.toJson(snapshot)
                     context.contentResolver.openOutputStream(uri)?.use {
                         it.write(content.toByteArray(Charsets.UTF_8))
                     } ?: error("No se pudo abrir el destino")
+                    }
                     message = "Respaldo de metadatos exportado."
                 } catch (e: Exception) {
                     message = "No se pudo exportar: ${e.message}"
@@ -221,7 +227,7 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                 }
                 Text(
-                    "Kotlin · yt-dlp · v0.3",
+                    "Kotlin · yt-dlp · v0.4",
                     color = MaterialTheme.colorScheme.secondary,
                     style = MaterialTheme.typography.labelMedium,
                 )
@@ -572,6 +578,9 @@ private fun TikitokiApp(incomingLink: String) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text(profile, maxLines = 2)
                                     Text("Nuevos desde la última revisión: ${ProfileMonitor.newCount(context, profile)}")
+                                    val checked = ProfileMonitor.lastChecked(context, profile)
+                                    Text(if (checked > 0) "Última revisión: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(checked))}" else "Pendiente de primera revisión")
+                                    ProfileMonitor.lastError(context, profile)?.let { Text("Error reciente: $it", color = MaterialTheme.colorScheme.error) }
                                     OutlinedButton(onClick = { ProfileMonitor.remove(context, profile); monitorRevision++ }) { Text("Dejar de seguir") }
                                 }
                             }
