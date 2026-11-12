@@ -106,11 +106,16 @@ class MainActivity : ComponentActivity() {
         sharedLink = receivedText(intent)
     }
 
-    private fun receivedText(intent: Intent?): String =
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            val candidate = intent.getStringExtra(Intent.EXTRA_TEXT)
-            IncomingLinkValidator.validate(candidate)?.url.orEmpty()
-        } else ""
+    private fun receivedText(intent: Intent?): String {
+        val candidate = when {
+            intent?.action == Intent.ACTION_SEND && intent.type == "text/plain" ->
+                intent.getStringExtra(Intent.EXTRA_TEXT)
+            intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "https" ->
+                intent.dataString
+            else -> null
+        }
+        return IncomingLinkValidator.validate(candidate)?.url.orEmpty()
+    }
 }
 
 private val TikitokiColors = darkColorScheme(
