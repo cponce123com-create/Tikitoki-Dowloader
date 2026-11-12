@@ -38,14 +38,17 @@ class TikTokVideoSource(private val context: Context) {
             FFmpeg.getInstance().init(context.applicationContext)
             initialized = true
         }
-        if (!updateAttempted) {
+        val updatePrefs = context.applicationContext.getSharedPreferences("extractor_update", Context.MODE_PRIVATE)
+        val lastUpdate = updatePrefs.getLong("last_attempt", 0L)
+        if (!updateAttempted && System.currentTimeMillis() - lastUpdate > 24 * 60 * 60 * 1000L) {
             updateAttempted = true
+            updatePrefs.edit().putLong("last_attempt", System.currentTimeMillis()).apply()
             // Update the yt-dlp Python extractor independently of the Android wrapper.
             // If offline, retain the bundled extractor and retry on the next app launch.
             try {
                 YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, YoutubeDL.UpdateChannel.STABLE)
             } catch (_: Exception) {
-                updateAttempted = false
+                // Retry on a later launch, not on every video in a large batch.
             }
         }
     }
