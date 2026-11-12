@@ -23,6 +23,8 @@ data class ProfileUiState(
     val loadingMore: Boolean = false,
     val hasMore: Boolean = false,
     val nextPage: Int = 1,
+    val totalVideos: Int? = null,
+    val countingTotal: Boolean = false,
     val error: String? = null,
 )
 
@@ -60,12 +62,49 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     mutableState.value = ProfileUiState(
                         videos = first.distinctBy { it.id },
                         hasMore = isProfile && first.size >= 60,
-                        nextPage = 2
+                        nextPage = 2,
+                        totalVideos = if (!isProfile || first.size < 60) first.distinctBy { it.id }.size else null,
+                        countingTotal = isProfile && first.size >= 60
                     )
+                    if (isProfile && first.size >= 60) countProfileInBackground(media, link, first, token)
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (token == generation) mutableState.value = ProfileUiState(error = e.message ?: "Error de extracción")
+            }
+        }
+    }
+
+    /** Count the full public catalog separately from the 60-at-a-time display. */
+    private fun countProfileInBackground(
+        media: com.tikitoki.downloader.domain.MediaLink,
+        tikTokLink: TikTokLink?,
+        first: List<VideoEntry>,
+        token: Int,
+    ) {
+        viewModelScope.launch {
+            val seen = first.mapTo(mutableSetOf()) { it.id }
+            var pageNumber = 2
+            try {
+                while (token == generation) {
+                    val page = if (media.platform == MediaPlatform.TIKTOK && tikTokLink != null) {
+                        source.inspectPage(tikTokLink, pageNumber)
+                    } else {
+                        universal.inspect(media, (pageNumber - 1) * 60 + 1)
+                    }
+                    if (token != generation) return@launch
+                    val added = page.count { seen.add(it.id) }
+                    if (page.size < 60 || added == 0) {
+                        mutableState.value = mutableState.value.copy(
+                            totalVideos = seen.size, countingTotal = false
+                        )
+                        return@launch
+                    }
+                    pageNumber++
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) {
+                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false)
             }
         }
     }
