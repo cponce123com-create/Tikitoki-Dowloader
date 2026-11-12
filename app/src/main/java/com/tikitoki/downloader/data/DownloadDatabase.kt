@@ -55,6 +55,12 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = 'COMPLETED', progress = 100, savedUri = :uri, error = NULL, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
     suspend fun completeIfDownloading(id: String, uri: String, now: Long = System.currentTimeMillis()): Int
 
+    @Query("UPDATE downloads SET status = 'PAUSED', updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
+    suspend fun pauseIfDownloading(id: String, now: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE downloads SET status = 'FAILED', error = :error, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
+    suspend fun failIfDownloading(id: String, error: String, now: Long = System.currentTimeMillis()): Int
+
     @Query("UPDATE downloads SET status = :status, updatedAt = :now, error = :error WHERE videoId = :id")
     suspend fun setStatus(
         id: String,
