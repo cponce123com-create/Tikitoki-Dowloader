@@ -14,6 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 
 val TechPurple = Color(0xFF9736FF)
 val TechPink = Color(0xFFE34BEA)
@@ -41,20 +47,54 @@ fun TechHeader(onSettings: () -> Unit) {
 
 @Composable
 fun TechPlatformStrip() {
-    val platforms = listOf("♪" to "TikTok", "▶" to "YouTube", "f" to "Facebook", "◎" to "Instagram")
+    val platforms = listOf("TikTok", "YouTube", "Facebook", "Instagram")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        platforms.forEach { (symbol, label) ->
+        platforms.forEach { platform ->
             Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp),
                 color = TechPanel, border = BorderStroke(1.dp, TechBorder)) {
-                Column(Modifier.padding(vertical = 14.dp, horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(symbol, style = MaterialTheme.typography.headlineMedium, color = when(label) {
-                        "YouTube" -> Color(0xFFFF4159)
-                        "Facebook" -> Color(0xFF4C9BFF)
-                        "Instagram" -> TechPink
-                        else -> Color(0xFF42E7F5)
-                    }, fontWeight = FontWeight.Bold)
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1)
+                Column(Modifier.padding(vertical = 12.dp, horizontal = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PlatformLogo(platform, Modifier.size(36.dp))
+                    Text(platform, style = MaterialTheme.typography.labelSmall,
+                        color = Color.White, maxLines = 1)
                 }
+            }
+        }
+    }
+}
+
+/** Locally drawn recognizable brand marks; no tracking, remote images or icon SDK. */
+@Composable
+private fun PlatformLogo(platform: String, modifier: Modifier = Modifier) {
+    when (platform) {
+        "Facebook" -> Text("f", modifier = modifier, style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Black, color = Color(0xFF4C9BFF), textAlign = TextAlign.Center)
+        "TikTok" -> Text("♪", modifier = modifier, style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Black, color = Color(0xFF45E9F1), textAlign = TextAlign.Center)
+        else -> Canvas(modifier) {
+            if (platform == "YouTube") {
+                drawRoundRect(Color(0xFFFF334F), topLeft = Offset(size.width * .04f, size.height * .18f),
+                    size = Size(size.width * .92f, size.height * .64f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * .2f))
+                val triangle = Path().apply {
+                    moveTo(size.width * .42f, size.height * .34f)
+                    lineTo(size.width * .42f, size.height * .68f)
+                    lineTo(size.width * .70f, size.height * .51f)
+                    close()
+                }
+                drawPath(triangle, Color.White)
+            } else {
+                val magenta = Color(0xFFEA4CCF)
+                drawRoundRect(magenta, topLeft = Offset(size.width * .10f, size.height * .10f),
+                    size = Size(size.width * .80f, size.height * .80f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * .23f),
+                    style = Stroke(width = size.width * .075f))
+                drawCircle(magenta, radius = size.width * .20f,
+                    center = Offset(size.width * .50f, size.height * .50f),
+                    style = Stroke(width = size.width * .075f))
+                drawCircle(magenta, radius = size.width * .055f,
+                    center = Offset(size.width * .74f, size.height * .27f))
             }
         }
     }
