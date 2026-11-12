@@ -272,11 +272,11 @@ private fun TikitokiApp(incomingLink: String) {
                             Column(Modifier.weight(1f)) {
                                 Text(preview.title, maxLines = 3, overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.SemiBold)
-                                Text("Vista previa · ${preview.durationSeconds}s", color = TechMuted)
+                                Text("${preview.durationSeconds}s", color = TechMuted)
                             }
                         }
                     }
-                    Text("Selecciona la calidad o solo audio", style = MaterialTheme.typography.titleMedium)
+                    Text("Calidad", style = MaterialTheme.typography.titleMedium)
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
                     Column(Modifier.heightIn(max = 290.dp).verticalScroll(rememberScrollState())) {
                         formats.forEach { option ->
@@ -326,7 +326,7 @@ private fun TikitokiApp(incomingLink: String) {
                 when (tab) {
                     0 -> {
                         TechPlatformStrip()
-                        Text("Enlace · Perfil/Canal · Lista/Playlist", style = MaterialTheme.typography.titleMedium, color = TechMuted)
+                        Text("Pega un enlace", style = MaterialTheme.typography.titleMedium, color = TechMuted)
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
@@ -383,7 +383,7 @@ private fun TikitokiApp(incomingLink: String) {
                         )
                         }
 
-                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar datos (ignorar caché)") })
+                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar") })
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         Text(message)
@@ -406,7 +406,7 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             val allSelected = selected.size == videos.size
                             Text("Videos detectados (${videos.size})", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("${selected.size} seleccionados · toca una tarjeta para cambiar la selección", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                            Text("${selected.size} seleccionados", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                                     selected.clear()
@@ -415,13 +415,13 @@ private fun TikitokiApp(incomingLink: String) {
                                     chosenFormat = defaultFormat
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar todos", maxLines = 1) }
                             }
-                            Text("La lista del perfil no confirma si cada video sigue siendo público. Los videos privados que TikTok no expone no pueden identificarse desde aquí.", style = MaterialTheme.typography.bodySmall)
-                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Solo pendientes de descargar") })
+                            
+                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Pendientes") })
                             OutlinedTextField(
                                 value = search,
                                 onValueChange = { search = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Buscar entre los videos") },
+                                label = { Text("Buscar videos") },
                                 singleLine = true,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -444,7 +444,7 @@ private fun TikitokiApp(incomingLink: String) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                                 VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
                                                 Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                                Text(if (video.id in selected) "☑ Seleccionado" else "□ Tocar para seleccionar",
+                                                Text(if (video.id in selected) "☑" else "□",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
@@ -478,7 +478,7 @@ private fun TikitokiApp(incomingLink: String) {
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.secondary,
                                                 )
-                                                Text(if (video.id in downloadedIds) "✓ Descargado" else "Sin verificar · listado público", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                                Text(if (video.id in downloadedIds) "✓ Descargado" else "Disponible", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                                             }
                                         }
                                     }
@@ -486,11 +486,11 @@ private fun TikitokiApp(incomingLink: String) {
                             }
 
                             if (profileState.hasMore || visibleVideos.size < filteredVideos.size) {
-                                Text("Mostrando ${visibleVideos.size} de ${filteredVideos.size} publicaciones")
+                                Text("${visibleVideos.size} de ${filteredVideos.size} videos")
                                 OutlinedButton(modifier = Modifier.fillMaxWidth(), enabled = !profileState.loadingMore, onClick = {
                                     if (visibleVideos.size < filteredVideos.size) visiblePages++ else profileViewModel.loadMore()
                                 }) {
-                                    Text(if (profileState.loadingMore) "Cargando desde TikTok..." else "Cargar 60 publicaciones más")
+                                    Text(if (profileState.loadingMore) "Cargando..." else "Ver más")
                                 }
                             }
 
@@ -546,7 +546,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             } else if (selected.size > 1) {
-                                Text("Descarga por lotes: se elegirá automáticamente la mejor calidad de cada video.")
+                                
                             }
 
                             Button(
@@ -580,7 +580,7 @@ private fun TikitokiApp(incomingLink: String) {
 
                         Text("Cola de descargas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text("$finished completadas · $pending pendientes · $failed errores")
-                        Text("Los videos se guardan en Descargas/TikitokiDownloader.")
+                        
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -667,9 +667,9 @@ private fun TikitokiApp(incomingLink: String) {
 
                     2 -> {
                         val completed = records.filter { it.status == DownloadState.COMPLETED }
-                        Text("Explorar · Biblioteca multimedia", style = MaterialTheme.typography.titleLarge)
-                        Text("${completed.size} videos registrados · ${records.size} entradas en historial")
-                        Text("Abre los videos guardados desde la pestaña Descargas. Esta biblioteca conserva los metadatos incluso sin conexión.")
+                        Text("Biblioteca", style = MaterialTheme.typography.titleLarge)
+                        Text("${completed.size} descargados")
+                        
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { exportFormat = "json"; exportLauncher.launch("tikitoki-respaldo.json") }) { Text("Exportar JSON") }
                             OutlinedButton(onClick = { exportFormat = "csv"; exportLauncher.launch("tikitoki-respaldo.csv") }) { Text("Exportar CSV") }
@@ -699,8 +699,8 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
-                        Text("Herramientas · Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
-                        Text("Comprobación periódica aproximada cada 12 horas, sujeta a restricciones de Android y TikTok. No descubre videos privados.")
+                        Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
+                        
                         OutlinedButton(onClick = {
                             if (ProfileMonitor.add(context, url.trim())) {
                                 monitorRevision++
@@ -723,11 +723,11 @@ private fun TikitokiApp(incomingLink: String) {
                         Text(message, style = MaterialTheme.typography.bodySmall)
                     }
                     else -> {
-                        Text("Ajustes · Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
-                        Text("Versión 0.5: extracción multiplataforma experimental, formatos de video y audio, descargas por lotes e historial Room.")
-                        Text("Las descargas usan el servicio de primer plano Android; la carpeta final es visible en Descargas.")
-                        Text("TikTok puede bloquear el acceso a publicaciones o no proporcionar formatos sin marca de agua. No se garantiza descargar todos los videos de un perfil.")
-                        Text("Solo debe utilizarse con contenido propio o autorizado. El motor yt-dlp Android emplea componentes GPL-3.0.")
+                        Text("Acerca de", style = MaterialTheme.typography.titleLarge)
+                        Text("Tikitoki Downloader · v0.5")
+                        Text("Archivos: Descargas/TikitokiDownloader")
+                        
+                        Text("Uso de contenido autorizado · GPL-3.0")
                     }
                 }
             }
