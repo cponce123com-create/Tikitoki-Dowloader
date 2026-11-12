@@ -77,6 +77,7 @@ import com.tikitoki.downloader.domain.TikTokLinkParser
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import com.tikitoki.downloader.ui.ProfileViewModel
+import com.tikitoki.downloader.ui.DownloadsViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -124,8 +125,8 @@ private fun TikitokiApp(incomingLink: String) {
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
     val profileViewModel: ProfileViewModel = viewModel()
     val profileState by profileViewModel.state.collectAsState()
-    val dao = remember(context) { DownloadDatabase.get(context).downloads() }
-    val records by remember(dao) { dao.observeAll() }.collectAsState(initial = emptyList())
+    val downloadsViewModel: DownloadsViewModel = viewModel()
+    val records by downloadsViewModel.records.collectAsState()
 
     val defaultFormat = remember {
         FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Máxima calidad disponible")
