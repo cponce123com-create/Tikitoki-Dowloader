@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
+import com.tikitoki.downloader.data.UniversalMediaSource
+import com.tikitoki.downloader.domain.MediaLinkParser
+import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLink
 import com.tikitoki.downloader.domain.TikTokLinkParser
@@ -26,25 +29,33 @@ data class ProfileUiState(
 /** Survives configuration changes; keeps extractor work out of Compose. */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val source = TikTokVideoSource(application)
+    private val universal = UniversalMediaSource(application)
     private val mutableState = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = mutableState
-    private var activeLink: TikTokLink? = null
+    private var activeLink: com.tikitoki.downloader.domain.MediaLink? = null
     private var generation = 0
 
     fun inspect(url: String, forceRefresh: Boolean = false) {
+        val media = MediaLinkParser.parse(url)
+        if (media == null) {
+            mutableState.value = ProfileUiState(error = "Usa un enlace HTTPS de TikTok, YouTube, Facebook o Instagram.")
+            return
+        }
         val parsed = TikTokLinkParser.parse(url)
-        if (parsed !is LinkParseResult.Success) {
+        if (media.platform == MediaPlatform.TIKTOK && parsed !is LinkParseResult.Success) {
             mutableState.value = ProfileUiState(error = (parsed as LinkParseResult.Error).message)
             return
         }
-        val link = parsed.link
+        val link = (parsed as? LinkParseResult.Success)?.link
         val token = ++generation
-        activeLink = link
+        activeLink = media
         mutableState.value = ProfileUiState(loading = true)
         viewModelScope.launch {
             try {
-                val isProfile = link.type == TikTokLinkType.PROFILE
-                val first = if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
+                val isProfile = media.collection
+                val first = if (media.platform == MediaPlatform.TIKTOK && link != null) {
+                    if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
+                } else universal.inspect(media)
                 if (token == generation) {
                     mutableState.value = ProfileUiState(
                         videos = first.distinctBy { it.id },
@@ -67,7 +78,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         mutableState.value = current.copy(loadingMore = true, error = null)
         viewModelScope.launch {
             try {
-                val page = source.inspectPage(link, current.nextPage)
+                val page = if (link.platform == MediaPlatform.TIKTOK) {
+                    val parsed = TikTokLinkParser.parse(link.url) as LinkParseResult.Success
+                    source.inspectPage(parsed.link, current.nextPage)
+                } else universal.inspect(link, (current.nextPage - 1) * 60 + 1)
                 if (token != generation) return@launch
                 val latest = mutableState.value
                 mutableState.value = latest.copy(
