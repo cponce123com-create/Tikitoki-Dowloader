@@ -43,6 +43,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -148,6 +149,7 @@ private val TikitokiColors = darkColorScheme(
     onSurface = Color(0xFFF4F4F7),
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
