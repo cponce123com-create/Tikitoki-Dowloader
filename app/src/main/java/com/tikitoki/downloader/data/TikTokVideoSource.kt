@@ -46,7 +46,7 @@ class TikTokVideoSource(private val context: Context) {
     }
 
     private fun fetchSingle(url: String): VideoEntry {
-        val info = YoutubeDL.getInstance().getInfo(url)
+        val info = try { YoutubeDL.getInstance().getInfo(url) } catch (e: Exception) { throw readableError(e) }
         val id = info.id?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("El extractor no devolvió un ID de video.")
         return VideoEntry(
@@ -65,9 +65,9 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--ignore-errors")
             .addOption("--no-warnings")
 
-        val response = YoutubeDL.getInstance().execute(request, "tikitoki_scan")
+        val response = try { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } catch (e: Exception) { throw readableError(e) }
         if (response.exitCode != 0 && response.out.isBlank()) {
-            throw IllegalStateException("Error del extractor: ${response.err.take(240)}")
+            throw readableError(IllegalStateException(response.err))
         }
         val json = try {
             JSONObject(response.out.trim())
@@ -99,7 +99,7 @@ class TikTokVideoSource(private val context: Context) {
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
-        val info = YoutubeDL.getInstance().getInfo(video.url)
+        val info = try { YoutubeDL.getInstance().getInfo(video.url) } catch (e: Exception) { throw readableError(e) }
         val available = info.formats.orEmpty()
             .filter {
                 !it.formatId.isNullOrBlank() &&
@@ -142,14 +142,30 @@ class TikTokVideoSource(private val context: Context) {
         ) { progress, _, _ -> onProgress(progress.toInt().coerceIn(0, 100)) }
 
         if (response.exitCode != 0) {
-            throw IllegalStateException(
-                response.err.takeLast(400).ifBlank { "El extractor rechazó la descarga." }
-            )
+            throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
         }
         folder.listFiles()?.firstOrNull {
             it.isFile && it.nameWithoutExtension == safeId &&
                 it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov")
         } ?: throw IllegalStateException("No se encontró el archivo descargado.")
+    }
+
+    private fun readableError(cause: Exception): IllegalStateException {
+        val detail = cause.message.orEmpty()
+        val message = when {
+            detail.contains("secondary user ID", ignoreCase = true) ->
+                "TikTok no permitió identificar este perfil. Prueba con un video público del mismo usuario. Si también falla, actualiza el motor yt-dlp."
+            detail.contains("Unable to extract webpage video data", ignoreCase = true) ->
+                "TikTok no entregó los datos del video. El motor yt-dlp puede estar desactualizado o TikTok puede estar restringiendo el acceso."
+            detail.contains("impersonat", ignoreCase = true) ->
+                "El extractor necesita compatibilidad adicional de navegador. Actualiza yt-dlp y sus dependencias Android."
+            detail.contains("HTTP Error 429", ignoreCase = true) ->
+                "TikTok limitó temporalmente las solicitudes. Espera antes de volver a intentar."
+            detail.contains("login", ignoreCase = true) ->
+                "TikTok solicita autenticación para este contenido. No se puede descargar sin acceso autorizado."
+            else -> "No se pudo extraer el contenido de TikTok. Comprueba el enlace y la versión de yt-dlp."
+        }
+        return IllegalStateException(message, cause)
     }
 
     fun cancel(videoId: String) {
