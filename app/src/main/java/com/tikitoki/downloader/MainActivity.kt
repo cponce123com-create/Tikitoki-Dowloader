@@ -26,6 +26,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -57,6 +61,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -334,7 +340,7 @@ private fun TikitokiApp(incomingLink: String) {
                             if (gridMode) {
                                 LazyVerticalGrid(
                                     columns = GridCells.Fixed(2),
-                                    modifier = Modifier.fillMaxWidth().height(380.dp),
+                                    modifier = Modifier.fillMaxWidth().height(480.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -345,10 +351,8 @@ private fun TikitokiApp(incomingLink: String) {
                                             chosenFormat = defaultFormat
                                         }) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                if (video.thumbnail != null) {
-                                                    AsyncImage(model = video.thumbnail, contentDescription = "Miniatura", modifier = Modifier.fillMaxWidth().height(110.dp))
-                                                }
-                                                Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                VideoThumbnail(video.thumbnail, video.title, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
+                                                Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                                                 Text(if (video.id in selected) "✓ Seleccionado" else "Tocar para seleccionar",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
@@ -356,7 +360,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             } else LazyColumn(
-                                modifier = Modifier.fillMaxWidth().height(360.dp),
+                                modifier = Modifier.fillMaxWidth().height(480.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(visibleVideos, key = { it.id }) { video ->
@@ -375,15 +379,9 @@ private fun TikitokiApp(incomingLink: String) {
                                                     chosenFormat = defaultFormat
                                                 },
                                             )
-                                            if (!video.thumbnail.isNullOrBlank()) {
-                                                AsyncImage(
-                                                    model = video.thumbnail,
-                                                    contentDescription = "Miniatura",
-                                                    modifier = Modifier.size(66.dp),
-                                                )
-                                            }
+                                            VideoThumbnail(video.thumbnail, video.title, Modifier.width(116.dp).aspectRatio(16f / 10f))
                                             Column(modifier = Modifier.weight(1f)) {
-                                                Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                                                 Text(
                                                     video.id,
                                                     style = MaterialTheme.typography.labelSmall,
@@ -669,6 +667,34 @@ private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
             }
             if (record.status == DownloadState.COMPLETED && record.savedUri != null) {
                 OutlinedButton(onClick = onOpen) { Text("Abrir video") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VideoThumbnail(url: String?, title: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            if (!url.isNullOrBlank()) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = "Miniatura del video: $title",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("▶", style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
