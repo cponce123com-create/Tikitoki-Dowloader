@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -183,7 +185,7 @@ private fun TikitokiApp(incomingLink: String) {
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(color = Color(0xFF20202B), shape = MaterialTheme.shapes.large) {
-                        Text("♪", modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), color = Color(0xFF59E4DE), style = MaterialTheme.typography.headlineMedium)
+                        Image(painter = painterResource(R.drawable.tikitoki_brand), contentDescription = "Logo Tikitoki Downloader", modifier = Modifier.size(64.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Tikitoki", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
