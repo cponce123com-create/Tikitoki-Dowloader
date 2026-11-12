@@ -405,10 +405,9 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Total de videos: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "Calculando…" else "No disponible"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("${selected.size} seleccionados", color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                            Text("Videos ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "· contando…" else "· ${videos.size}"}  ·  ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+                                OutlinedButton(onClick = {
                                     selected.clear()
                                     if (!allSelected) selected.addAll(videos.map { it.id })
                                     formats = listOf(defaultFormat)
@@ -416,22 +415,22 @@ private fun TikitokiApp(incomingLink: String) {
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar todos", maxLines = 1) }
                             }
                             
-                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Pendientes") })
                             OutlinedTextField(
                                 value = search,
                                 onValueChange = { search = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Buscar videos") },
+                                placeholder = { Text("Buscar videos") },
                                 singleLine = true,
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Pendientes") })
                                 FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })
                                 FilterChip(selected = !gridMode, onClick = { gridMode = false }, label = { Text("Lista") })
                             }
                             if (gridMode) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(132.dp),
-                                    modifier = Modifier.fillMaxWidth().height(600.dp),
+                                    columns = GridCells.Fixed(if (visibleVideos.size == 1) 1 else 2),
+                                    modifier = Modifier.fillMaxWidth().height((if (visibleVideos.size == 1) 190 else ((visibleVideos.size + 1) / 2 * 170).coerceAtMost(510)).dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -442,8 +441,8 @@ private fun TikitokiApp(incomingLink: String) {
                                             chosenFormat = defaultFormat
                                         }) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
-                                                Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                                VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().height(if (visibleVideos.size == 1) 110.dp else 92.dp))
+                                                Text(video.title, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                                 Text(if (video.id in selected) "☑" else "□",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
@@ -495,28 +494,8 @@ private fun TikitokiApp(incomingLink: String) {
                             }
 
                             if (selected.size == 1) {
-                                OutlinedButton(
-                                    enabled = !formatsBusy && !profileState.loading,
-                                    onClick = {
-                                        val video = videos.firstOrNull { it.id == selected.first() }
-                                        if (video != null) {
-                                            formatsBusy = true
-                                            scope.launch {
-                                                try {
-                                                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
-                                                    chosenFormat = formats.first()
-                                                    message = "Formatos disponibles consultados."
-                                                } catch (e: Exception) {
-                                                    message = "No se pudieron consultar los formatos: ${e.message}"
-                                                } finally {
-                                                    formatsBusy = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                ) { Text("Consultar resoluciones") }
                                 TechPrimaryButton(
-                                    text = "⚙ Opciones de descarga",
+                                    text = "⚙ Calidad",
                                     enabled = !formatsBusy,
                                     modifier = Modifier.fillMaxWidth(),
                                     onClick = {
@@ -536,7 +515,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 )
 
-                                if (formats.size > 1) {
+                                if (false && formats.size > 1) {
                                     formats.forEach { option ->
                                         FilterChip(
                                             selected = chosenFormat.id == option.id,
@@ -568,7 +547,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         addToQueue()
                                     }
                                 }
-                            ) { Text("↓ Descargar ${selected.size} seleccionados", fontWeight = FontWeight.Bold) }
+                            ) { Text("↓ Descargar (${selected.size})", fontWeight = FontWeight.Bold) }
                         }
                     }
 
