@@ -10,6 +10,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.tikitoki.downloader.domain.IncomingLinkValidator
+import com.tikitoki.downloader.domain.MetadataSanitizer
 
 data class EnqueueSummary(val added: Int, val duplicates: Int)
 
@@ -26,6 +28,8 @@ object DownloadQueue {
         var added = 0
         var duplicates = 0
         for (video in videos.distinctBy { it.id }) {
+            require(IncomingLinkValidator.validate(video.url) != null) { "URL de descarga no permitida" }
+            require(formatId.length <= 160 && !formatId.any { it.isISOControl() } && !formatId.contains("--")) { "Formato de descarga no permitido" }
             val previous = dao.find(video.id)
             if (previous?.status in listOf(
                     DownloadState.COMPLETED, DownloadState.QUEUED,
@@ -39,7 +43,7 @@ object DownloadQueue {
                 DownloadRecord(
                     videoId = video.id,
                     videoUrl = video.url,
-                    title = video.title,
+                    title = MetadataSanitizer.title(video.title),
                     thumbnail = video.thumbnail,
                     formatId = formatId,
                     createdAt = previous?.createdAt ?: System.currentTimeMillis(),
