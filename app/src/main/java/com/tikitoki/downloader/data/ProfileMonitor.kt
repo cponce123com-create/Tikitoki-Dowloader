@@ -34,6 +34,12 @@ object ProfileMonitor {
         prefs.edit().putStringSet("urls", profiles(context) - url).apply()
     }
 
+    fun lastChecked(context: Context, url: String): Long =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("checked:$url", 0L)
+
+    fun lastError(context: Context, url: String): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("error:$url", null)
+
     fun newCount(context: Context, url: String): Int =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("new:$url", 0)
 
@@ -53,9 +59,8 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val prefs = applicationContext.getSharedPreferences("tikitoki_monitored_profiles", Context.MODE_PRIVATE)
         val source = TikTokVideoSource(applicationContext)
-        var failures = 0
         for (url in ProfileMonitor.profiles(applicationContext)) {
-            if (isStopped) break
+            if (isStopped) return@withContext Result.success()
             val parsed = TikTokLinkParser.parse(url)
             if (parsed !is LinkParseResult.Success) continue
             try {
@@ -66,8 +71,11 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
                 // A partial catalogue must not replace a previously larger baseline.
                 val newCount = if (old.isEmpty()) 0 else (ids - old).size
                 prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newCount)
-                    .putLong("checked:$url", System.currentTimeMillis()).apply()
-            } catch (_: Exception) { failures++ }
+                    .putLong("checked:$url", System.currentTimeMillis())
+                    .remove("error:$url").apply()
+            } catch (e: Exception) {
+                prefs.edit().putString("error:$url", e.message?.take(180) ?: "Error temporal de consulta").apply()
+            }
         }
         // Avoid immediate retry storms across large public profiles.
         Result.success()
