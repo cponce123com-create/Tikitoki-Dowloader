@@ -94,9 +94,11 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             .filter { !it.formatId.isNullOrBlank() && it.height > 0 && it.vcodec != "none" }
             .distinctBy { it.formatId }
             .sortedByDescending { it.height }
-            .map { f ->
+             .mapNotNull { f ->
                 val selector = if (f.acodec == "none") "${f.formatId}+bestaudio/best" else f.formatId.orEmpty()
-                FormatChoice(DownloadInputPolicy.safeFormatId(selector), "${f.height}p · ${f.ext ?: "video"}")
+                val safeSelector = runCatching { DownloadInputPolicy.safeFormatId(selector) }.getOrNull()
+                    ?: return@mapNotNull null
+                FormatChoice(safeSelector, "${f.height}p · ${f.ext ?: "video"}")
             }
         listOf(
             FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: máxima calidad"),
