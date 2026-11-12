@@ -515,15 +515,6 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 )
 
-                                if (false && formats.size > 1) {
-                                    formats.forEach { option ->
-                                        FilterChip(
-                                            selected = chosenFormat.id == option.id,
-                                            onClick = { chosenFormat = option },
-                                            label = { Text(option.label) },
-                                        )
-                                    }
-                                }
                             } else if (selected.size > 1) {
                                 
                             }
