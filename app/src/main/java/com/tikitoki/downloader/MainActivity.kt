@@ -54,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -81,6 +82,7 @@ import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
+import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
@@ -156,6 +158,7 @@ private fun TikitokiApp(incomingLink: String) {
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
+    val thumbnailResolver = remember(context) { VideoThumbnailResolver(context.applicationContext) }
     val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
     val profileViewModel: ProfileViewModel = viewModel()
     val profileState by profileViewModel.state.collectAsState()
@@ -264,7 +267,7 @@ private fun TikitokiApp(incomingLink: String) {
                     if (preview != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically) {
-                            VideoThumbnail(preview.thumbnail, preview.title,
+                            VideoThumbnail(preview, thumbnailResolver,
                                 Modifier.width(144.dp).aspectRatio(16f / 10f))
                             Column(Modifier.weight(1f)) {
                                 Text(preview.title, maxLines = 3, overflow = TextOverflow.Ellipsis,
@@ -438,7 +441,7 @@ private fun TikitokiApp(incomingLink: String) {
                                             chosenFormat = defaultFormat
                                         }) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                VideoThumbnail(video.thumbnail, video.title, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
+                                                VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
                                                 Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                                                 Text(if (video.id in selected) "☑ Seleccionado" else "□ Tocar para seleccionar",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
@@ -781,28 +784,48 @@ private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun VideoThumbnail(url: String?, title: String, modifier: Modifier = Modifier) {
-    Box(
+private fun VideoThumbnail(
+    video: VideoEntry,
+    resolver: VideoThumbnailResolver,
+    modifier: Modifier = Modifier,
+) {
+    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail) {
+        value = video.thumbnail ?: resolver.resolve(video)
+    }
+    Surface(
         modifier = modifier,
-        contentAlignment = Alignment.Center
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = MaterialTheme.shapes.medium
-        ) {
-            if (!url.isNullOrBlank()) {
-                AsyncImage(
-                    model = url,
-                    contentDescription = "Miniatura del video: $title",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("▶", style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(contentAlignment = Alignment.Center) {
+            if (!resolved.isNullOrBlank()) {
+                var loadFailed by remember(resolved) { mutableStateOf(false) }
+                if (!loadFailed) {
+                    coil.compose.SubcomposeAsyncImage(
+                        model = coil.request.ImageRequest.Builder(LocalContext.current)
+                            .data(resolved)
+                            .crossfade(true)
+                            .addHeader("Referer", "https://www.tiktok.com/")
+                            .build(),
+                        contentDescription = "Miniatura del video: ${video.title}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(26.dp),
+                                color = TechPurple,
+                                strokeWidth = 2.dp
+                            )
+                        },
+                        error = {
+                            Text("▶", style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    )
                 }
+            } else {
+                Text("▶", style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
