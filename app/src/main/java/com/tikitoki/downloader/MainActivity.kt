@@ -125,6 +125,7 @@ private fun TikitokiApp(incomingLink: String) {
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
     val profileViewModel: ProfileViewModel = viewModel()
     val profileState by profileViewModel.state.collectAsState()
+    val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val downloadsViewModel: DownloadsViewModel = viewModel()
     val records by downloadsViewModel.records.collectAsState()
 
