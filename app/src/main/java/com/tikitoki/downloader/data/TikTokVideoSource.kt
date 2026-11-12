@@ -157,7 +157,12 @@ class TikTokVideoSource(private val context: Context) {
                         id = id,
                         url = "https://www.tiktok.com/@$username/video/$id",
                         title = MetadataSanitizer.title(entry.optString("title").ifBlank { "Video $id" }),
-                        thumbnail = entry.optString("thumbnail").takeIf { it.startsWith("https://") },
+                        thumbnail = entry.optString("thumbnail").takeIf { it.startsWith("https://") }
+                            ?: entry.optJSONArray("thumbnails")?.let { thumbs ->
+                                (0 until thumbs.length()).mapNotNull { i ->
+                                    thumbs.optJSONObject(i)?.optString("url")?.takeIf { it.startsWith("https://") }
+                                }.lastOrNull()
+                            },
                         durationSeconds = entry.optInt("duration"),
                     )
                 )
