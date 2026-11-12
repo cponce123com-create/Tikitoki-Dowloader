@@ -12,7 +12,7 @@ object MediaLinkParser {
     fun parse(raw: String): MediaLink? {
         val text = raw
         if (text.length > 4096 || text.isEmpty() || text != text.trim()) return null
-        if (text.any { Character.isISOControl(it) || it.isWhitespace() || it in "\\u202a\\u202b\\u202c\\u202d\\u202e\\u2066\\u2067\\u2068\\u2069" }) return null
+        if (text.any { Character.isISOControl(it) || it.isWhitespace() || Character.getDirectionality(it) in setOf(Character.DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE, Character.DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE, Character.DIRECTIONALITY_POP_DIRECTIONAL_FORMAT, Character.DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING, Character.DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING, Character.DIRECTIONALITY_LEFT_TO_RIGHT_ISOLATE, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ISOLATE, Character.DIRECTIONALITY_FIRST_STRONG_ISOLATE, Character.DIRECTIONALITY_POP_DIRECTIONAL_ISOLATE) }) return null
         val uri = try { URI(text) } catch (_: Exception) { return null }
         if (uri.scheme?.lowercase(Locale.ROOT) != "https" || uri.userInfo != null || uri.port != -1) return null
         if (uri.isOpaque || uri.fragment != null || uri.rawAuthority?.contains('\\') == true) return null
@@ -36,7 +36,7 @@ object MediaLinkParser {
             else -> false
         }
         val normalized = try {
-            URI("https", null, host, -1, uri.path.ifEmpty { "/" }, uri.rawQuery?.let { java.net.URLDecoder.decode(it, "UTF-8") }, null).toASCIIString()
+            URI("https", null, host, -1, uri.path.ifEmpty { "/" }, uri.query, null).toASCIIString()
         } catch (_: Exception) { return null }
         return MediaLink(normalized, platform, collection)
     }
