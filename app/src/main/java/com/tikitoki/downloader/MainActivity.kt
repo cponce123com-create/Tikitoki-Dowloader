@@ -7,6 +7,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,6 +66,8 @@ import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadState
+import com.tikitoki.downloader.data.LibraryExport
+import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -110,6 +117,9 @@ private fun TikitokiApp(incomingLink: String) {
         FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Máxima calidad disponible")
     }
     var tab by rememberSaveable { mutableStateOf(0) }
+    var gridMode by rememberSaveable { mutableStateOf(true) }
+    var exportFormat by rememberSaveable { mutableStateOf("json") }
+    var monitorRevision by remember { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
     var search by rememberSaveable { mutableStateOf("") }
     var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
@@ -153,6 +163,24 @@ private fun TikitokiApp(incomingLink: String) {
         }
     }
 
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val content = if (exportFormat == "csv") LibraryExport.toCsv(records) else LibraryExport.toJson(records)
+                    context.contentResolver.openOutputStream(uri)?.use {
+                        it.write(content.toByteArray(Charsets.UTF_8))
+                    } ?: error("No se pudo abrir el destino")
+                    message = "Respaldo de metadatos exportado."
+                } catch (e: Exception) {
+                    message = "No se pudo exportar: ${e.message}"
+                }
+            }
+        }
+    }
+
     val storagePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -167,11 +195,11 @@ private fun TikitokiApp(incomingLink: String) {
         Scaffold(
             bottomBar = {
                 NavigationBar {
-                    listOf("Buscar", "Descargas", "Acerca de").forEachIndexed { index, name ->
+                    listOf("Buscar", "Descargas", "Biblioteca", "Perfiles", "Acerca de").forEachIndexed { index, name ->
                         NavigationBarItem(
                             selected = tab == index,
                             onClick = { tab = index },
-                            icon = { Text(listOf("⌕", "↓", "ⓘ")[index]) },
+                            icon = { Text(listOf("⌕", "↓", "▦", "◎", "ⓘ")[index]) },
                             label = { Text(name) },
                         )
                     }
@@ -277,7 +305,35 @@ private fun TikitokiApp(incomingLink: String) {
                                 label = { Text("Buscar entre los videos") },
                                 singleLine = true,
                             )
-                            LazyColumn(
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })
+                                FilterChip(selected = !gridMode, onClick = { gridMode = false }, label = { Text("Lista") })
+                            }
+                            if (gridMode) {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    modifier = Modifier.fillMaxWidth().height(380.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    gridItems(filteredVideos, key = { it.id }) { video ->
+                                        Card(onClick = {
+                                            if (video.id in selected) selected.remove(video.id) else selected.add(video.id)
+                                            formats = listOf(defaultFormat)
+                                            chosenFormat = defaultFormat
+                                        }) {
+                                            Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                if (video.thumbnail != null) {
+                                                    AsyncImage(model = video.thumbnail, contentDescription = "Miniatura", modifier = Modifier.fillMaxWidth().height(110.dp))
+                                                }
+                                                Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                Text(if (video.id in selected) "✓ Seleccionado" else "Tocar para seleccionar",
+                                                    color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else LazyColumn(
                                 modifier = Modifier.fillMaxWidth().height(360.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -469,6 +525,55 @@ private fun TikitokiApp(incomingLink: String) {
                         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
                     }
 
+                    2 -> {
+                        val completed = records.filter { it.status == DownloadState.COMPLETED }
+                        Text("Biblioteca multimedia", style = MaterialTheme.typography.titleLarge)
+                        Text("${completed.size} videos registrados · ${records.size} entradas en historial")
+                        Text("Abre los videos guardados desde la pestaña Descargas. Esta biblioteca conserva los metadatos incluso sin conexión.")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { exportFormat = "json"; exportLauncher.launch("tikitoki-respaldo.json") }) { Text("Exportar JSON") }
+                            OutlinedButton(onClick = { exportFormat = "csv"; exportLauncher.launch("tikitoki-respaldo.csv") }) { Text("Exportar CSV") }
+                        }
+                        Text("Estadísticas locales", style = MaterialTheme.typography.titleMedium)
+                        Text("Completados: ${completed.size} · Fallidos: ${records.count { it.status == DownloadState.FAILED }} · En cola: ${records.count { it.status == DownloadState.QUEUED }}")
+                        if (completed.isEmpty()) Text("Aún no hay videos descargados.")
+                        else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(completed, key = { it.videoId }) { record ->
+                                DownloadHistoryCard(record, onOpen = {
+                                    val uri = Uri.parse(record.savedUri)
+                                    try {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(uri, "video/*")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        })
+                                    } catch (e: Exception) { message = "No se pudo abrir el archivo: ${e.message}" }
+                                })
+                            }
+                        }
+                        Text(message, style = MaterialTheme.typography.bodySmall)
+                    }
+                    3 -> {
+                        val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
+                        Text("Monitoreo de perfiles públicos", style = MaterialTheme.typography.titleLarge)
+                        Text("Comprobación periódica aproximada cada 12 horas, sujeta a restricciones de Android y TikTok. No descubre videos privados.")
+                        OutlinedButton(onClick = {
+                            if (ProfileMonitor.add(context, url.trim())) {
+                                monitorRevision++
+                                message = "Perfil agregado al monitoreo."
+                            } else message = "Pega un enlace válido de perfil en Buscar."
+                        }) { Text("Seguir perfil del enlace actual") }
+                        monitored.forEach { profile ->
+                            Card {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(profile, maxLines = 2)
+                                    Text("Nuevos desde la última revisión: ${ProfileMonitor.newCount(context, profile)}")
+                                    OutlinedButton(onClick = { ProfileMonitor.remove(context, profile); monitorRevision++ }) { Text("Dejar de seguir") }
+                                }
+                            }
+                        }
+                        if (monitored.isEmpty()) Text("Todavía no sigues perfiles.")
+                        Text(message, style = MaterialTheme.typography.bodySmall)
+                    }
                     else -> {
                         Text("Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
                         Text("Versión 0.3: extracción yt-dlp, formatos, descargas por lotes, historial Room, control de duplicados y cola WorkManager.")
