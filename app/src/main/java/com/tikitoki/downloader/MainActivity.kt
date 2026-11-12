@@ -326,8 +326,8 @@ private fun TikitokiApp(incomingLink: String) {
 
                 when (tab) {
                     0 -> {
-                        TechPlatformStrip()
-                        Text("Pega un enlace", style = MaterialTheme.typography.titleMedium, color = TechMuted)
+                        TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = if (selectedPlatform == platform) null else platform }
+                        Text(selectedPlatform?.let { "Enlace de $it" } ?: "Enlace universal", style = MaterialTheme.typography.bodyMedium, color = TechMuted)
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
