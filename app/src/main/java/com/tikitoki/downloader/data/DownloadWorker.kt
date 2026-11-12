@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -43,6 +44,17 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 currentId = item.videoId
                 dao.setStatus(item.videoId, DownloadState.DOWNLOADING)
                 setForeground(notification("Descargando: ${item.title}"))
+                val stopMonitor = progressScope.launch {
+                    // CoroutineWorker.onStopped is final. Observe cancellation from a
+                    // separate scope and stop the blocking yt-dlp process directly.
+                    while (currentId == item.videoId) {
+                        if (isStopped) {
+                            source.cancel(item.videoId)
+                            break
+                        }
+                        delay(350)
+                    }
+                }
                 try {
                     val file = source.downloadToCache(
                         VideoEntry(item.videoId, item.videoUrl, item.title, item.thumbnail),
@@ -76,6 +88,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     )
                 } finally {
                     currentId = null
+                    stopMonitor.cancel()
                 }
             }
             Result.success()
@@ -104,11 +117,6 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(901, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else ForegroundInfo(901, notification)
-    }
-
-    override fun onStopped() {
-        currentId?.let(source::cancel)
-        super.onStopped()
     }
 
     private fun publishVideo(context: Context, file: File): Uri {
