@@ -72,6 +72,8 @@ object DownloadQueue {
     }
 
     suspend fun resume(context: Context) = withContext(Dispatchers.IO) {
+        // Wait for the old worker to stop before starting a replacement.
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK).result.get()
         DownloadDatabase.get(context).downloads().resumePending()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_WORK,
