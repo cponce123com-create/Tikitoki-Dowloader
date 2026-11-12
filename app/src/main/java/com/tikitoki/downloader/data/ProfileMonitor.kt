@@ -31,7 +31,11 @@ object ProfileMonitor {
 
     fun remove(context: Context, url: String) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putStringSet("urls", profiles(context) - url).apply()
+        prefs.edit().putStringSet("urls", profiles(context) - url)
+            .remove("ids:$url").remove("new:$url").remove("checked:$url").remove("error:$url").apply()
+        if (profiles(context).isEmpty()) {
+            WorkManager.getInstance(context).cancelUniqueWork("tikitoki_public_profile_monitor")
+        }
     }
 
     fun lastChecked(context: Context, url: String): Long =
