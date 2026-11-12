@@ -74,6 +74,8 @@ import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tikitoki.downloader.ui.ProfileViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -113,6 +115,8 @@ private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
+    val profileViewModel: ProfileViewModel = viewModel()
+    val profileState by profileViewModel.state.collectAsState()
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val records by remember(dao) { dao.observeAll() }.collectAsState(initial = emptyList())
 
@@ -133,7 +137,7 @@ private fun TikitokiApp(incomingLink: String) {
     var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
     var queueBusy by remember { mutableStateOf(false) }
-    var videos by remember { mutableStateOf<List<VideoEntry>>(emptyList()) }
+    val videos = profileState.videos
     val selected = remember { mutableStateListOf<String>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
     var chosenFormat by remember { mutableStateOf(defaultFormat) }
@@ -141,11 +145,16 @@ private fun TikitokiApp(incomingLink: String) {
     LaunchedEffect(incomingLink) {
         if (incomingLink.isNotBlank() && url != incomingLink) {
             url = incomingLink
-            videos = emptyList()
+            profileViewModel.reset()
             selected.clear()
             tab = 0
             message = "Enlace compartido recibido. Pulsa Analizar."
         }
+    }
+
+    LaunchedEffect(profileState.videos) {
+        val existing = selected.toSet()
+        profileState.videos.forEach { if (it.id !in existing && it.id !in selected) selected.add(it.id) }
     }
 
     val addToQueue: () -> Unit = {
@@ -241,7 +250,7 @@ private fun TikitokiApp(incomingLink: String) {
                             value = url,
                             onValueChange = {
                                 url = it
-                                videos = emptyList()
+                                profileViewModel.reset()
                                 visiblePages = 1
                                 selected.clear()
                                 formats = listOf(defaultFormat)
@@ -256,39 +265,25 @@ private fun TikitokiApp(incomingLink: String) {
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !inspecting && url.isNotBlank(),
+                            enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
                                 when (val parsed = TikTokLinkParser.parse(url)) {
                                     is LinkParseResult.Error -> message = parsed.message
                                     is LinkParseResult.Success -> {
-                                        inspecting = true
-                                        videos = emptyList()
                                         visiblePages = 1
                                         selected.clear()
-                                        message = "Consultando TikTok. La disponibilidad depende del extractor."
-                                        scope.launch {
-                                            try {
-                                                val found = source.inspect(parsed.link, forceRefresh = forceRefresh)
-                                                forceRefresh = false
-                                                videos = found
-                                                visiblePages = 1
-                                                selected.addAll(found.map { it.id })
-                                                message = if (found.isEmpty()) {
-                                                    "El extractor no devolvió videos; TikTok puede haber limitado el acceso."
-                                                } else "${found.size} videos detectados por el extractor."
-                                            } catch (e: Exception) {
-                                                message = "Error al analizar: ${e.message ?: "desconocido"}"
-                                            } finally {
-                                                inspecting = false
-                                            }
-                                        }
+                                        profileViewModel.inspect(url, forceRefresh)
+                                        forceRefresh = false
+                                        message = "Consultando TikTok por bloques de 60."
+
                                     }
                                 }
                             },
-                        ) { Text(if (inspecting) "Analizando..." else "Analizar enlace") }
+                        ) { Text(if (profileState.loading) "Analizando..." else "Analizar enlace") }
 
                         FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar desde TikTok (ignorar caché)") })
-                        if (inspecting || formatsBusy || queueBusy) CircularProgressIndicator()
+                        if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
+                        profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         Text(message)
 
                         if (videos.isNotEmpty()) {
@@ -388,16 +383,18 @@ private fun TikitokiApp(incomingLink: String) {
                                 }
                             }
 
-                            if (visibleVideos.size < filteredVideos.size) {
+                            if (profileState.hasMore || visibleVideos.size < filteredVideos.size) {
                                 Text("Mostrando ${visibleVideos.size} de ${filteredVideos.size} publicaciones")
-                                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { visiblePages++ }) {
-                                    Text("Mostrar 60 publicaciones más")
+                                OutlinedButton(modifier = Modifier.fillMaxWidth(), enabled = !profileState.loadingMore, onClick = {
+                                    if (visibleVideos.size < filteredVideos.size) visiblePages++ else profileViewModel.loadMore()
+                                }) {
+                                    Text(if (profileState.loadingMore) "Cargando desde TikTok..." else "Cargar 60 publicaciones más")
                                 }
                             }
 
                             if (selected.size == 1) {
                                 OutlinedButton(
-                                    enabled = !formatsBusy && !inspecting,
+                                    enabled = !formatsBusy && !profileState.loading,
                                     onClick = {
                                         val video = videos.firstOrNull { it.id == selected.first() }
                                         if (video != null) {
