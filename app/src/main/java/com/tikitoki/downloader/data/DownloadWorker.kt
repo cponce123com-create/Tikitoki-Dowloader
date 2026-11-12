@@ -71,7 +71,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         }
                     }
                     if (isStopped) {
-                        dao.setStatus(item.videoId, DownloadState.PAUSED)
+                        dao.pauseIfDownloading(item.videoId)
                         file.delete()
                         break
                     }
@@ -81,7 +81,12 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     val uri = publishVideo(applicationContext, file)
                     file.delete()
-                    dao.completeIfDownloading(item.videoId, uri.toString())
+                    // A pause can occur during MediaStore publishing. Keep the saved file
+                    // but only mark it completed when the record is still downloading.
+                    if (dao.completeIfDownloading(item.videoId, uri.toString()) == 0) {
+                        // Avoid leaving an orphaned file if the user paused the task.
+                        if (uri.scheme == "content") applicationContext.contentResolver.delete(uri, null, null)
+                    }
                 } catch (e: CancellationException) {
                     // Cancellation can race with a newly resumed worker; do not overwrite its state.
                     dao.pauseIfDownloading(item.videoId)
