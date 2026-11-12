@@ -83,14 +83,12 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     file.delete()
                     dao.completeIfDownloading(item.videoId, uri.toString())
                 } catch (e: CancellationException) {
-                    dao.setStatus(item.videoId, DownloadState.PAUSED)
+                    // Cancellation can race with a newly resumed worker; do not overwrite its state.
+                    dao.pauseIfDownloading(item.videoId)
                     throw e
                 } catch (e: Exception) {
-                    dao.setStatus(
-                        item.videoId,
-                        if (isStopped) DownloadState.PAUSED else DownloadState.FAILED,
-                        error = if (isStopped) null else e.message?.take(500) ?: "Error al descargar"
-                    )
+                    if (isStopped) dao.pauseIfDownloading(item.videoId)
+                    else dao.failIfDownloading(item.videoId, e.message?.take(500) ?: "Error al descargar")
                 } finally {
                     currentId = null
                     stopMonitor.cancel()
