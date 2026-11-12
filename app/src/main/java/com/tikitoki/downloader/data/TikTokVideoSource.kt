@@ -51,10 +51,11 @@ class TikTokVideoSource(private val context: Context) {
     }
 
     suspend fun inspect(link: TikTokLink, forceRefresh: Boolean = false): List<VideoEntry> = withContext(Dispatchers.IO) {
-        ensureReady()
+        if (link.type != TikTokLinkType.PROFILE) ensureReady()
         when (link.type) {
             TikTokLinkType.PROFILE -> {
                 if (!forceRefresh) cachedProfile(link.url)?.let { return@withContext it }
+                ensureReady()
                 inspectProfile(link).also { if (it.isNotEmpty()) saveProfile(link.url, it) }
             }
             TikTokLinkType.VIDEO, TikTokLinkType.SHORT_LINK -> listOf(fetchSingle(link.url))
