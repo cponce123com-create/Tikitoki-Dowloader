@@ -30,7 +30,14 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Test and build APK
-        run: gradle --no-daemon testDebugUnitTest assembleDebug
+        run: gradle --no-daemon testDebugUnitTest verifyM1Coverage assembleDebug
+      - name: Upload M1 coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: M1-URL-security-coverage
+          path: app/build/reports/jacoco/m1CoverageReport/
+          if-no-files-found: warn
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
