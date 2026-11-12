@@ -112,13 +112,26 @@ class TikTokVideoSource(private val context: Context) {
         )
     }
 
-    private fun inspectProfile(link: TikTokLink): List<VideoEntry> {
+    /** Request a bounded page directly from yt-dlp, not from a full fetched list. */
+    suspend fun inspectPage(link: TikTokLink, page: Int, pageSize: Int = 60): List<VideoEntry> =
+        withContext(Dispatchers.IO) {
+            require(link.type == TikTokLinkType.PROFILE)
+            require(page >= 1 && pageSize in 1..100)
+            ensureReady()
+            inspectProfile(link, (page - 1) * pageSize + 1, page * pageSize)
+        }
+
+    private fun inspectProfile(link: TikTokLink, start: Int? = null, end: Int? = null): List<VideoEntry> {
         val request = YoutubeDLRequest(link.url)
             .addOption("--flat-playlist")
             .addOption("--dump-single-json")
             .addOption("--ignore-errors")
             .addOption("--no-warnings")
 
+        if (start != null && end != null) {
+            request.addOption("--playlist-start", start)
+            request.addOption("--playlist-end", end)
+        }
         val response = try { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } catch (e: Exception) { throw readableError(e) }
         if (response.exitCode != 0 && response.out.isBlank()) {
             throw readableError(IllegalStateException(response.err))
