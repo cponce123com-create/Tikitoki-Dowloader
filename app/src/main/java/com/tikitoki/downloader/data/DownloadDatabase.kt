@@ -49,6 +49,12 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE status = 'QUEUED' ORDER BY createdAt ASC LIMIT 1")
     suspend fun nextQueued(): DownloadRecord?
 
+    @Query("UPDATE downloads SET status = 'DOWNLOADING', updatedAt = :now WHERE videoId = :id AND status = 'QUEUED'")
+    suspend fun claimQueued(id: String, now: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE downloads SET status = 'COMPLETED', progress = 100, savedUri = :uri, error = NULL, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
+    suspend fun completeIfDownloading(id: String, uri: String, now: Long = System.currentTimeMillis()): Int
+
     @Query("UPDATE downloads SET status = :status, updatedAt = :now, error = :error WHERE videoId = :id")
     suspend fun setStatus(
         id: String,
