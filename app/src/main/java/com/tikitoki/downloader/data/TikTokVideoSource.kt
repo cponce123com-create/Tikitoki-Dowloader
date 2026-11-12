@@ -201,10 +201,10 @@ class TikTokVideoSource(private val context: Context) {
         if (response.exitCode != 0) {
             throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
         }
-        folder.listFiles()?.firstOrNull {
+        folder.listFiles()?.filter {
             it.isFile && it.length() > 0L && it.nameWithoutExtension == safeId &&
                 it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov")
-        } ?: throw IllegalStateException("No se encontró el archivo descargado.")
+        }?.maxByOrNull { it.length() } ?: throw IllegalStateException("No se encontró el archivo descargado.")
     }
 
     private fun readableError(cause: Exception): IllegalStateException {
