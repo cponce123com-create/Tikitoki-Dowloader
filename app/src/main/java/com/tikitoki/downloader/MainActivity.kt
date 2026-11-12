@@ -405,7 +405,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Videos registrados: ${videos.size}${if (profileState.hasMore) "+" else ""}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("Total de videos: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "Calculando…" else "No disponible"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text("${selected.size} seleccionados", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(modifier = Modifier.weight(1f), onClick = {
@@ -486,7 +486,7 @@ private fun TikitokiApp(incomingLink: String) {
                             }
 
                             if (profileState.hasMore || visibleVideos.size < filteredVideos.size) {
-                                Text("Mostrando ${visibleVideos.size} de ${filteredVideos.size}${if (profileState.hasMore) "+" else ""} videos", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                                Text("Mostrando ${visibleVideos.size} · Registrados ${videos.size}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                                 OutlinedButton(modifier = Modifier.fillMaxWidth(), enabled = !profileState.loadingMore, onClick = {
                                     if (visibleVideos.size < filteredVideos.size) visiblePages++ else profileViewModel.loadMore()
                                 }) {
