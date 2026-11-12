@@ -42,6 +42,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -175,6 +177,7 @@ private fun TikitokiApp(incomingLink: String) {
     var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
     var queueBusy by remember { mutableStateOf(false) }
+    var showQualitySheet by remember { mutableStateOf(false) }
     val videos = profileState.videos
     val selected = remember { mutableStateListOf<String>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
@@ -247,6 +250,47 @@ private fun TikitokiApp(incomingLink: String) {
     ) { /* Notificaciones opcionales: las descargas siguen aunque se denieguen. */ }
 
     MaterialTheme(colorScheme = TikitokiColors) {
+        if (showQualitySheet && selected.size == 1) {
+            val preview = videos.firstOrNull { it.id == selected.first() }
+            ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
+                containerColor = TechBackground) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Opciones de descarga", style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold, color = Color.White)
+                    if (preview != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            VideoThumbnail(preview.thumbnail, preview.title,
+                                Modifier.width(144.dp).aspectRatio(16f / 10f))
+                            Column(Modifier.weight(1f)) {
+                                Text(preview.title, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                                    fontWeight = FontWeight.SemiBold)
+                                Text("Vista previa · ${preview.durationSeconds}s", color = TechMuted)
+                            }
+                        }
+                    }
+                    Text("Selecciona la calidad o solo audio", style = MaterialTheme.typography.titleMedium)
+                    if (formatsBusy) CircularProgressIndicator(color = TechPurple)
+                    Column(Modifier.heightIn(max = 290.dp).verticalScroll(rememberScrollState())) {
+                        formats.forEach { option ->
+                            Row(Modifier.fillMaxWidth().clickable { chosenFormat = option }
+                                .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = chosenFormat.id == option.id,
+                                    onClick = { chosenFormat = option })
+                                Text(option.label, modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    TechPrimaryButton("↓ Descargar", enabled = !queueBusy && !formatsBusy,
+                        modifier = Modifier.fillMaxWidth(), onClick = {
+                            showQualitySheet = false
+                            addToQueue()
+                        })
+                    Spacer(Modifier.height(18.dp))
+                }
+            }
+        }
         Scaffold(
             bottomBar = {
                 NavigationBar(containerColor = Color(0xFF110D20)) {
@@ -464,6 +508,26 @@ private fun TikitokiApp(incomingLink: String) {
                                         }
                                     },
                                 ) { Text("Consultar resoluciones") }
+                                TechPrimaryButton(
+                                    text = "⚙ Opciones de descarga",
+                                    enabled = !formatsBusy,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        showQualitySheet = true
+                                        val video = videos.firstOrNull { it.id == selected.first() }
+                                        if (video != null) {
+                                            formatsBusy = true
+                                            scope.launch {
+                                                try {
+                                                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
+                                                    chosenFormat = formats.first()
+                                                } catch (e: Exception) {
+                                                    message = "No se pudieron cargar formatos: ${e.message}"
+                                                } finally { formatsBusy = false }
+                                            }
+                                        }
+                                    }
+                                )
 
                                 if (formats.size > 1) {
                                     formats.forEach { option ->
