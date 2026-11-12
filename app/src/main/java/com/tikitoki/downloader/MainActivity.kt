@@ -76,6 +76,7 @@ import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.IncomingLinkValidator
+import com.tikitoki.downloader.domain.IncomingIntentReader
 import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -106,16 +107,8 @@ class MainActivity : ComponentActivity() {
         sharedLink = receivedText(intent)
     }
 
-    private fun receivedText(intent: Intent?): String {
-        val candidate = when {
-            intent?.action == Intent.ACTION_SEND && intent.type == "text/plain" ->
-                intent.getStringExtra(Intent.EXTRA_TEXT)
-            intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "https" ->
-                intent.dataString
-            else -> null
-        }
-        return IncomingLinkValidator.validate(candidate)?.url.orEmpty()
-    }
+    private fun receivedText(intent: Intent?): String = IncomingIntentReader.read(intent)
+
 }
 
 private val TikitokiColors = darkColorScheme(
