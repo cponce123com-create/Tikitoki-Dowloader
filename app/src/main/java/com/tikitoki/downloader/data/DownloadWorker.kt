@@ -41,10 +41,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             setForeground(notification("Preparando descargas"))
             while (!isStopped) {
                 val item = dao.nextQueued() ?: break
+                // Claim the queued record atomically: pause must not be overwritten.
+                if (dao.claimQueued(item.videoId) == 0) continue
                 currentId = item.videoId
-                // A pause may have been requested after nextQueued() returned.
-                if (dao.find(item.videoId)?.status != DownloadState.QUEUED) continue
-                dao.setStatus(item.videoId, DownloadState.DOWNLOADING)
                 setForeground(notification("Descargando: ${item.title}"))
                 val stopMonitor = progressScope.launch {
                     // CoroutineWorker.onStopped is final. Observe cancellation from a
@@ -82,7 +81,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     val uri = publishVideo(applicationContext, file)
                     file.delete()
-                    dao.completed(item.videoId, uri.toString())
+                    dao.completeIfDownloading(item.videoId, uri.toString())
                 } catch (e: CancellationException) {
                     dao.setStatus(item.videoId, DownloadState.PAUSED)
                     throw e
