@@ -8,7 +8,7 @@ object IncomingLinkValidator {
     fun validate(text: String?): MediaLink? {
         val value = text?.trim() ?: return null
         if (value.isEmpty() || value.length > MAX_LENGTH) return null
-        if (value.any { it.isISOControl() } || forbiddenOptions.containsMatchIn(value)) return null
+        if (value.any { Character.isISOControl(it) } || forbiddenOptions.containsMatchIn(value)) return null
         if (value.any { it.isWhitespace() }) return null
         return MediaLinkParser.parse(value)
     }
