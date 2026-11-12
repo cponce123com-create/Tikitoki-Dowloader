@@ -2,6 +2,7 @@ package com.tikitoki.downloader.data
 
 import android.content.Context
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaLink
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -33,7 +34,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     override suspend fun inspect(link: MediaLink, start: Int, count: Int): List<VideoEntry> =
         withContext(Dispatchers.IO) {
             require(start >= 1 && count in 1..100)
-            require(IncomingLinkValidator.validate(link.url) != null)
+            val safeLink = requireNotNull(IncomingLinkValidator.validate(link.url)) { "Enlace no permitido" }
             if (link.platform == MediaPlatform.TIKTOK) {
                 val parsed = com.tikitoki.downloader.domain.TikTokLinkParser.parse(link.url)
                 require(parsed is com.tikitoki.downloader.domain.LinkParseResult.Success)
@@ -41,7 +42,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
                 else tiktok.inspect(parsed.link)
             } else {
                 ready()
-                val request = YoutubeDLRequest(link.url)
+                val request = YoutubeDLRequest(safeLink.url)
                     .addOption("--flat-playlist")
                     .addOption("--dump-single-json")
                     .addOption("--ignore-errors")
@@ -74,10 +75,12 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             MediaPlatform.YOUTUBE -> "https://www.youtube.com/watch?v=$id"
             else -> if (!link.collection) link.url else return null
         }
+        // Extractor JSON is untrusted: never propagate off-allowlist URLs to the queue.
+        val safePage = IncomingLinkValidator.validate(page)?.url ?: return null
         val title = MetadataSanitizer.title(json.optString("title").ifBlank { "Video $id" })
         return VideoEntry(
             id = "${link.platform.name.lowercase()}:$id",
-            url = page,
+            url = safePage,
             title = title,
             thumbnail = json.optString("thumbnail").takeIf { it.startsWith("https://") },
             durationSeconds = json.optInt("duration")
@@ -86,14 +89,14 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
 
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ready()
-        val info = YoutubeDL.getInstance().getInfo(video.url)
+        val info = YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url))
         val options = info.formats.orEmpty()
             .filter { !it.formatId.isNullOrBlank() && it.height > 0 && it.vcodec != "none" }
             .distinctBy { it.formatId }
             .sortedByDescending { it.height }
             .map { f ->
                 val selector = if (f.acodec == "none") "${f.formatId}+bestaudio/best" else f.formatId.orEmpty()
-                FormatChoice(selector, "${f.height}p · ${f.ext ?: "video"}")
+                FormatChoice(DownloadInputPolicy.safeFormatId(selector), "${f.height}p · ${f.ext ?: "video"}")
             }
         listOf(
             FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: máxima calidad"),
