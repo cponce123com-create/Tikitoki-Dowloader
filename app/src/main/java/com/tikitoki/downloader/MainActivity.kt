@@ -86,6 +86,24 @@ import com.tikitoki.downloader.domain.IncomingIntentReader
 import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
+import com.tikitoki.downloader.ui.TechHeader
+import com.tikitoki.downloader.ui.TechPlatformStrip
+import com.tikitoki.downloader.ui.TechShortcut
+import com.tikitoki.downloader.ui.TechPrimaryButton
+import com.tikitoki.downloader.ui.TechPurple
+import com.tikitoki.downloader.ui.TechPink
+import com.tikitoki.downloader.ui.TechBackground
+import com.tikitoki.downloader.ui.TechPanel
+import com.tikitoki.downloader.ui.TechBorder
+import com.tikitoki.downloader.ui.TechMuted
+import com.tikitoki.downloader.ui.TechGradient
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items as videoGridItems
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import com.tikitoki.downloader.ui.ProfileViewModel
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import kotlinx.coroutines.launch
@@ -118,11 +136,11 @@ class MainActivity : ComponentActivity() {
 }
 
 private val TikitokiColors = darkColorScheme(
-    primary = Color(0xFFFF426F),
+    primary = TechPurple,
     onPrimary = Color.White,
-    secondary = Color(0xFF59E4DE),
-    background = Color(0xFF101014),
-    surface = Color(0xFF1B1B22),
+    secondary = TechPink,
+    background = TechBackground,
+    surface = TechPanel,
     onSurface = Color(0xFFF4F4F7),
 )
 
@@ -229,13 +247,18 @@ private fun TikitokiApp(incomingLink: String) {
     MaterialTheme(colorScheme = TikitokiColors) {
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    listOf("Buscar", "Descargas", "Biblioteca", "Perfiles", "Acerca de").forEachIndexed { index, name ->
+                NavigationBar(containerColor = Color(0xFF110D20)) {
+                    listOf("Inicio", "Descargas", "Explorar", "Herramientas").forEachIndexed { index, name ->
+                        val target = listOf(0, 1, 2, 3)[index]
                         NavigationBarItem(
-                            selected = tab == index,
-                            onClick = { tab = index },
-                            icon = { Text(listOf("⌕", "↓", "▦", "◎", "ⓘ")[index]) },
-                            label = { Text(name) },
+                            selected = tab == target || (index == 3 && tab == 4),
+                            onClick = { tab = target },
+                            icon = { Text(listOf("⌂", "↓", "◈", "▦")[index], fontSize = 23.sp) },
+                            label = { Text(name, maxLines = 1) },
+                            colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color.White, selectedTextColor = Color.White,
+                                indicatorColor = TechPurple, unselectedIconColor = TechMuted,
+                                unselectedTextColor = TechMuted)
                         )
                     }
                 }
@@ -246,24 +269,19 @@ private fun TikitokiApp(incomingLink: String) {
                     .verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(color = Color(0xFF20202B), shape = MaterialTheme.shapes.large) {
-                        Image(painter = painterResource(R.drawable.tikitoki_brand), contentDescription = "Logo Tikitoki Downloader", modifier = Modifier.size(64.dp))
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Tikitoki", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("DOWNLOADER", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelLarge)
+                TechHeader(onSettings = { tab = 4 })
+                if (tab == 0) {
+                    TechPlatformStrip()
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TechShortcut("Descargas", "${records.count { it.status == DownloadState.COMPLETED }}", "↓", Modifier.weight(1f)) { tab = 1 }
+                        TechShortcut("En cola", "${records.count { it.status == DownloadState.QUEUED }}", "▤", Modifier.weight(1f)) { tab = 1 }
+                        TechShortcut("Historial", "${records.size}", "◷", Modifier.weight(1f)) { tab = 2 }
+                        TechShortcut("Ajustes", "Opciones", "⚙", Modifier.weight(1f)) { tab = 4 }
                     }
                 }
-                Text(
-                    "Kotlin · yt-dlp · v0.4",
-                    color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.labelMedium,
-                )
-
                 when (tab) {
                     0 -> {
-                        Text("Analizar video, perfil o canal", style = MaterialTheme.typography.titleLarge)
+                        Text("Enlace · Perfil/Canal · Lista/Playlist", style = MaterialTheme.typography.titleMedium, color = TechMuted)
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
@@ -274,11 +292,12 @@ private fun TikitokiApp(incomingLink: String) {
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
                             },
-                            label = { Text("Enlace de video o canal") },
-                            placeholder = { Text("https://www.tiktok.com/@usuario") },
+                            label = { Text("Pega aquí el enlace del video…") },
+                            placeholder = { Text("https://www.youtube.com/watch?v=…") },
                             modifier = Modifier.fillMaxWidth(),
-                            minLines = 2,
-                            maxLines = 3,
+                            minLines = 1,
+                            maxLines = 2,
+                            shape = RoundedCornerShape(18.dp),
                         )
 
                         Button(
@@ -315,7 +334,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("${videos.size} publicaciones detectadas · ${selected.size} seleccionadas", style = MaterialTheme.typography.titleSmall)
+                            Text("Videos detectados (${videos.size}) · ${selected.size} seleccionados", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                                     selected.clear()
@@ -339,13 +358,13 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             if (gridMode) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
-                                    modifier = Modifier.fillMaxWidth().height(480.dp),
+                                    columns = GridCells.Adaptive(154.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp).height(520.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     gridItems(visibleVideos, key = { it.id }) { video ->
-                                        Card(onClick = {
+                                        Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder), onClick = {
                                             if (video.id in selected) selected.remove(video.id) else selected.add(video.id)
                                             formats = listOf(defaultFormat)
                                             chosenFormat = defaultFormat
@@ -353,7 +372,7 @@ private fun TikitokiApp(incomingLink: String) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                                 VideoThumbnail(video.thumbnail, video.title, Modifier.fillMaxWidth().aspectRatio(16f / 10f))
                                                 Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                                Text(if (video.id in selected) "✓ Seleccionado" else "Tocar para seleccionar",
+                                                Text(if (video.id in selected) "☑ Seleccionado" else "□ Tocar para seleccionar",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
@@ -365,7 +384,7 @@ private fun TikitokiApp(incomingLink: String) {
                             ) {
                                 items(visibleVideos, key = { it.id }) { video ->
                                     val checked = video.id in selected
-                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                    Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder)) {
                                         Row(
                                             modifier = Modifier.padding(8.dp),
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -457,7 +476,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         addToQueue()
                                     }
                                 }
-                            ) { Text("Añadir ${selected.size} a descargas") }
+                            ) { Text("↓ Descargar ${selected.size} seleccionados", fontWeight = FontWeight.Bold) }
                         }
                     }
 
@@ -467,7 +486,7 @@ private fun TikitokiApp(incomingLink: String) {
                         val paused = records.count { it.status == DownloadState.PAUSED }
                         val failed = records.count { it.status == DownloadState.FAILED }
 
-                        Text("Gestor de descargas", style = MaterialTheme.typography.titleLarge)
+                        Text("Cola de descargas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text("$finished completadas · $pending pendientes · $failed errores")
                         Text("Los videos se guardan en Descargas/TikitokiDownloader.")
 
@@ -556,7 +575,7 @@ private fun TikitokiApp(incomingLink: String) {
 
                     2 -> {
                         val completed = records.filter { it.status == DownloadState.COMPLETED }
-                        Text("Biblioteca multimedia", style = MaterialTheme.typography.titleLarge)
+                        Text("Explorar · Biblioteca multimedia", style = MaterialTheme.typography.titleLarge)
                         Text("${completed.size} videos registrados · ${records.size} entradas en historial")
                         Text("Abre los videos guardados desde la pestaña Descargas. Esta biblioteca conserva los metadatos incluso sin conexión.")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -588,7 +607,7 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
-                        Text("Monitoreo de perfiles públicos", style = MaterialTheme.typography.titleLarge)
+                        Text("Herramientas · Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         Text("Comprobación periódica aproximada cada 12 horas, sujeta a restricciones de Android y TikTok. No descubre videos privados.")
                         OutlinedButton(onClick = {
                             if (ProfileMonitor.add(context, url.trim())) {
@@ -612,7 +631,7 @@ private fun TikitokiApp(incomingLink: String) {
                         Text(message, style = MaterialTheme.typography.bodySmall)
                     }
                     else -> {
-                        Text("Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
+                        Text("Ajustes · Acerca del proyecto", style = MaterialTheme.typography.titleLarge)
                         Text("Versión 0.5: extracción multiplataforma experimental, formatos de video y audio, descargas por lotes e historial Room.")
                         Text("Las descargas usan el servicio de primer plano Android; la carpeta final es visible en Descargas.")
                         Text("TikTok puede bloquear el acceso a publicaciones o no proporcionar formatos sin marca de agua. No se garantiza descargar todos los videos de un perfil.")
@@ -626,7 +645,7 @@ private fun TikitokiApp(incomingLink: String) {
 
 @Composable
 private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder)) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -636,7 +655,8 @@ private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
                     AsyncImage(
                         model = record.thumbnail,
                         contentDescription = "Miniatura",
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.width(106.dp).aspectRatio(16f / 10f),
+                        contentScale = ContentScale.Crop,
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
