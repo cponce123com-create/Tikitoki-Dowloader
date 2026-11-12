@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -147,6 +148,7 @@ private val TikitokiColors = darkColorScheme(
 @Composable
 private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
     val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
@@ -265,22 +267,15 @@ private fun TikitokiApp(incomingLink: String) {
             }
         ) { insets ->
             Column(
-                modifier = Modifier.fillMaxSize().padding(insets)
+                modifier = Modifier.fillMaxSize().background(TechBackground).padding(insets)
                     .verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 TechHeader(onSettings = { tab = 4 })
-                if (tab == 0) {
-                    TechPlatformStrip()
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TechShortcut("Descargas", "${records.count { it.status == DownloadState.COMPLETED }}", "↓", Modifier.weight(1f)) { tab = 1 }
-                        TechShortcut("En cola", "${records.count { it.status == DownloadState.QUEUED }}", "▤", Modifier.weight(1f)) { tab = 1 }
-                        TechShortcut("Historial", "${records.size}", "◷", Modifier.weight(1f)) { tab = 2 }
-                        TechShortcut("Ajustes", "Opciones", "⚙", Modifier.weight(1f)) { tab = 4 }
-                    }
-                }
+
                 when (tab) {
                     0 -> {
+                        TechPlatformStrip()
                         Text("Enlace · Perfil/Canal · Lista/Playlist", style = MaterialTheme.typography.titleMedium, color = TechMuted)
                         OutlinedTextField(
                             value = url,
@@ -300,8 +295,25 @@ private fun TikitokiApp(incomingLink: String) {
                             shape = RoundedCornerShape(18.dp),
                         )
 
-                        Button(
-                            modifier = Modifier.fillMaxWidth(),
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(0.75f).height(54.dp),
+                                onClick = {
+                                    val pasted = clipboard.getText()?.text.orEmpty()
+                                    if (IncomingLinkValidator.validate(pasted) != null) {
+                                        url = pasted
+                                        profileViewModel.reset()
+                                        selected.clear()
+                                        formats = listOf(defaultFormat)
+                                        chosenFormat = defaultFormat
+                                        message = "Enlace pegado. Pulsa Analizar."
+                                    } else message = "El portapapeles no contiene un enlace válido."
+                                },
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, TechBorder)
+                            ) { Text("▣ Pegar") }
+                        TechPrimaryButton(
+                            modifier = Modifier.weight(1f),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
                                 when (val parsed = IncomingLinkValidator.validate(url)) {
@@ -317,12 +329,21 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             },
-                        ) { Text(if (profileState.loading) "Analizando..." else "Analizar enlace") }
+                            text = if (profileState.loading) "Analizando…" else "⌕ Analizar",
+                        )
+                        }
 
                         FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar desde TikTok (ignorar caché)") })
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         Text(message)
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TechShortcut("Descargas", "${records.count { it.status == DownloadState.COMPLETED }}", "↓", Modifier.weight(1f)) { tab = 1 }
+                        TechShortcut("En cola", "${records.count { it.status == DownloadState.QUEUED }}", "▤", Modifier.weight(1f)) { tab = 1 }
+                        TechShortcut("Historial", "${records.size}", "◷", Modifier.weight(1f)) { tab = 2 }
+                        TechShortcut("Ajustes", "Opciones", "⚙", Modifier.weight(1f)) { tab = 4 }
+                    }
 
                         if (videos.isNotEmpty()) {
                             val downloadedIds = remember(records) { records.asSequence().filter { it.status == DownloadState.COMPLETED }.map { it.videoId }.toSet() }
