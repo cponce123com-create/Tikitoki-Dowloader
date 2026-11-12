@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    jacoco
 }
 
 android {
@@ -64,4 +65,43 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+}
+
+ 
+// M1 coverage gate: pure URL and Intent-boundary validation logic.
+// Android Intent behavior is also covered by androidTest on an emulator.
+tasks.register<JacocoReport>("m1CoverageReport") {
+    dependsOn("testDebugUnitTest")
+    val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/debug")
+    classDirectories.setFrom(fileTree(kotlinClasses) {
+        include("**/domain/IncomingLinkValidator*")
+        include("**/domain/MediaLinkParser*")
+    })
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include("jacoco/testDebugUnitTest.exec")
+        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+    })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
+    dependsOn("m1CoverageReport")
+    classDirectories.setFrom(tasks.named<JacocoReport>("m1CoverageReport").map { it.classDirectories })
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include("jacoco/testDebugUnitTest.exec")
+        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+    })
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.95".toBigDecimal()
+            }
+        }
+    }
 }
