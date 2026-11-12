@@ -74,6 +74,8 @@ import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
+import com.tikitoki.downloader.domain.MediaLinkParser
+import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import com.tikitoki.downloader.ui.ProfileViewModel
@@ -123,6 +125,7 @@ private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
+    val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
     val profileViewModel: ProfileViewModel = viewModel()
     val profileState by profileViewModel.state.collectAsState()
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
@@ -141,7 +144,7 @@ private fun TikitokiApp(incomingLink: String) {
     var search by rememberSaveable { mutableStateOf("") }
     var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
     var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
-    var message by remember { mutableStateOf("Pega un enlace de TikTok para analizarlo.") }
+    var message by remember { mutableStateOf("Pega un enlace de TikTok, YouTube, Facebook o Instagram.") }
     var inspecting by remember { mutableStateOf(false) }
     var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
@@ -265,7 +268,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
                             },
-                            label = { Text("Enlace de TikTok") },
+                            label = { Text("Enlace de video o canal") },
                             placeholder = { Text("https://www.tiktok.com/@usuario") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
@@ -276,9 +279,10 @@ private fun TikitokiApp(incomingLink: String) {
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
-                                when (val parsed = TikTokLinkParser.parse(url)) {
-                                    is LinkParseResult.Error -> message = parsed.message
-                                    is LinkParseResult.Success -> {
+                                when (val parsed = MediaLinkParser.parse(url)) {
+                                    null -> message = "Pega un enlace HTTPS válido de TikTok, YouTube, Facebook o Instagram."
+                                    else -> {
+
                                         visiblePages = 1
                                         selected.clear()
                                         profileViewModel.inspect(url, forceRefresh)
@@ -410,7 +414,7 @@ private fun TikitokiApp(incomingLink: String) {
                                             formatsBusy = true
                                             scope.launch {
                                                 try {
-                                                    formats = source.formats(video)
+                                                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
                                                     chosenFormat = formats.first()
                                                     message = "Formatos disponibles consultados."
                                                 } catch (e: Exception) {
