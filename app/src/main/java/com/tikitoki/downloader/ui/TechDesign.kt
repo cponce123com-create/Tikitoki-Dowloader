@@ -39,7 +39,7 @@ fun TechHeader(onSettings: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-            Text("Videos y música · Universal", style = MaterialTheme.typography.bodySmall, color = TechMuted)
+            
         }
         TextButton(onClick = onSettings) { Text("⚙", color = Color.White, style = MaterialTheme.typography.headlineSmall) }
     }
