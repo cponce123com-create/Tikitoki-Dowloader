@@ -172,6 +172,7 @@ private fun TikitokiApp(incomingLink: String) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var visiblePages by remember { mutableStateOf(1) }
+    var selectedPlatform by remember { mutableStateOf<String?>(null) }
     var exportFormat by rememberSaveable { mutableStateOf("json") }
     var monitorRevision by remember { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
@@ -318,8 +319,8 @@ private fun TikitokiApp(incomingLink: String) {
         ) { insets ->
             Column(
                 modifier = Modifier.fillMaxSize().background(TechBackground).padding(insets)
-                    .verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 TechHeader(onSettings = { tab = 4 })
 
@@ -337,17 +338,16 @@ private fun TikitokiApp(incomingLink: String) {
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
                             },
-                            label = { Text("Pega aquí el enlace del video…") },
-                            placeholder = { Text("https://www.youtube.com/watch?v=…") },
+                            placeholder = { Text("Pega un enlace de TikTok, YouTube, Facebook o Instagram") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 1,
                             maxLines = 2,
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(12.dp),
                         )
 
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
-                                modifier = Modifier.weight(0.75f).height(54.dp),
+                                modifier = Modifier.weight(0.75f).height(44.dp),
                                 onClick = {
                                     val pasted = clipboard.getText()?.text.orEmpty()
                                     if (IncomingLinkValidator.validate(pasted) != null) {
@@ -356,7 +356,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         selected.clear()
                                         formats = listOf(defaultFormat)
                                         chosenFormat = defaultFormat
-                                        message = "Enlace pegado. Pulsa Analizar."
+                                        message = ""
                                     } else message = "El portapapeles no contiene un enlace válido."
                                 },
                                 shape = RoundedCornerShape(18.dp),
@@ -374,7 +374,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         selected.clear()
                                         profileViewModel.inspect(url, forceRefresh)
                                         forceRefresh = false
-                                        message = "Consultando publicaciones con el extractor de la plataforma."
+                                        message = ""
 
                                     }
                                 }
@@ -386,13 +386,13 @@ private fun TikitokiApp(incomingLink: String) {
                         FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar") })
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
-                        Text(message)
+                        if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
 
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TechShortcut("Descargas", "${records.count { it.status == DownloadState.COMPLETED }}", "↓", Modifier.weight(1f)) { tab = 1 }
                         TechShortcut("En cola", "${records.count { it.status == DownloadState.QUEUED }}", "▤", Modifier.weight(1f)) { tab = 1 }
                         TechShortcut("Historial", "${records.size}", "◷", Modifier.weight(1f)) { tab = 2 }
-                        TechShortcut("Ajustes", "Opciones", "⚙", Modifier.weight(1f)) { tab = 4 }
+                        
                     }
 
                         if (videos.isNotEmpty()) {
@@ -406,7 +406,7 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             val allSelected = selected.size == videos.size
                             Text("Total de videos: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "Calculando…" else "No disponible"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("${selected.size} seleccionados", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                            Text("${selected.size} seleccionados", color = TechMuted, style = MaterialTheme.typography.labelSmall)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                                     selected.clear()
@@ -430,13 +430,13 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             if (gridMode) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(154.dp),
+                                    columns = GridCells.Adaptive(132.dp),
                                     modifier = Modifier.fillMaxWidth().height(600.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     gridItems(visibleVideos, key = { it.id }) { video ->
-                                        Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder), onClick = {
+                                        Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, TechBorder), onClick = {
                                             if (video.id in selected) selected.remove(video.id) else selected.add(video.id)
                                             formats = listOf(defaultFormat)
                                             chosenFormat = defaultFormat
