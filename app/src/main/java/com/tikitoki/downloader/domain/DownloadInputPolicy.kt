@@ -16,7 +16,7 @@ object DownloadInputPolicy {
         require(!value.startsWith("-") && !value.contains("--")) {
             "Formato de descarga no permitido"
         }
-        require(value.all { it.isLetterOrDigit() || it in ".+_,:/[]()=!?*-" }) {
+        require(value.all { it.isLetterOrDigit() || it in ".+_,:/[]()=!?*<>-" }) {
             "Formato de descarga no permitido"
         }
         return value
