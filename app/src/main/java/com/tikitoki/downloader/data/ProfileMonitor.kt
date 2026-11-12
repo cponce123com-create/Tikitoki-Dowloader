@@ -49,6 +49,7 @@ object ProfileMonitor {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("new:$url", 0)
 
     fun schedule(context: Context) {
+        if (profiles(context).isEmpty()) return
         val request = PeriodicWorkRequestBuilder<ProfileMonitorWorker>(12, TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
