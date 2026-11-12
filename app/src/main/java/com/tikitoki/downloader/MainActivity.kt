@@ -75,6 +75,7 @@ import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.lifecycleScope
 import com.tikitoki.downloader.ui.ProfileViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,6 +87,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedLink = receivedText(intent)
+        lifecycleScope.launch {
+            val pending = withContext(Dispatchers.IO) {
+                DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount()
+            }
+            if (pending > 0) DownloadQueue.start(applicationContext)
+        }
         setContent { TikitokiApp(sharedLink) }
     }
 
