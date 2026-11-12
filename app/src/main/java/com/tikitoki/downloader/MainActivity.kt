@@ -540,7 +540,12 @@ private fun TikitokiApp(incomingLink: String) {
                         else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(completed, key = { it.videoId }) { record ->
                                 DownloadHistoryCard(record, onOpen = {
-                                    val uri = Uri.parse(record.savedUri)
+                                    val saved = record.savedUri
+                                    if (saved.isNullOrBlank()) {
+                                        message = "No se encontró la ubicación del archivo."
+                                        return@DownloadHistoryCard
+                                    }
+                                    val uri = Uri.parse(saved)
                                     try {
                                         context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                                             setDataAndType(uri, "video/*")
