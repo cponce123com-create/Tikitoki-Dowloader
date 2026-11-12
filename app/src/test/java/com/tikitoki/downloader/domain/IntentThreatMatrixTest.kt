@@ -32,6 +32,24 @@ class IntentThreatMatrixTest {
         hostile.forEach { assertNull("Unexpectedly accepted: $it", IncomingLinkValidator.validate(it)) }
     }
 
+    @Test fun exercisesValidationBoundaryBranches() {
+        assertNull(IncomingLinkValidator.validate(null))
+        assertNull(IncomingLinkValidator.validate(""))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/--exec"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/-o"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/-P"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/--load-info-json"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/--batch-file"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202a"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202b"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202c"))
+        assertNull(IncomingLinkValidator.validate("https://youtube.com/\u2069"))
+        assertNotNull(IncomingLinkValidator.validate("https://www.facebook.com/watch/?v=123"))
+        assertNotNull(IncomingLinkValidator.validate("https://www.instagram.com/reel/abc/"))
+        assertNotNull(IncomingLinkValidator.validate("https://youtu.be/abc"))
+        assertNull(IncomingLinkValidator.validate("https://example.org/watch?v=1"))
+    }
+
     @Test fun canonicalizesAndKeepsSupportedUrls() {
         val link = IncomingLinkValidator.validate("https://WWW.YOUTUBE.COM/watch?v=abc%2Bdef")
         assertNotNull(link)
