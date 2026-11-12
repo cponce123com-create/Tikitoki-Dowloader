@@ -1,6 +1,8 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaLink
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.yausername.ffmpeg.FFmpeg
@@ -31,6 +33,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     override suspend fun inspect(link: MediaLink, start: Int, count: Int): List<VideoEntry> =
         withContext(Dispatchers.IO) {
             require(start >= 1 && count in 1..100)
+            require(IncomingLinkValidator.validate(link.url) != null)
             if (link.platform == MediaPlatform.TIKTOK) {
                 val parsed = com.tikitoki.downloader.domain.TikTokLinkParser.parse(link.url)
                 require(parsed is com.tikitoki.downloader.domain.LinkParseResult.Success)
@@ -71,7 +74,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             MediaPlatform.YOUTUBE -> "https://www.youtube.com/watch?v=$id"
             else -> if (!link.collection) link.url else return null
         }
-        val title = json.optString("title").ifBlank { "Video $id" }
+        val title = MetadataSanitizer.title(json.optString("title").ifBlank { "Video $id" })
         return VideoEntry(
             id = "${link.platform.name.lowercase()}:$id",
             url = page,
