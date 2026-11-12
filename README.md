@@ -1,28 +1,38 @@
 # Tikitoki Downloader
 
-Aplicación Android nativa en **Kotlin + Jetpack Compose** para gestionar enlaces de perfiles y videos de TikTok y preparar descargas de contenido autorizado.
+Aplicación Android independiente, escrita en **Kotlin y Jetpack Compose**, inspirada en la experiencia de organización de descargas por lotes de 4K Tokkit.
 
-> Estado: prototipo inicial. La interfaz y validación de enlaces funcionan. La extracción automática de listas, las resoluciones disponibles y la descarga de videos de TikTok aún **no** están implementadas. No se simulan videos ni se promete descargar sin marca de agua.
+## Estado (v0.1.0)
 
-## Objetivos
+**Implementado**
+- Proyecto Android y pantalla principal oscura.
+- Pegado de URL y recepción de enlaces compartidos desde Android.
+- Validación del dominio HTTPS de TikTok y reconocimiento de enlaces de perfil, video y URL corta.
+- Pantallas de Inicio, Biblioteca y Acerca de.
+- Pruebas unitarias del analizador.
+- GitHub Actions para compilar y publicar como artefacto un APK de depuración.
 
-- Pegar o compartir un enlace de perfil/video de TikTok.
-- Identificar tipo, usuario y video cuando sea posible.
-- Mostrar resultados reales cuando un proveedor de extracción compatible esté integrado.
-- Seleccionar formatos realmente disponibles y descargar contenido autorizado.
-- Mantener historial y gestionar una cola con reintentos en versiones siguientes.
+**No implementado todavía**
+- Consulta real de publicaciones y paginación por perfil.
+- Resolución de enlaces cortos.
+- Extracción y selección de formatos/resoluciones.
+- Descargas masivas, gestión de archivos, cola y biblioteca persistente.
+- Versiones sin marca de agua: únicamente cuando estén disponibles y su descarga esté autorizada.
 
-## Desarrollo
+No se muestran videos ficticios ni se anuncia disponibilidad de descargas que no hayan sido verificadas.
 
-Android Studio reciente, JDK 17, Android SDK 35 y Gradle 8.11.1. Abre el directorio raíz como proyecto Android.
+## Compilar
 
-## Estructura
+Abrir en Android Studio con JDK 17 y Android SDK 35. Requiere Gradle 8.10.2. Si el IDE necesita un wrapper local, ejecutar una vez `gradle wrapper --gradle-version 8.10.2` desde el proyecto y añadir los archivos generados. El CI usa Gradle instalado directamente para no depender del wrapper.
 
-- `app/`: aplicación Android y pantalla Compose.
-- `app/src/main/java/com/tikitoki/downloader/domain/`: reconocimiento de enlaces.
-- `app/src/test/`: pruebas unitarias del parser.
-- `.github/workflows/`: compilación automática de APK debug.
+Compilación y pruebas: `gradle testDebugUnitTest assembleDebug`.
 
-## Ética técnica
+El APK debug generado por GitHub Actions puede descargarse desde los **Artifacts** de una ejecución que haya finalizado correctamente.
 
-No incluye APK modificados de TikTok, extracción clandestina de credenciales ni promesas de eliminar marcas de agua. Respetar los derechos de los titulares y las reglas de cada servicio.
+## Arquitectura y siguiente fase
+
+La app separa el analizador `domain/TikTokLinkParser.kt` de la interfaz `MainActivity.kt`. La siguiente fase introducirá interfaces de proveedor de videos, modelos de formato, un gestor Android DownloadManager, Room para el historial y pruebas con fuentes reales permitidas. Evitaremos depender de APK hackeados, credenciales privadas o servicios no verificados.
+
+## Uso responsable
+
+Descarga únicamente contenido propio, con autorización o cuya descarga esté permitida por la plataforma y el titular.
