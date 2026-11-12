@@ -799,13 +799,11 @@ private fun VideoThumbnail(
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (!resolved.isNullOrBlank()) {
-                var loadFailed by remember(resolved) { mutableStateOf(false) }
-                if (!loadFailed) {
                     coil.compose.SubcomposeAsyncImage(
                         model = coil.request.ImageRequest.Builder(LocalContext.current)
                             .data(resolved)
                             .crossfade(true)
-                            .addHeader("Referer", "https://www.tiktok.com/")
+                            .apply { if (video.url.contains("tiktok.com")) addHeader("Referer", "https://www.tiktok.com/") }
                             .build(),
                         contentDescription = "Miniatura del video: ${video.title}",
                         modifier = Modifier.fillMaxSize(),
@@ -822,7 +820,6 @@ private fun VideoThumbnail(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     )
-                }
             } else {
                 Text("▶", style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
