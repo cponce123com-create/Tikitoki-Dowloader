@@ -311,7 +311,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar todos", maxLines = 1) }
                             }
                             Text("La lista del perfil no confirma si cada video sigue siendo público. Los videos privados que TikTok no expone no pueden identificarse desde aquí.", style = MaterialTheme.typography.bodySmall)
-                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded }, label = { Text("Solo pendientes de descargar") })
+                            FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Solo pendientes de descargar") })
                             OutlinedTextField(
                                 value = search,
                                 onValueChange = { search = it },
