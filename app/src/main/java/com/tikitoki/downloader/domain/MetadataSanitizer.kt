@@ -32,6 +32,8 @@ object MetadataSanitizer {
                 count++
             }
         }
-        return result.toString().trim()
+        // Removing invisible format characters can join combining marks with letters.
+        // Normalize again after filtering/truncation to guarantee NFC output.
+        return Normalizer.normalize(result.toString().trim(), Normalizer.Form.NFC)
     }
 }
