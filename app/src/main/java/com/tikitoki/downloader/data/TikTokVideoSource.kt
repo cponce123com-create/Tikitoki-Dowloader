@@ -7,6 +7,7 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +29,7 @@ data class FormatChoice(val id: String, val label: String)
 class TikTokVideoSource(private val context: Context) {
     private var initialized = false
     private var updateAttempted = false
+    private val profileCache = context.applicationContext.getSharedPreferences("profile_cache_v1", Context.MODE_PRIVATE)
 
     @Synchronized
     private fun ensureReady() {
@@ -48,12 +50,49 @@ class TikTokVideoSource(private val context: Context) {
         }
     }
 
-    suspend fun inspect(link: TikTokLink): List<VideoEntry> = withContext(Dispatchers.IO) {
+    suspend fun inspect(link: TikTokLink, forceRefresh: Boolean = false): List<VideoEntry> = withContext(Dispatchers.IO) {
         ensureReady()
         when (link.type) {
-            TikTokLinkType.PROFILE -> inspectProfile(link)
+            TikTokLinkType.PROFILE -> {
+                if (!forceRefresh) cachedProfile(link.url)?.let { return@withContext it }
+                inspectProfile(link).also { if (it.isNotEmpty()) saveProfile(link.url, it) }
+            }
             TikTokLinkType.VIDEO, TikTokLinkType.SHORT_LINK -> listOf(fetchSingle(link.url))
         }
+    }
+
+    private fun cachedProfile(url: String): List<VideoEntry>? {
+        val storedAt = profileCache.getLong("time:$url", 0L)
+        if (System.currentTimeMillis() - storedAt > 15 * 60 * 1000L) return null
+        return try {
+            val array = JSONArray(profileCache.getString("data:$url", "[]"))
+            if (array.length() == 0) return null
+            (0 until array.length()).map { i ->
+                val item = array.getJSONObject(i)
+                VideoEntry(
+                    id = item.getString("id"),
+                    url = item.getString("url"),
+                    title = item.optString("title"),
+                    thumbnail = item.optString("thumbnail").takeIf { it.isNotBlank() },
+                    durationSeconds = item.optInt("duration"),
+                )
+            }
+        } catch (_: Exception) { null }
+    }
+
+    private fun saveProfile(url: String, videos: List<VideoEntry>) {
+        val array = JSONArray()
+        videos.forEach { video ->
+            array.put(JSONObject().apply {
+                put("id", video.id)
+                put("url", video.url)
+                put("title", video.title)
+                put("thumbnail", video.thumbnail ?: "")
+                put("duration", video.durationSeconds)
+            })
+        }
+        profileCache.edit().putString("data:$url", array.toString())
+            .putLong("time:$url", System.currentTimeMillis()).apply()
     }
 
     private fun fetchSingle(url: String): VideoEntry {
