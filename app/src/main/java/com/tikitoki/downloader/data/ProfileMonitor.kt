@@ -69,6 +69,7 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
                     .putLong("checked:$url", System.currentTimeMillis()).apply()
             } catch (_: Exception) { failures++ }
         }
-        if (failures > 0) Result.retry() else Result.success()
+        // Avoid immediate retry storms across large public profiles.
+        Result.success()
     }
 }
