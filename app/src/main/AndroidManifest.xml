@@ -11,6 +11,8 @@
     <application
         android:allowBackup="false"
         android:label="@string/app_name"
+        android:icon="@drawable/tikitoki_brand"
+        android:roundIcon="@drawable/tikitoki_brand"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:extractNativeLibs="true"
