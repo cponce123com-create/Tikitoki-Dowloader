@@ -75,7 +75,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         file.delete()
                         break
                     }
-                    if (dao.find(item.videoId)?.status == DownloadState.PAUSED) {
+                    if (dao.find(item.videoId)?.status != DownloadState.DOWNLOADING) {
                         file.delete()
                         break
                     }
