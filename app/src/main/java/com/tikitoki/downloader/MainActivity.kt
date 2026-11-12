@@ -179,7 +179,7 @@ private fun TikitokiApp(incomingLink: String) {
     var search by rememberSaveable { mutableStateOf("") }
     var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
     var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
-    var message by remember { mutableStateOf("Pega un enlace de TikTok, YouTube, Facebook o Instagram.") }
+    var message by remember { mutableStateOf("") }
     var inspecting by remember { mutableStateOf(false) }
     var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
@@ -405,7 +405,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Videos ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "· contando…" else "· ${videos.size}"}  ·  ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Videos: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else videos.size.toString()} · ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
@@ -450,8 +450,8 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             } else LazyColumn(
-                                modifier = Modifier.fillMaxWidth().height(600.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth().height((visibleVideos.size * 100).coerceAtMost(500).coerceAtLeast(100).dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 items(visibleVideos, key = { it.id }) { video ->
                                     val checked = video.id in selected
@@ -515,8 +515,6 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 )
 
-                            } else if (selected.size > 1) {
-                                
                             }
 
                             Button(
