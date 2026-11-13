@@ -25,6 +25,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -33,8 +36,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val dao = DownloadDatabase.get(context).downloads()
     private val source = TikTokVideoSource(context.applicationContext)
     private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    @Volatile private var currentId: String? = null
-    @Volatile private var lastDbUpdate = 0L
+    private val activeIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val lastDbUpdates = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
@@ -42,15 +45,29 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             dao.requeueInterrupted()
             setForeground(notification("Preparando descargas"))
             while (!isStopped) {
-                val item = dao.nextQueued() ?: break
-                // Claim the queued record atomically: pause must not be overwritten.
-                if (dao.claimQueued(item.videoId) == 0) continue
-                currentId = item.videoId
-                setForeground(notification("Descargando: ${item.title}"))
+                val batch = mutableListOf<DownloadRecord>()
+                repeat(2) {
+                    val item = dao.nextQueued() ?: return@repeat
+                    if (dao.claimQueued(item.videoId) != 0) batch.add(item)
+                }
+                if (batch.isEmpty()) break
+                coroutineScope { batch.map { item -> async { downloadOne(item) } }.awaitAll() }
+            }
+            Result.success()
+        } catch (_: CancellationException) {
+            Result.success()
+        } finally {
+            progressScope.cancel()
+        }
+    }
+
+    private suspend fun downloadOne(item: DownloadRecord) {
+                activeIds.add(item.videoId)
+                setForeground(notification("Descargando ${activeIds.size} videos"))
                 val stopMonitor = progressScope.launch {
                     // CoroutineWorker.onStopped is final. Observe cancellation from a
                     // separate scope and stop the blocking yt-dlp process directly.
-                    while (currentId == item.videoId) {
+                    while (item.videoId in activeIds) {
                         if (isStopped) {
                             source.cancel(item.videoId)
                             break
@@ -66,8 +83,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         if (!isStopped) {
                             setProgressAsync(workDataOf("videoId" to item.videoId, "percent" to percent))
                             val timestamp = System.currentTimeMillis()
-                            if (timestamp - lastDbUpdate > 1000 || percent == 100) {
-                                lastDbUpdate = timestamp
+                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) > 1000 || percent == 100) {
+                                lastDbUpdates[item.videoId] = timestamp
                                 progressScope.launch { dao.setProgress(item.videoId, percent) }
                             }
                         }
@@ -75,11 +92,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     if (isStopped) {
                         dao.pauseIfDownloading(item.videoId)
                         file.delete()
-                        break
+                        return
                     }
                     if (dao.find(item.videoId)?.status != DownloadState.DOWNLOADING) {
                         file.delete()
-                        break
+                        return
                     }
                     val uri = publishVideo(applicationContext, file)
                     file.delete()
@@ -97,16 +114,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     if (isStopped) dao.pauseIfDownloading(item.videoId)
                     else dao.failIfDownloading(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" })
                 } finally {
-                    currentId = null
+                    activeIds.remove(item.videoId)
+                    lastDbUpdates.remove(item.videoId)
                     stopMonitor.cancel()
                 }
-            }
-            Result.success()
-        } catch (_: CancellationException) {
-            Result.success()
-        } finally {
-            progressScope.cancel()
-        }
     }
 
     private fun notification(message: String): ForegroundInfo {
