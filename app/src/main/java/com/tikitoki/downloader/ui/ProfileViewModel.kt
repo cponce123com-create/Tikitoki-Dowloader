@@ -16,6 +16,7 @@ import com.tikitoki.downloader.domain.TikTokLink
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.TikTokLinkType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -41,6 +42,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val state: StateFlow<ProfileUiState> = mutableState
     private var activeLink: com.tikitoki.downloader.domain.MediaLink? = null
     private var generation = 0
+    private var inspectionJob: Job? = null
+    private var paginationJob: Job? = null
+    private var countJob: Job? = null
 
     fun inspect(url: String, forceRefresh: Boolean = false) {
         val media = MediaLinkParser.parse(url)
@@ -55,9 +59,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
         val link = (parsed as? LinkParseResult.Success)?.link
         val token = ++generation
+        inspectionJob?.cancel()
+        paginationJob?.cancel()
+        countJob?.cancel()
         activeLink = media
         mutableState.value = ProfileUiState(loading = true)
-        viewModelScope.launch {
+        inspectionJob = viewModelScope.launch {
             try {
                 val isProfile = media.collection
                 val first = EngineFallback(
@@ -94,7 +101,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         media: com.tikitoki.downloader.domain.MediaLink,
         token: Int,
     ) {
-        viewModelScope.launch {
+        countJob = viewModelScope.launch {
             val declared = try { universal.declaredCollectionCount(media) }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
@@ -115,7 +122,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         first: List<VideoEntry>,
         token: Int,
     ) {
-        viewModelScope.launch {
+        paginationJob = viewModelScope.launch {
             val seen = first.mapTo(mutableSetOf()) { it.id }
             var pageNumber = 2
             try {
@@ -129,7 +136,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     val fresh = page.filter { seen.add(it.id) }
                     val latest = mutableState.value
                     mutableState.value = latest.copy(
-                        videos = (latest.videos + fresh).distinctBy { it.id },
+                        videos = latest.videos + fresh,
                         nextPage = pageNumber + 1,
                         hasMore = page.size >= 60 && fresh.isNotEmpty(),
                     )
@@ -178,6 +185,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun reset() {
         generation++
+        inspectionJob?.cancel()
+        paginationJob?.cancel()
+        countJob?.cancel()
         activeLink = null
         mutableState.value = ProfileUiState()
     }
