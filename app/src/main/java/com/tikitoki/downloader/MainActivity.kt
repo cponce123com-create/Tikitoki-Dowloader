@@ -168,6 +168,20 @@ private val TikitokiColors = darkColorScheme(
 @Composable
 private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
+    val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
+    var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
+    var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
+    var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                settings.edit().putString("download_tree", uri.toString()).apply()
+                downloadFolder = uri.toString()
+            } catch (_: Exception) { settings.edit().remove("download_tree").apply() }
+        }
+    }
+
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
@@ -179,8 +193,13 @@ private fun TikitokiApp(incomingLink: String) {
     val downloadsViewModel: DownloadsViewModel = viewModel()
     val records by downloadsViewModel.records.collectAsState()
 
-    val defaultFormat = remember {
-        FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Máxima calidad disponible")
+    val defaultFormat = remember(preferredQuality) {
+        val selector = when (preferredQuality) {
+            "720p" -> "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+            "480p" -> "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
+            else -> TikTokVideoSource.DEFAULT_FORMAT
+        }
+        FormatChoice(selector, preferredQuality)
     }
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
@@ -200,7 +219,7 @@ private fun TikitokiApp(incomingLink: String) {
     val videos = profileState.videos
     val selected = remember { mutableStateListOf<String>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
-    var chosenFormat by remember { mutableStateOf(defaultFormat) }
+    var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
 
     LaunchedEffect(incomingLink) {
         if (incomingLink.isNotBlank() && url != incomingLink) {
@@ -376,7 +395,7 @@ private fun TikitokiApp(incomingLink: String) {
             }
         ) { insets ->
             Column(
-                modifier = Modifier.fillMaxSize().background(TechBackground).padding(insets)
+                modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets)
                     .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
@@ -744,7 +763,31 @@ private fun TikitokiApp(incomingLink: String) {
                             message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
                         }) { Text("↻ Actualizar yt-dlp ahora") }
                         Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
-                        Text("Carpeta actual: Descargas/TikitokiDownloader")
+                        Text("Destino de las descargas", style = MaterialTheme.typography.titleMedium)
+                        Text(if (downloadFolder == null) "Descargas/TikitokiDownloader" else "Carpeta personalizada / tarjeta SD", color = TechMuted)
+                        OutlinedButton(onClick = { folderPicker.launch(null) }) { Text("📁 Elegir carpeta o memoria SD") }
+                        if (downloadFolder != null) OutlinedButton(onClick = {
+                            settings.edit().remove("download_tree").apply()
+                            downloadFolder = null
+                        }) { Text("Restablecer carpeta predeterminada") }
+                        Text("Tema", style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Oscuro", "Negro AMOLED").forEach { option ->
+                                FilterChip(selected = themeChoice == option, onClick = {
+                                    themeChoice = option
+                                    settings.edit().putString("theme", option).apply()
+                                }, label = { Text(option) })
+                            }
+                        }
+                        Text("Calidad predeterminada", style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Máxima", "720p", "480p").forEach { option ->
+                                FilterChip(selected = preferredQuality == option, onClick = {
+                                    preferredQuality = option
+                                    settings.edit().putString("quality", option).apply()
+                                }, label = { Text(option) })
+                            }
+                        }
                         
                         Text("Uso de contenido autorizado · GPL-3.0")
                     }
