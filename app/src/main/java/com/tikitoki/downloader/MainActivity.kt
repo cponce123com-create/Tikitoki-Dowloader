@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
+import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadState
 import com.tikitoki.downloader.data.LibraryExport
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedLink = receivedText(intent)
+        ExtractorUpdateWorker.schedule(applicationContext)
         lifecycleScope.launch {
             val pending = withContext(Dispatchers.IO) {
                 DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount()
