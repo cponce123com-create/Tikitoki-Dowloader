@@ -23,9 +23,11 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
             // Never replace the extractor while a download queue is active.
             if (DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount() > 0)
                 return@withContext Result.retry()
-            val engine = YoutubeDL.getInstance()
-            engine.init(applicationContext)
-            val updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+            val updated = ExtractorAccess.updateEngine {
+                val engine = YoutubeDL.getInstance()
+                engine.init(applicationContext)
+                engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+            }
             val prefs = applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
             prefs.edit().putLong("last_success", System.currentTimeMillis())
                 .putString("last_result", "Actualización ejecutada: $updated").apply()
@@ -58,3 +60,4 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
         }
     }
 }
+

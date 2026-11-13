@@ -88,7 +88,7 @@ object DownloadQueue {
         WorkManager.getInstance(context.applicationContext)
             .enqueueUniqueWork(
                 UNIQUE_WORK,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 request(),
             )
     }
@@ -115,3 +115,4 @@ object DownloadQueue {
         start(context)
     }
 }
+

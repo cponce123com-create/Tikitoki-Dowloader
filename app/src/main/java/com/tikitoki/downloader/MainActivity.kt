@@ -235,7 +235,7 @@ private fun TikitokiApp(incomingLink: String) {
     val addToQueue: () -> Unit = {
         if (!queueBusy && selected.isNotEmpty()) {
             queueBusy = true
-            val batch = videos.filter { it.id in selected }.take(60)
+            val batch = videos.filter { it.id in selected }
             val formatId = if (batch.size == 1) chosenFormat.id else defaultFormat.id
             scope.launch {
                 try {
@@ -909,3 +909,4 @@ private fun VideoThumbnail(
         }
     }
 }
+

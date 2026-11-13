@@ -29,8 +29,10 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     private fun ready() {
         synchronized(UniversalMediaSource::class.java) {
             if (!initialized) {
-                YoutubeDL.getInstance().init(app)
-                FFmpeg.getInstance().init(app)
+                ExtractorAccess.useEngine {
+                    YoutubeDL.getInstance().init(app)
+                    FFmpeg.getInstance().init(app)
+                }
                 initialized = true
             }
         }
@@ -60,7 +62,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
                     request.addOption("--playlist-start", start)
                     request.addOption("--playlist-end", start + count - 1)
                 } else request.addOption("--no-playlist")
-                val response = YoutubeDL.getInstance().execute(request, "universal_inspect")
+                val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "universal_inspect") }
                 if (response.exitCode != 0 && response.out.isBlank()) {
                     throw IllegalStateException(response.err.take(300).ifBlank { "No se pudo consultar el enlace público." })
                 }
@@ -104,7 +106,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             .addOption("--playlist-items", "1")
             .addOption("--ignore-errors")
             .addOption("--no-warnings")
-        val response = YoutubeDL.getInstance().execute(request, "collection_count")
+        val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "collection_count") }
         if (response.out.isBlank()) return@withContext null
         val root = runCatching { JSONObject(response.out.trim()) }.getOrNull()
             ?: return@withContext null
@@ -113,7 +115,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
 
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ready()
-        val info = YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url))
+        val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
         val options = info.formats.orEmpty()
             .filter { !it.formatId.isNullOrBlank() && it.height > 0 && it.vcodec != "none" }
             .distinctBy { it.formatId }
@@ -130,3 +132,4 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         ) + options
     }
 }
+

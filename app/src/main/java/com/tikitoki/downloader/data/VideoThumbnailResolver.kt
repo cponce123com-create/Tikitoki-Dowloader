@@ -28,8 +28,10 @@ class VideoThumbnailResolver(context: Context) {
             if (video.url in failed) return@withPermit null
             withContext(Dispatchers.IO) {
                 val result = runCatching {
-                    YoutubeDL.getInstance().init(appContext)
-                    YoutubeDL.getInstance().getInfo(video.url).thumbnail
+                    ExtractorAccess.useEngine {
+                        YoutubeDL.getInstance().init(appContext)
+                        YoutubeDL.getInstance().getInfo(video.url).thumbnail
+                    }
                 }.getOrNull()?.takeIf { it.startsWith("https://") }
                 if (result == null) failed.add(video.url) else cache[video.url] = result
                 result
@@ -37,3 +39,4 @@ class VideoThumbnailResolver(context: Context) {
         }
     }
 }
+

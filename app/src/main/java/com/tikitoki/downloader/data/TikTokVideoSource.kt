@@ -35,8 +35,10 @@ class TikTokVideoSource(private val context: Context) {
     @Synchronized
     private fun ensureReady() {
         if (!initialized) {
-            YoutubeDL.getInstance().init(context.applicationContext)
-            FFmpeg.getInstance().init(context.applicationContext)
+            ExtractorAccess.useEngine {
+                YoutubeDL.getInstance().init(context.applicationContext)
+                FFmpeg.getInstance().init(context.applicationContext)
+            }
             initialized = true
         }
         // Do not run a potentially slow yt-dlp update on the critical scan path.
@@ -90,7 +92,7 @@ class TikTokVideoSource(private val context: Context) {
     }
 
     private fun fetchSingle(url: String): VideoEntry {
-        val info = try { YoutubeDL.getInstance().getInfo(url) } catch (e: Exception) { throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(url) } } catch (e: Exception) { throw readableError(e) }
         val id = info.id?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("El extractor no devolvió un ID de video.")
         return VideoEntry(
@@ -122,7 +124,7 @@ class TikTokVideoSource(private val context: Context) {
             request.addOption("--playlist-start", start)
             request.addOption("--playlist-end", end)
         }
-        val response = try { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } catch (e: Exception) { throw readableError(e) }
+        val response = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } } catch (e: Exception) { throw readableError(e) }
         if (response.exitCode != 0 && response.out.isBlank()) {
             throw readableError(IllegalStateException(response.err))
         }
@@ -161,7 +163,7 @@ class TikTokVideoSource(private val context: Context) {
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
-        val info = try { YoutubeDL.getInstance().getInfo(video.url) } catch (e: Exception) { throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { throw readableError(e) }
         val available = info.formats.orEmpty()
             .filter {
                 !it.formatId.isNullOrBlank() &&
@@ -208,10 +210,10 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--merge-output-format", "mp4")
             .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
 
-        val response = YoutubeDL.getInstance().execute(
+        val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(
             request,
             processId(video.id),
-        ) { progress, _, _ -> onProgress(progress.toInt().coerceIn(0, 100)) }
+        ) { progress, _, _ -> onProgress(progress.toInt().coerceIn(0, 100)) } }
 
         if (response.exitCode != 0) {
             throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
@@ -265,3 +267,4 @@ class TikTokVideoSource(private val context: Context) {
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
