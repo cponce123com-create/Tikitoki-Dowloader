@@ -18,7 +18,7 @@ object DestinationNaming {
     private fun safeComponent(value: String, fallback: String): String {
         val cleaned = value.map { c ->
             if (c.isISOControl() || Character.getType(c) == Character.FORMAT.toInt() || c in "\\/:*?\"<>|") ' ' else c
-        }.joinToString("").replace(Regex("\\s+"), " ").trim().trim('.')
+        }.joinToString("").replace(Regex("\\s+"), " ").trim { it == '.' || it.isWhitespace() }
         return cleaned.take(100).trim().ifBlank { fallback }
     }
 }
