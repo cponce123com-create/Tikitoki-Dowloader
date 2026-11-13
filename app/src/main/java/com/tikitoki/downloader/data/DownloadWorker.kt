@@ -15,6 +15,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -152,6 +153,23 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             "ogg" -> "audio/ogg"
             "aac" -> "audio/aac"
             else -> "application/octet-stream"
+        }
+        val folderUri = context.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
+            .getString("download_tree", null)
+        if (folderUri != null) {
+            val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
+                ?: throw IllegalStateException("La carpeta seleccionada ya no está disponible.")
+            val target = folder.createFile(mime, file.name)
+                ?: throw IllegalStateException("No se pudo crear el archivo en la carpeta seleccionada.")
+            try {
+                context.contentResolver.openOutputStream(target.uri, "w")?.use { output ->
+                    file.inputStream().use { input -> input.copyTo(output) }
+                } ?: error("No se pudo escribir en la carpeta seleccionada.")
+                return target.uri
+            } catch (e: Exception) {
+                target.delete()
+                throw e
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
