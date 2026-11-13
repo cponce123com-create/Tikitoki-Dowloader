@@ -114,5 +114,10 @@ object DownloadQueue {
         DownloadDatabase.get(context).downloads().retryFailed()
         start(context)
     }
+
+    suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {
+        val dao = DownloadDatabase.get(context).downloads()
+        if (dao.cancelPending(id) > 0) runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
+    }
 }
 

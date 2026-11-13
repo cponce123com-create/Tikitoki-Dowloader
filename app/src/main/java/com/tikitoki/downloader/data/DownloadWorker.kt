@@ -73,6 +73,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                             source.cancel(item.videoId)
                             break
                         }
+                        // Cancellation may arrive while the extractor is waiting to start.
+                        // Keep checking until the task exits so a late process is stopped too.
+                        if (dao.find(item.videoId)?.status == DownloadState.CANCELLED) {
+                            runCatching { source.cancel(item.videoId) }
+                        }
                         delay(350)
                     }
                 }
@@ -106,6 +111,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     if (dao.completeIfDownloading(item.videoId, uri.toString()) == 0) {
                         // Avoid leaving an orphaned file if the user paused the task.
                         if (uri.scheme == "content") applicationContext.contentResolver.delete(uri, null, null)
+                        else if (uri.scheme == "file") uri.path?.let { File(it).delete() }
                     }
                 } catch (e: CancellationException) {
                     // Cancellation can race with a newly resumed worker; do not overwrite its state.
@@ -208,3 +214,4 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Uri.fromFile(destination)
     }
 }
+

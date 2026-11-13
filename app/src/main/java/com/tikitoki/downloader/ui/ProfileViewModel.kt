@@ -37,6 +37,7 @@ data class ProfileUiState(
 
 /** Survives configuration changes; keeps extractor work out of Compose. */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+    private companion object { const val PAGE_SIZE = 100 }
     private val source = TikTokVideoSource(application)
     private val universal = UniversalMediaSource(application)
     private val newPipe = NewPipeSource()
@@ -88,8 +89,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 val first = EngineFallback(
                     primary = {
                         if (media.platform == MediaPlatform.TIKTOK && link != null) {
-                            if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
-                        } else universal.inspect(media)
+                            if (isProfile) source.inspectPage(link, 1, PAGE_SIZE) else source.inspect(link, forceRefresh)
+                        } else universal.inspect(media, count = PAGE_SIZE)
                     },
                     alternatives = if (media.platform == MediaPlatform.YOUTUBE && !media.collection) {
                         listOf("newpipe" to suspend { listOf(newPipe.inspectVideo(media.url)) })
@@ -98,19 +99,18 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 if (token == generation) {
                     mutableState.value = ProfileUiState(
                         videos = first.distinctBy { it.id },
-                        hasMore = isProfile && first.size >= 60,
+                        hasMore = isProfile && first.size >= PAGE_SIZE,
                         nextPage = 2,
-                        totalVideos = if (!isProfile || first.size < 60) first.distinctBy { it.id }.size else null,
-                        countingTotal = isProfile && first.size >= 60
+                        totalVideos = if (!isProfile || first.size < PAGE_SIZE) first.distinctBy { it.id }.size else null,
+                        countingTotal = isProfile && first.size >= PAGE_SIZE
                     )
                     if (isProfile) {
-                        if (media.platform != MediaPlatform.TIKTOK) fetchDeclaredTotal(media, token)
-                        if (first.size >= 60) countProfileInBackground(media, link, first, token)
+                        if (first.size >= PAGE_SIZE) countProfileInBackground(media, link, first, token)
                     }
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (token == generation) mutableState.value = ProfileUiState(error = (e.message ?: "Error de extracción") + "\n" + EngineRegistry.statusMessage())
+                if (token == generation) mutableState.value = ProfileUiState(error = "No se pudo analizar el enlace. Comprueba que sea público y vuelve a intentarlo.")
             }
         }
     }
@@ -147,9 +147,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 while (token == generation) {
                     val page = scanPageWithRetry {
                         if (media.platform == MediaPlatform.TIKTOK && tikTokLink != null) {
-                            source.inspectPage(tikTokLink, pageNumber)
+                            source.inspectPage(tikTokLink, pageNumber, PAGE_SIZE)
                         } else {
-                            universal.inspect(media, (pageNumber - 1) * 60 + 1)
+                            universal.inspect(media, (pageNumber - 1) * PAGE_SIZE + 1, PAGE_SIZE)
                         }
                     }
                     if (token != generation) return@launch
@@ -158,9 +158,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     mutableState.value = latest.copy(
                         videos = latest.videos + fresh,
                         nextPage = pageNumber + 1,
-                        hasMore = page.size >= 60 && fresh.isNotEmpty(),
+                        hasMore = page.size >= PAGE_SIZE && fresh.isNotEmpty(),
                     )
-                    if (page.size < 60 || fresh.isEmpty()) {
+                    if (page.size < PAGE_SIZE || fresh.isEmpty()) {
                         mutableState.value = mutableState.value.copy(
                             totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size,
                             countingTotal = false
@@ -193,8 +193,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 while (token == generation) {
                     val number = page
                     val result = scanPageWithRetry {
-                        if (parsed != null) source.inspectPage(parsed.link, number)
-                        else universal.inspect(media, (number - 1) * 60 + 1)
+                        if (parsed != null) source.inspectPage(parsed.link, number, PAGE_SIZE)
+                        else universal.inspect(media, (number - 1) * PAGE_SIZE + 1, PAGE_SIZE)
                     }
                     if (token != generation) return@launch
                     val fresh = result.filter { seen.add(it.id) }
@@ -202,9 +202,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     mutableState.value = mutableState.value.copy(
                         videos = mutableState.value.videos + fresh,
                         nextPage = page,
-                        hasMore = result.size >= 60 && fresh.isNotEmpty()
+                        hasMore = result.size >= PAGE_SIZE && fresh.isNotEmpty()
                     )
-                    if (result.size < 60 || fresh.isEmpty()) {
+                    if (result.size < PAGE_SIZE || fresh.isEmpty()) {
                         mutableState.value = mutableState.value.copy(
                             countingTotal = false, hasMore = false,
                             totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size
@@ -232,14 +232,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val page = if (link.platform == MediaPlatform.TIKTOK) {
                     val parsed = TikTokLinkParser.parse(link.url) as LinkParseResult.Success
-                    source.inspectPage(parsed.link, current.nextPage)
-                } else universal.inspect(link, (current.nextPage - 1) * 60 + 1)
+                    source.inspectPage(parsed.link, current.nextPage, PAGE_SIZE)
+                } else universal.inspect(link, (current.nextPage - 1) * PAGE_SIZE + 1, PAGE_SIZE)
                 if (token != generation) return@launch
                 val latest = mutableState.value
                 mutableState.value = latest.copy(
                     videos = (latest.videos + page).distinctBy { it.id },
                     loadingMore = false,
-                    hasMore = page.size >= 60 && page.any { candidate -> latest.videos.none { it.id == candidate.id } },
+                    hasMore = page.size >= PAGE_SIZE && page.any { candidate -> latest.videos.none { it.id == candidate.id } },
                     nextPage = current.nextPage + 1
                 )
             } catch (e: CancellationException) { throw e }
@@ -259,3 +259,4 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         mutableState.value = ProfileUiState()
     }
 }
+

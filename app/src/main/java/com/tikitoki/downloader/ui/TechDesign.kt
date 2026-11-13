@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 
 val TechPurple = Color(0xFF9736FF)
 val TechPink = Color(0xFFE34BEA)
@@ -74,10 +75,44 @@ fun TechPlatformStrip(selected: String?, onSelect: (String) -> Unit) {
 @Composable
 private fun PlatformLogo(platform: String, modifier: Modifier = Modifier) {
     when (platform) {
-        "Facebook" -> Text("f", modifier = modifier, style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Black, color = Color(0xFF4C9BFF), textAlign = TextAlign.Center)
-        "TikTok" -> Text("♪", modifier = modifier, style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Black, color = Color(0xFF45E9F1), textAlign = TextAlign.Center)
+        "Facebook" -> Canvas(modifier) {
+            drawCircle(Color(0xFF1877F2))
+            val w = size.width
+            val f = Path().apply {
+                moveTo(w * .57f, w * .94f); lineTo(w * .57f, w * .58f)
+                lineTo(w * .70f, w * .58f); lineTo(w * .72f, w * .44f)
+                lineTo(w * .57f, w * .44f); lineTo(w * .57f, w * .36f)
+                cubicTo(w * .57f, w * .29f, w * .60f, w * .27f, w * .66f, w * .27f)
+                lineTo(w * .72f, w * .27f); lineTo(w * .72f, w * .15f)
+                cubicTo(w * .67f, w * .14f, w * .63f, w * .14f, w * .59f, w * .14f)
+                cubicTo(w * .47f, w * .14f, w * .41f, w * .21f, w * .41f, w * .34f)
+                lineTo(w * .41f, w * .44f); lineTo(w * .31f, w * .44f)
+                lineTo(w * .31f, w * .58f); lineTo(w * .41f, w * .58f)
+                lineTo(w * .41f, w * .94f); close()
+            }
+            drawPath(f, Color.White)
+        }
+        "TikTok" -> Canvas(modifier) {
+            val w = size.width
+            val note = Path().apply {
+                moveTo(w * .54f, w * .10f); lineTo(w * .66f, w * .10f)
+                cubicTo(w * .68f, w * .23f, w * .75f, w * .30f, w * .88f, w * .31f)
+                lineTo(w * .88f, w * .44f)
+                cubicTo(w * .79f, w * .44f, w * .72f, w * .41f, w * .66f, w * .36f)
+                lineTo(w * .66f, w * .67f)
+                cubicTo(w * .66f, w * .85f, w * .55f, w * .93f, w * .40f, w * .93f)
+                cubicTo(w * .25f, w * .93f, w * .16f, w * .83f, w * .16f, w * .70f)
+                cubicTo(w * .16f, w * .55f, w * .28f, w * .46f, w * .43f, w * .48f)
+                lineTo(w * .43f, w * .61f)
+                cubicTo(w * .35f, w * .59f, w * .29f, w * .63f, w * .29f, w * .70f)
+                cubicTo(w * .29f, w * .77f, w * .34f, w * .80f, w * .40f, w * .80f)
+                cubicTo(w * .48f, w * .80f, w * .54f, w * .75f, w * .54f, w * .66f)
+                close()
+            }
+            translate(left = -w * .035f, top = w * .02f) { drawPath(note, Color(0xFF25F4EE)) }
+            translate(left = w * .035f, top = -w * .02f) { drawPath(note, Color(0xFFFE2C55)) }
+            drawPath(note, Color.White)
+        }
         else -> Canvas(modifier) {
             if (platform == "YouTube") {
                 drawRoundRect(Color(0xFFFF334F), topLeft = Offset(size.width * .04f, size.height * .18f),
@@ -127,3 +162,4 @@ fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier 
         Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
