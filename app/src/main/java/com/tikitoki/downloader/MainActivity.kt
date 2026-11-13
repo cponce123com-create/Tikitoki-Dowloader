@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -65,6 +66,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -111,6 +113,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items as videoGridItems
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import com.tikitoki.downloader.ui.ProfileViewModel
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import kotlinx.coroutines.launch
@@ -347,12 +350,12 @@ private fun TikitokiApp(incomingLink: String) {
                         }
                     }
                 NavigationBar(containerColor = Color(0xFF110D20)) {
-                    listOf("Inicio", "Descargas", "Explorar", "Herramientas").forEachIndexed { index, name ->
-                        val target = listOf(0, 1, 2, 3)[index]
+                    listOf("Inicio", "Descargas", "Explorar", "Herramientas", "Archivos").forEachIndexed { index, name ->
+                        val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
-                            selected = tab == target || (index == 3 && tab == 4),
+                            selected = tab == target,
                             onClick = { tab = target },
-                            icon = { Text(listOf("⌂", "↓", "◈", "▦")[index], fontSize = 23.sp) },
+                            icon = { Text(listOf("⌂", "↓", "◈", "▦", "▤")[index], fontSize = 23.sp) },
                             label = { Text(name, maxLines = 1) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White, selectedTextColor = Color.White,
@@ -431,7 +434,14 @@ private fun TikitokiApp(incomingLink: String) {
 
                         // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
-                        profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
+                        profileState.error?.let { error ->
+                            Column {
+                                Text(error, color = MaterialTheme.colorScheme.error)
+                                if (videos.isNotEmpty() && profileState.hasMore && !profileState.countingTotal) {
+                                    OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }
+                                }
+                            }
+                        }
                         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
 
 
@@ -443,7 +453,20 @@ private fun TikitokiApp(incomingLink: String) {
                             } }
                             val visibleVideos = filteredVideos
                             val allSelected = selected.size == videos.size
-                            Text("Total ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"}  ·  Cargados ${videos.size}  ·  Selección ${selected.size}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder)) {
+                                Row(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                    listOf(
+                                        "Total videos" to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
+                                        "Cargados" to videos.size.toString(),
+                                        "Seleccionados" to selected.size.toString()
+                                    ).forEach { (label, value) ->
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(label, fontSize = 11.sp, color = TechMuted)
+                                            Text(value, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
+                                        }
+                                    }
+                                }
+                            }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
@@ -467,8 +490,8 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             if (gridMode) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Fixed(if (visibleVideos.size == 1) 1 else 2),
-                                    modifier = Modifier.fillMaxWidth().height((if (visibleVideos.size == 1) 190 else ((visibleVideos.size + 1) / 2 * 170).coerceAtMost(510)).dp),
+                                    columns = GridCells.Fixed(if (visibleVideos.size == 1) 1 else 3),
+                                    modifier = Modifier.fillMaxWidth().height((if (visibleVideos.size == 1) 190 else ((visibleVideos.size + 2) / 3 * 145).coerceAtMost(580)).dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -479,9 +502,9 @@ private fun TikitokiApp(incomingLink: String) {
                                             chosenFormat = defaultFormat
                                         }) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().height(if (visibleVideos.size == 1) 110.dp else 92.dp))
-                                                Text(video.title, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                                Text(if (video.id in selected) "☑" else "□",
+                                                VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().height(if (visibleVideos.size == 1) 110.dp else 105.dp))
+                                                Text(video.title, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                Text(if (video.id in selected) "☑ Seleccionado" else "□",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
