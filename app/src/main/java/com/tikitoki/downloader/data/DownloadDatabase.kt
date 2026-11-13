@@ -18,6 +18,7 @@ object DownloadState {
     const val PAUSED = "PAUSED"
     const val COMPLETED = "COMPLETED"
     const val FAILED = "FAILED"
+    const val CANCELLED = "CANCELLED"
 }
 
 @Entity(tableName = "downloads")
@@ -63,6 +64,9 @@ interface DownloadDao {
 
     @Query("UPDATE downloads SET status = 'FAILED', error = :error, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
     suspend fun failIfDownloading(id: String, error: String, now: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE downloads SET status = 'CANCELLED', error = NULL, updatedAt = :now WHERE videoId = :id AND status IN ('QUEUED', 'DOWNLOADING', 'PAUSED')")
+    suspend fun cancelPending(id: String, now: Long = System.currentTimeMillis()): Int
 
     @Query("UPDATE downloads SET status = :status, updatedAt = :now, error = :error WHERE videoId = :id")
     suspend fun setStatus(
@@ -114,3 +118,4 @@ abstract class DownloadDatabase : RoomDatabase() {
             }
     }
 }
+

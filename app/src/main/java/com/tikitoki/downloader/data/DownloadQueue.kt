@@ -72,7 +72,7 @@ object DownloadQueue {
                 @Suppress("DEPRECATION")
                 val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TikitokiDownloader").canonicalFile
                 val target = File(uri.path ?: "").canonicalFile
-                target.parentFile == root && target.exists() && target.delete()
+                target.path.startsWith(root.path + File.separator) && target.exists() && target.delete()
             }
             else -> false
         }
@@ -113,6 +113,11 @@ object DownloadQueue {
     suspend fun retryFailed(context: Context) = withContext(Dispatchers.IO) {
         DownloadDatabase.get(context).downloads().retryFailed()
         start(context)
+    }
+
+    suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {
+        val dao = DownloadDatabase.get(context).downloads()
+        if (dao.cancelPending(id) > 0) runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
     }
 }
 

@@ -176,7 +176,7 @@ class TikTokVideoSource(private val context: Context) {
             available.map { f ->
                 val id = f.formatId.orEmpty()
                 val selector = if (f.acodec == "none") "$id+bestaudio/best" else id
-                FormatChoice(selector, "${f.height}p · ${f.ext?.uppercase() ?: "Video"} · $id")
+                FormatChoice(selector, "${f.height}p · ${f.ext?.uppercase() ?: "Video"}")
             }
     }
 
