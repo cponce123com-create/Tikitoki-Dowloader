@@ -379,7 +379,6 @@ private fun TikitokiApp(incomingLink: String) {
                 when (tab) {
                     0 -> {
                         TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = if (selectedPlatform == platform) null else platform }
-                        Text(selectedPlatform?.let { "Enlace de $it" } ?: "Enlace universal", style = MaterialTheme.typography.bodyMedium, color = TechMuted)
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
@@ -390,7 +389,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
                             },
-                            placeholder = { Text("Pega un enlace de TikTok, YouTube, Facebook o Instagram") },
+                            placeholder = { Text("Pega un enlace") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 1,
                             maxLines = 2,
@@ -435,7 +434,7 @@ private fun TikitokiApp(incomingLink: String) {
                         )
                         }
 
-                        FilterChip(selected = forceRefresh, onClick = { forceRefresh = !forceRefresh }, label = { Text("Actualizar") })
+                        // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
@@ -451,7 +450,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Total: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"} · ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Total ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"}  ·  Cargados ${videos.size}  ·  Selección ${selected.size}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
