@@ -84,6 +84,27 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         )
     }
 
+    /** Metadata-only count: a missing count must never be treated as zero. */
+    suspend fun declaredCollectionCount(link: MediaLink): Int? = withContext(Dispatchers.IO) {
+        if (!link.collection || link.platform == MediaPlatform.TIKTOK) return@withContext null
+        ready()
+        val safeUrl = DownloadInputPolicy.canonicalUrl(link.url)
+        val request = YoutubeDLRequest(safeUrl)
+            .addOption("--flat-playlist")
+            .addOption("--dump-single-json")
+            .addOption("--playlist-items", "1")
+            .addOption("--ignore-errors")
+            .addOption("--no-warnings")
+        val response = YoutubeDL.getInstance().execute(request, "collection_count")
+        if (response.out.isBlank()) return@withContext null
+        val root = runCatching { JSONObject(response.out.trim()) }.getOrNull()
+            ?: return@withContext null
+        listOf("playlist_count", "channel_follower_count").firstNotNullOfOrNull { key ->
+            if (key != "playlist_count") null
+            else root.optInt(key, -1).takeIf { it >= 0 }
+        }
+    }
+
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ready()
         val info = YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url))
