@@ -300,6 +300,57 @@ private fun TikitokiApp(incomingLink: String) {
         }
         Scaffold(
             bottomBar = {
+                Column(Modifier.fillMaxWidth().background(Color(0xFF110D20))) {
+                    if (tab == 0 && selected.isNotEmpty() && videos.isNotEmpty()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (selected.size == 1) {
+                                TechPrimaryButton(
+                                    text = "⚙ Calidad",
+                                    enabled = !formatsBusy,
+                                    modifier = Modifier.weight(0.85f),
+                                    onClick = {
+                                        showQualitySheet = true
+                                        val video = videos.firstOrNull { it.id == selected.first() }
+                                        if (video != null) {
+                                            formatsBusy = true
+                                            scope.launch {
+                                                try {
+                                                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
+                                                    chosenFormat = formats.first()
+                                                } catch (e: Exception) {
+                                                    message = "No se pudieron cargar formatos: ${e.message}"
+                                                } finally { formatsBusy = false }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            Button(
+                                modifier = Modifier.weight(1.15f),
+                                enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
+                                onClick = {
+                                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                        context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                        != PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                    } else {
+                                        if (Build.VERSION.SDK_INT >= 33 &&
+                                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                            != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                        addToQueue()
+                                    }
+                                }
+                            ) { Text("↓ Descargar (${selected.size})", fontWeight = FontWeight.Bold) }
+                        }
+                    }
                 NavigationBar(containerColor = Color(0xFF110D20)) {
                     listOf("Inicio", "Descargas", "Explorar", "Herramientas").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3)[index]
@@ -314,6 +365,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 unselectedTextColor = TechMuted)
                         )
                     }
+                }
                 }
             }
         ) { insets ->
@@ -388,12 +440,6 @@ private fun TikitokiApp(incomingLink: String) {
                         profileState.error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
                         if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
 
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TechShortcut("Descargas", "${records.count { it.status == DownloadState.COMPLETED }}", "↓", Modifier.weight(1f)) { tab = 1 }
-                        TechShortcut("En cola", "${records.count { it.status == DownloadState.QUEUED }}", "▤", Modifier.weight(1f)) { tab = 1 }
-                        TechShortcut("Historial", "${records.size}", "◷", Modifier.weight(1f)) { tab = 2 }
-                        
-                    }
 
                         if (videos.isNotEmpty()) {
                             val downloadedIds = remember(records) { records.asSequence().filter { it.status == DownloadState.COMPLETED }.map { it.videoId }.toSet() }
@@ -406,7 +452,7 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             val allSelected = selected.size == videos.size
                             Text("Total: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"} · ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
                                     if (!allSelected) selected.addAll(videos.map { it.id })
@@ -493,50 +539,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 }
                             }
 
-                            if (selected.size == 1) {
-                                TechPrimaryButton(
-                                    text = "⚙ Calidad",
-                                    enabled = !formatsBusy,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = {
-                                        showQualitySheet = true
-                                        val video = videos.firstOrNull { it.id == selected.first() }
-                                        if (video != null) {
-                                            formatsBusy = true
-                                            scope.launch {
-                                                try {
-                                                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
-                                                    chosenFormat = formats.first()
-                                                } catch (e: Exception) {
-                                                    message = "No se pudieron cargar formatos: ${e.message}"
-                                                } finally { formatsBusy = false }
-                                            }
-                                        }
-                                    }
-                                )
 
-                            }
-
-                            Button(
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
-                                onClick = {
-                                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                                        context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                        != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                    } else {
-                                        if (Build.VERSION.SDK_INT >= 33 &&
-                                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                                            != PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                        addToQueue()
-                                    }
-                                }
-                            ) { Text("↓ Descargar (${selected.size})", fontWeight = FontWeight.Bold) }
                         }
                     }
 
