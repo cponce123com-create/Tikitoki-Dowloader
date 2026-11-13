@@ -1,6 +1,10 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import java.io.File
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.NetworkType
@@ -53,6 +57,26 @@ object DownloadQueue {
         }
         if (added > 0) start(context)
         EnqueueSummary(added, duplicates)
+    }
+
+    /** Delete the saved file first; only remove the history entry on success. */
+    suspend fun deleteCompleted(context: Context, id: String): Boolean = withContext(Dispatchers.IO) {
+        val dao = DownloadDatabase.get(context).downloads()
+        val record = dao.find(id) ?: return@withContext false
+        if (record.status != DownloadState.COMPLETED) return@withContext false
+        val saved = record.savedUri ?: return@withContext false
+        val uri = Uri.parse(saved)
+        val deleted = when (uri.scheme) {
+            "content" -> context.contentResolver.delete(uri, null, null) > 0
+            "file" -> {
+                @Suppress("DEPRECATION")
+                val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TikitokiDownloader").canonicalFile
+                val target = File(uri.path ?: "").canonicalFile
+                target.parentFile == root && target.exists() && target.delete()
+            }
+            else -> false
+        }
+        if (deleted) dao.deleteCompleted(id) > 0 else false
     }
 
     private fun request() = OneTimeWorkRequestBuilder<DownloadWorker>()
