@@ -27,8 +27,17 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     private val tiktok = TikTokVideoSource(app)
 
     private fun ready() {
-        YoutubeDL.getInstance().init(app)
-        FFmpeg.getInstance().init(app)
+        synchronized(UniversalMediaSource::class.java) {
+            if (!initialized) {
+                YoutubeDL.getInstance().init(app)
+                FFmpeg.getInstance().init(app)
+                initialized = true
+            }
+        }
+    }
+
+    companion object {
+        @Volatile private var initialized = false
     }
 
     override suspend fun inspect(link: MediaLink, start: Int, count: Int): List<VideoEntry> =
