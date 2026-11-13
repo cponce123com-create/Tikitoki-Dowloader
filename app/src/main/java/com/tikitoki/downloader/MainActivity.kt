@@ -67,7 +67,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -219,7 +219,7 @@ private fun TikitokiApp(incomingLink: String) {
     var queueBusy by remember { mutableStateOf(false) }
     var showQualitySheet by remember { mutableStateOf(false) }
     val videos = profileState.videos
-    val selected = remember { mutableStateListOf<String>() }
+    val selected = remember { mutableStateMapOf<String, Boolean>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
     var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
 
@@ -277,7 +277,7 @@ private fun TikitokiApp(incomingLink: String) {
 
     MaterialTheme(colorScheme = TikitokiColors) {
         if (showQualitySheet && selected.size == 1) {
-            val preview = videos.firstOrNull { it.id == selected.first() }
+            val preview = videos.firstOrNull { it.id == selected.keys.first() }
             ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
                 containerColor = TechBackground) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -353,7 +353,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     modifier = Modifier.weight(0.85f),
                                     onClick = {
                                         showQualitySheet = true
-                                        val video = videos.firstOrNull { it.id == selected.first() }
+                                        val video = videos.firstOrNull { it.id == selected.keys.first() }
                                         if (video != null) {
                                             formatsBusy = true
                                             scope.launch {
@@ -497,8 +497,11 @@ private fun TikitokiApp(incomingLink: String) {
                         profileState.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
-                                if (videos.isNotEmpty() && profileState.hasMore && !profileState.countingTotal) {
+                                if (profileState.hasMore && !profileState.countingTotal) {
                                     OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }
+                                }
+                                if (profileState.incompletePage && !profileState.countingTotal) {
+                                    OutlinedButton(onClick = { profileViewModel.skipIncompletePage() }) { Text("Continuar con la siguiente parte") }
                                 }
                             }
                         }
@@ -529,7 +532,7 @@ private fun TikitokiApp(incomingLink: String) {
                             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder)) {
                                 Row(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     listOf(
-                                        "Total videos" to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
+                                        "Detectados" to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
                                         "Cargados" to videos.size.toString(),
                                         "Seleccionados" to selected.size.toString()
                                     ).forEach { (label, value) ->
@@ -543,7 +546,7 @@ private fun TikitokiApp(incomingLink: String) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
-                                    if (!allSelected) selected.addAll(videos.map { it.id })
+                                    if (!allSelected) videos.forEach { selected[it.id] = true }
                                     formats = listOf(defaultFormat)
                                     chosenFormat = defaultFormat
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar cargados", maxLines = 1) }
@@ -568,7 +571,7 @@ private fun TikitokiApp(incomingLink: String) {
                         val checked = video.id in selected
                         Card(
                             onClick = {
-                                if (checked) selected.remove(video.id) else selected.add(video.id)
+                                if (checked) selected.remove(video.id) else selected[video.id] = true
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
                             },
@@ -579,7 +582,7 @@ private fun TikitokiApp(incomingLink: String) {
                             if (gridMode) {
                                 Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Box(Modifier.fillMaxWidth().aspectRatio(1.15f)) {
-                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize())
+                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize(), deferLookup = profileState.countingTotal)
                                         Checkbox(checked = checked, onCheckedChange = null,
                                             modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp)).size(36.dp))
                                     }
@@ -588,7 +591,7 @@ private fun TikitokiApp(incomingLink: String) {
                             } else {
                                 Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Box(Modifier.width(116.dp).aspectRatio(16f / 10f)) {
-                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize())
+                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize(), deferLookup = profileState.countingTotal)
                                         Checkbox(checked = checked, onCheckedChange = null,
                                             modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp)).size(36.dp))
                                     }
@@ -858,9 +861,10 @@ private fun VideoThumbnail(
     video: VideoEntry,
     resolver: VideoThumbnailResolver,
     modifier: Modifier = Modifier,
+    deferLookup: Boolean = false,
 ) {
-    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail) {
-        value = video.thumbnail ?: resolver.resolve(video)
+    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail, key3 = deferLookup) {
+        value = video.thumbnail ?: if (deferLookup) null else resolver.resolve(video)
     }
     Surface(
         modifier = modifier,

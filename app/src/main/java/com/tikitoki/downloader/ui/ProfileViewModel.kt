@@ -3,22 +3,15 @@ package com.tikitoki.downloader.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.tikitoki.downloader.data.TikTokVideoSource
-import com.tikitoki.downloader.data.VideoEntry
-import com.tikitoki.downloader.data.UniversalMediaSource
-import com.tikitoki.downloader.data.EngineRegistry
-import com.tikitoki.downloader.data.EngineFallback
-import com.tikitoki.downloader.data.NewPipeSource
+import com.tikitoki.downloader.data.*
+import com.tikitoki.downloader.domain.MediaLink
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.LinkParseResult
-import com.tikitoki.downloader.domain.TikTokLink
 import com.tikitoki.downloader.domain.TikTokLinkParser
-import com.tikitoki.downloader.domain.TikTokLinkType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -33,9 +26,10 @@ data class ProfileUiState(
     val totalIsDeclared: Boolean = false,
     val countingTotal: Boolean = false,
     val error: String? = null,
+    val incompletePage: Boolean = false,
+    val omittedPages: Boolean = false,
 )
 
-/** Survives configuration changes; keeps extractor work out of Compose. */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private companion object { const val PAGE_SIZE = 100 }
     private val source = TikTokVideoSource(application)
@@ -43,18 +37,23 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val newPipe = NewPipeSource()
     private val mutableState = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = mutableState
-    private var activeLink: com.tikitoki.downloader.domain.MediaLink? = null
+    private var activeLink: MediaLink? = null
     private var generation = 0
     private var inspectionJob: Job? = null
     private var paginationJob: Job? = null
-    private var countJob: Job? = null
-    private var nextScanPage = 2
+    private var nextScanPage = 1
+    // A reattempt may contain only items already saved from the partial response.
+    private var retryingPartial = false
 
-    private suspend fun scanPageWithRetry(fetch: suspend () -> List<VideoEntry>): List<VideoEntry> {
+    private suspend fun fetchPage(media: MediaLink, page: Int): ScanPage {
         var last: Exception? = null
         repeat(4) { attempt ->
-            try { return fetch() }
-            catch (e: CancellationException) { throw e }
+            try {
+                return if (media.platform == MediaPlatform.TIKTOK) {
+                    val parsed = TikTokLinkParser.parse(media.url) as LinkParseResult.Success
+                    source.inspectPageWithStatus(parsed.link, page, PAGE_SIZE)
+                } else universal.inspectWithStatus(media, (page - 1) * PAGE_SIZE + 1, PAGE_SIZE)
+            } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (EngineFallback.isAccessDenied(e)) throw e
                 last = e
@@ -75,188 +74,136 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             mutableState.value = ProfileUiState(error = (parsed as LinkParseResult.Error).message)
             return
         }
-        val link = (parsed as? LinkParseResult.Success)?.link
         val token = ++generation
         inspectionJob?.cancel()
         paginationJob?.cancel()
-        countJob?.cancel()
         activeLink = media
-        nextScanPage = 2
+        nextScanPage = 1
+        retryingPartial = false
         mutableState.value = ProfileUiState(loading = true)
         inspectionJob = viewModelScope.launch {
             try {
-                val isProfile = media.collection
-                val first = EngineFallback(
-                    primary = {
-                        if (media.platform == MediaPlatform.TIKTOK && link != null) {
-                            if (isProfile) source.inspectPage(link, 1, PAGE_SIZE) else source.inspect(link, forceRefresh)
-                        } else universal.inspect(media, count = PAGE_SIZE)
-                    },
-                    alternatives = if (media.platform == MediaPlatform.YOUTUBE && !media.collection) {
-                        listOf("newpipe" to suspend { listOf(newPipe.inspectVideo(media.url)) })
-                    } else emptyList()
-                ).execute()
-                if (token == generation) {
-                    mutableState.value = ProfileUiState(
-                        videos = first.distinctBy { it.id },
-                        hasMore = isProfile && first.size >= PAGE_SIZE,
-                        nextPage = 2,
-                        totalVideos = if (!isProfile || first.size < PAGE_SIZE) first.distinctBy { it.id }.size else null,
-                        countingTotal = isProfile && first.size >= PAGE_SIZE
-                    )
-                    if (isProfile) {
-                        if (first.size >= PAGE_SIZE) countProfileInBackground(media, link, first, token)
-                    }
-                }
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) {
-                if (token == generation) mutableState.value = ProfileUiState(error = "No se pudo analizar el enlace. Comprueba que sea público y vuelve a intentarlo.")
-            }
-        }
-    }
-
-    private fun fetchDeclaredTotal(
-        media: com.tikitoki.downloader.domain.MediaLink,
-        token: Int,
-    ) {
-        countJob = viewModelScope.launch {
-            val declared = try { universal.declaredCollectionCount(media) }
-            catch (e: CancellationException) { throw e }
-            catch (_: Exception) { null }
-            if (token == generation && declared != null) {
-                mutableState.value = mutableState.value.copy(
-                    totalVideos = declared,
-                    totalIsDeclared = true,
-                    countingTotal = false,
-                )
-            }
-        }
-    }
-
-    /** Fetch all accessible pages progressively; each page becomes visible immediately. */
-    private fun countProfileInBackground(
-        media: com.tikitoki.downloader.domain.MediaLink,
-        tikTokLink: TikTokLink?,
-        first: List<VideoEntry>,
-        token: Int,
-    ) {
-        paginationJob = viewModelScope.launch {
-            val seen = first.mapTo(mutableSetOf()) { it.id }
-            var pageNumber = 2
-            try {
-                while (token == generation) {
-                    val page = scanPageWithRetry {
-                        if (media.platform == MediaPlatform.TIKTOK && tikTokLink != null) {
-                            source.inspectPage(tikTokLink, pageNumber, PAGE_SIZE)
-                        } else {
-                            universal.inspect(media, (pageNumber - 1) * PAGE_SIZE + 1, PAGE_SIZE)
-                        }
-                    }
+                if (media.collection) {
+                    val page = fetchPage(media, 1)
                     if (token != generation) return@launch
-                    val fresh = page.filter { seen.add(it.id) }
-                    val latest = mutableState.value
-                    mutableState.value = latest.copy(
-                        videos = latest.videos + fresh,
-                        nextPage = pageNumber + 1,
-                        hasMore = page.size >= PAGE_SIZE && fresh.isNotEmpty(),
-                    )
-                    if (page.size < PAGE_SIZE || fresh.isEmpty()) {
-                        mutableState.value = mutableState.value.copy(
-                            totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size,
-                            countingTotal = false
-                        )
-                        return@launch
-                    }
-                    nextScanPage = pageNumber + 1
-                    pageNumber++
+                    mutableState.value = ProfileUiState()
+                    processPage(page, token)
+                } else {
+                    val first = EngineFallback(
+                        primary = {
+                            if (media.platform == MediaPlatform.TIKTOK && parsed is LinkParseResult.Success)
+                                source.inspect(parsed.link, forceRefresh)
+                            else universal.inspect(media, count = PAGE_SIZE)
+                        },
+                        alternatives = if (media.platform == MediaPlatform.YOUTUBE)
+                            listOf("newpipe" to suspend { listOf(newPipe.inspectVideo(media.url)) })
+                        else emptyList()
+                    ).execute()
+                    if (token == generation) mutableState.value = ProfileUiState(videos = first.distinctBy { it.id }, totalVideos = first.size)
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false, hasMore = true, error = "Escaneo pausado por la conexión. Conservamos los videos cargados; pulsa Reanudar escaneo.")
+                if (token == generation) {
+                    mutableState.value = ProfileUiState(hasMore = media.collection, nextPage = 1,
+                        error = "No se pudo analizar el enlace. Comprueba que sea público y vuelve a intentarlo.")
+                }
             }
         }
     }
 
+    private fun processPage(page: ScanPage, token: Int) {
+        val current = mutableState.value
+        val seen = current.videos.mapTo(mutableSetOf()) { it.id }
+        val fresh = page.items.filter { seen.add(it.id) }
+        val state = scanPageState(page, PAGE_SIZE,
+            if (retryingPartial && page.items.isNotEmpty()) page.items.size else fresh.size)
+        val combined = current.videos + fresh
+        when (state) {
+            ScanPageState.PARTIAL -> {
+                retryingPartial = true
+                mutableState.value = current.copy(videos = combined, loading = false, countingTotal = false,
+                    hasMore = true, incompletePage = true, nextPage = nextScanPage, totalVideos = null,
+                    error = "Algunos resultados no estuvieron disponibles. Reintenta esta parte o continúa con la siguiente.")
+            }
+            ScanPageState.END -> {
+                retryingPartial = false
+                mutableState.value = current.copy(videos = combined, loading = false, countingTotal = false,
+                    hasMore = false, incompletePage = false,
+                    totalVideos = if (current.omittedPages) null else combined.size,
+                    error = if (current.omittedPages) "Exploración terminada con resultados omitidos." else null)
+            }
+            ScanPageState.CONTINUE -> {
+                retryingPartial = false
+                nextScanPage++
+                mutableState.value = current.copy(videos = combined, loading = false, countingTotal = true,
+                    hasMore = true, incompletePage = false, nextPage = nextScanPage, error = null)
+                scanRemaining(token)
+            }
+        }
+    }
+
+    private fun scanRemaining(token: Int) {
+        val media = activeLink ?: return
+        paginationJob = viewModelScope.launch {
+            try {
+                while (token == generation) {
+                    val page = fetchPage(media, nextScanPage)
+                    if (token != generation) return@launch
+                    val current = mutableState.value
+                    val known = current.videos.mapTo(mutableSetOf()) { it.id }
+                    val fresh = page.items.filter { known.add(it.id) }
+                    val decision = scanPageState(page, PAGE_SIZE,
+                        if (retryingPartial && page.items.isNotEmpty()) page.items.size else fresh.size)
+                    val combined = current.videos + fresh
+                    if (decision == ScanPageState.PARTIAL) {
+                        retryingPartial = true
+                        mutableState.value = current.copy(videos = combined, countingTotal = false, hasMore = true,
+                            incompletePage = true, nextPage = nextScanPage, totalVideos = null,
+                            error = "Algunos resultados no estuvieron disponibles. Reintenta esta parte o continúa con la siguiente.")
+                        return@launch
+                    }
+                    retryingPartial = false
+                    if (decision == ScanPageState.END) {
+                        mutableState.value = current.copy(videos = combined, countingTotal = false, hasMore = false,
+                            incompletePage = false, totalVideos = if (current.omittedPages) null else combined.size,
+                            error = if (current.omittedPages) "Exploración terminada con resultados omitidos." else null)
+                        return@launch
+                    }
+                    nextScanPage++
+                    mutableState.value = current.copy(videos = combined, nextPage = nextScanPage, hasMore = true, incompletePage = false)
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) {
+                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false,
+                    hasMore = true, error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar.")
+            }
+        }
+    }
 
     fun resumeScan() {
         val media = activeLink ?: return
         if (!media.collection || mutableState.value.loading || mutableState.value.countingTotal) return
-        val token = generation
-        val parsed = if (media.platform == MediaPlatform.TIKTOK) TikTokLinkParser.parse(media.url) as? LinkParseResult.Success else null
-        val first = mutableState.value.videos
-        mutableState.value = mutableState.value.copy(error = null, countingTotal = true)
         paginationJob?.cancel()
-        paginationJob = viewModelScope.launch {
-            val seen = first.mapTo(mutableSetOf()) { it.id }
-            var page = nextScanPage
-            try {
-                while (token == generation) {
-                    val number = page
-                    val result = scanPageWithRetry {
-                        if (parsed != null) source.inspectPage(parsed.link, number, PAGE_SIZE)
-                        else universal.inspect(media, (number - 1) * PAGE_SIZE + 1, PAGE_SIZE)
-                    }
-                    if (token != generation) return@launch
-                    val fresh = result.filter { seen.add(it.id) }
-                    nextScanPage = ++page
-                    mutableState.value = mutableState.value.copy(
-                        videos = mutableState.value.videos + fresh,
-                        nextPage = page,
-                        hasMore = result.size >= PAGE_SIZE && fresh.isNotEmpty()
-                    )
-                    if (result.size < PAGE_SIZE || fresh.isEmpty()) {
-                        mutableState.value = mutableState.value.copy(
-                            countingTotal = false, hasMore = false,
-                            totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size
-                        )
-                        return@launch
-                    }
-                }
-            } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(
-                    countingTotal = false, hasMore = true,
-                    error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar desde la última página."
-                )
-            }
-        }
+        mutableState.value = mutableState.value.copy(error = null, countingTotal = true)
+        scanRemaining(generation)
     }
 
-    fun loadMore() {
-        val link = activeLink ?: return
-        val current = mutableState.value
-        if (current.loading || current.loadingMore || !current.hasMore) return
-        val token = generation
-        mutableState.value = current.copy(loadingMore = true, error = null)
-        viewModelScope.launch {
-            try {
-                val page = if (link.platform == MediaPlatform.TIKTOK) {
-                    val parsed = TikTokLinkParser.parse(link.url) as LinkParseResult.Success
-                    source.inspectPage(parsed.link, current.nextPage, PAGE_SIZE)
-                } else universal.inspect(link, (current.nextPage - 1) * PAGE_SIZE + 1, PAGE_SIZE)
-                if (token != generation) return@launch
-                val latest = mutableState.value
-                mutableState.value = latest.copy(
-                    videos = (latest.videos + page).distinctBy { it.id },
-                    loadingMore = false,
-                    hasMore = page.size >= PAGE_SIZE && page.any { candidate -> latest.videos.none { it.id == candidate.id } },
-                    nextPage = current.nextPage + 1
-                )
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(loadingMore = false, error = "No se pudieron cargar más videos. Inténtalo otra vez.")
-            }
-        }
+    fun skipIncompletePage() {
+        if (!mutableState.value.incompletePage || mutableState.value.countingTotal) return
+        nextScanPage++
+        retryingPartial = false
+        mutableState.value = mutableState.value.copy(incompletePage = false, omittedPages = true,
+            hasMore = true, countingTotal = true, error = null, nextPage = nextScanPage)
+        scanRemaining(generation)
     }
 
     fun reset() {
         generation++
         inspectionJob?.cancel()
         paginationJob?.cancel()
-        countJob?.cancel()
         activeLink = null
-        nextScanPage = 2
+        nextScanPage = 1
+        retryingPartial = false
         mutableState.value = ProfileUiState()
     }
 }
-

@@ -38,7 +38,7 @@ data class DownloadRecord(
 
 @Dao
 interface DownloadDao {
-    @Query("SELECT * FROM downloads ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<DownloadRecord>>
 
     @Query("SELECT * FROM downloads WHERE videoId = :id LIMIT 1")
@@ -46,6 +46,12 @@ interface DownloadDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: DownloadRecord)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<DownloadRecord>)
+
+    @Query("SELECT * FROM downloads WHERE videoId IN (:ids)")
+    suspend fun findMany(ids: List<String>): List<DownloadRecord>
 
     @Query("SELECT COUNT(*) FROM downloads WHERE status IN ('QUEUED', 'DOWNLOADING')")
     suspend fun pendingRecoveryCount(): Int
