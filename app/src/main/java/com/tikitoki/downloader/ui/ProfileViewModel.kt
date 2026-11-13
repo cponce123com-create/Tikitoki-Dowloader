@@ -56,9 +56,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 val isProfile = media.collection
-                val first = if (media.platform == MediaPlatform.TIKTOK && link != null) {
-                    if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
-                } else universal.inspect(media)
+                val first = EngineFallback(
+                    primary = {
+                        if (media.platform == MediaPlatform.TIKTOK && link != null) {
+                            if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
+                        } else universal.inspect(media)
+                    },
+                    alternatives = emptyList<Pair<String, suspend () -> List<VideoEntry>>>()
+                ).execute()
                 if (token == generation) {
                     mutableState.value = ProfileUiState(
                         videos = first.distinctBy { it.id },
