@@ -244,7 +244,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 )
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(loadingMore = false, error = e.message)
+                if (token == generation) mutableState.value = mutableState.value.copy(loadingMore = false, error = "No se pudieron cargar más videos. Inténtalo otra vez.")
             }
         }
     }

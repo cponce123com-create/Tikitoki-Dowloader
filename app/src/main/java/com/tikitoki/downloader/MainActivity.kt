@@ -330,7 +330,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 "Video eliminado del dispositivo y del historial."
                             else "No se pudo eliminar el archivo. El registro se conserva."
                         } catch (e: Exception) {
-                            message = "No se pudo eliminar: ${e.message.orEmpty().take(100)}"
+                            message = "No se pudo eliminar el archivo. Comprueba que siga disponible."
                         }
                     }
                 }) { Text("Eliminar") } },
