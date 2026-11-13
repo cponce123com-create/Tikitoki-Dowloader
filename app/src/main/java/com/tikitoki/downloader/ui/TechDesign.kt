@@ -38,9 +38,9 @@ fun TechHeader(onSettings: () -> Unit) {
             Text("↓", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
         }
         Column(Modifier.weight(1f)) {
-            Text("Tikitoki Downloader", style = MaterialTheme.typography.titleMedium,
+            Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-            
+            Text("TikTok · YouTube · Facebook · Instagram", color = TechMuted, fontSize = 10.sp, maxLines = 1)
         }
         TextButton(onClick = onSettings) { Text("⚙", color = Color.White, style = MaterialTheme.typography.titleLarge) }
     }
@@ -48,16 +48,16 @@ fun TechHeader(onSettings: () -> Unit) {
 
 @Composable
 fun TechPlatformStrip(selected: String?, onSelect: (String) -> Unit) {
-    val platforms = listOf("TikTok", "YouTube", "Facebook", "Instagram")
+    val platforms = listOf("TikTok", "YouTube", "Facebook", "Instagram", "Auto")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         platforms.forEach { platform ->
             Surface(modifier = Modifier.weight(1f).clickable { onSelect(platform) }, shape = RoundedCornerShape(12.dp),
                 color = if (selected == platform) TechPurple.copy(alpha = 0.25f) else TechPanel,
-                border = BorderStroke(1.dp, if (selected == platform) TechPink else TechBorder)) {
+                border = BorderStroke(if (selected == platform) 2.dp else 1.dp, if (selected == platform) TechPink else TechBorder)) {
                 Column(Modifier.padding(vertical = 6.dp, horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    PlatformLogo(platform, Modifier.size(25.dp))
+                    if (platform == "Auto") Text("↗", color = TechPink, fontSize = 24.sp) else PlatformLogo(platform, Modifier.size(25.dp))
                     Text(platform, style = MaterialTheme.typography.labelSmall,
                         color = Color.White, maxLines = 1)
                 }
