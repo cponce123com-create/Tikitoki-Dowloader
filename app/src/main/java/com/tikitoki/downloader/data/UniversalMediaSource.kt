@@ -43,14 +43,17 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     }
 
     override suspend fun inspect(link: MediaLink, start: Int, count: Int): List<VideoEntry> =
+        inspectWithStatus(link, start, count).items
+
+    suspend fun inspectWithStatus(link: MediaLink, start: Int = 1, count: Int = 60): ScanPage =
         withContext(Dispatchers.IO) {
             require(start >= 1 && count in 1..100)
             val safeLink = requireNotNull(IncomingLinkValidator.validate(link.url)) { "Enlace no permitido" }
             if (link.platform == MediaPlatform.TIKTOK) {
                 val parsed = com.tikitoki.downloader.domain.TikTokLinkParser.parse(link.url)
                 require(parsed is com.tikitoki.downloader.domain.LinkParseResult.Success)
-                if (link.collection) tiktok.inspectPage(parsed.link, (start - 1) / count + 1, count)
-                else tiktok.inspect(parsed.link)
+                if (link.collection) tiktok.inspectPageWithStatus(parsed.link, (start - 1) / count + 1, count)
+                else tiktok.inspect(parsed.link).let { ScanPage(it, it.size, false) }
             } else {
                 ready()
                 val request = YoutubeDLRequest(safeLink.url)
@@ -74,7 +77,10 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
                 } else for (i in 0 until entries.length()) {
                     entries.optJSONObject(i)?.let { parseEntry(it, link)?.let(results::add) }
                 }
-                results.distinctBy { it.url }
+                val distinct = results.distinctBy { it.url }
+                val rawCount = entries?.length() ?: 1
+                val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || distinct.size < rawCount
+                ScanPage(distinct, rawCount, incomplete)
             }
         }
 

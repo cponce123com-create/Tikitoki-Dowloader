@@ -106,14 +106,19 @@ class TikTokVideoSource(private val context: Context) {
 
     /** Request a bounded page directly from yt-dlp, not from a full fetched list. */
     suspend fun inspectPage(link: TikTokLink, page: Int, pageSize: Int = 60): List<VideoEntry> =
+        inspectPageWithStatus(link, page, pageSize).items
+
+    suspend fun inspectPageWithStatus(link: TikTokLink, page: Int, pageSize: Int = 60): ScanPage =
         withContext(Dispatchers.IO) {
             require(link.type == TikTokLinkType.PROFILE)
             require(page >= 1 && pageSize in 1..100)
             ensureReady()
-            inspectProfile(link, (page - 1) * pageSize + 1, page * pageSize)
+            inspectProfileWithStatus(link, (page - 1) * pageSize + 1, page * pageSize)
         }
 
-    private fun inspectProfile(link: TikTokLink, start: Int? = null, end: Int? = null): List<VideoEntry> {
+    private fun inspectProfile(link: TikTokLink): List<VideoEntry> = inspectProfileWithStatus(link).items
+
+    private fun inspectProfileWithStatus(link: TikTokLink, start: Int? = null, end: Int? = null): ScanPage {
         val request = YoutubeDLRequest(link.url)
             .addOption("--flat-playlist")
             .addOption("--dump-single-json")
@@ -138,7 +143,7 @@ class TikTokVideoSource(private val context: Context) {
         val username = link.username ?: throw IllegalStateException("No se identificó el usuario.")
 
         val seen = mutableSetOf<String>()
-        return buildList {
+        val results = buildList {
             for (index in 0 until entries.length()) {
                 val entry = entries.optJSONObject(index) ?: continue
                 val id = entry.optString("id").takeIf { it.matches(Regex("[0-9]{5,30}")) } ?: continue
@@ -159,6 +164,8 @@ class TikTokVideoSource(private val context: Context) {
                 )
             }
         }
+        val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || results.size < entries.length()
+        return ScanPage(results, entries.length(), incomplete)
     }
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {

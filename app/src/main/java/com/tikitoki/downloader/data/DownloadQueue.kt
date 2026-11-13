@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import androidx.room.withTransaction
 
 data class EnqueueSummary(val added: Int, val duplicates: Int)
 
@@ -28,35 +29,35 @@ object DownloadQueue {
         videos: List<VideoEntry>,
         formatId: String = TikTokVideoSource.DEFAULT_FORMAT,
     ): EnqueueSummary = withContext(Dispatchers.IO) {
-        val dao = DownloadDatabase.get(context).downloads()
-        var added = 0
-        var duplicates = 0
+        val db = DownloadDatabase.get(context)
+        val dao = db.downloads()
         val safeFormat = DownloadInputPolicy.safeFormatId(formatId)
-        for (video in videos.distinctBy { it.id }) {
-            val safeUrl = DownloadInputPolicy.canonicalUrl(video.url)
-            val previous = dao.find(video.id)
-            if (previous?.status in listOf(
-                    DownloadState.COMPLETED, DownloadState.QUEUED,
-                    DownloadState.DOWNLOADING, DownloadState.PAUSED
-                )
-            ) {
-                duplicates++
-                continue
-            }
-            dao.upsert(
-                DownloadRecord(
-                    videoId = video.id,
-                    videoUrl = safeUrl,
-                    title = MetadataSanitizer.title(video.title),
-                    thumbnail = video.thumbnail,
-                    formatId = safeFormat,
+        // Validate the whole selection before changing persistent state.
+        val safeVideos = videos.distinctBy { it.id }.map { video ->
+            video.copy(url = DownloadInputPolicy.canonicalUrl(video.url), title = MetadataSanitizer.title(video.title))
+        }
+        val summary = db.withTransaction {
+            val existing = safeVideos.map { it.id }.chunked(400)
+                .flatMap { dao.findMany(it) }.associateBy { it.videoId }
+            var duplicates = 0
+            val records = safeVideos.mapNotNull { video ->
+                val previous = existing[video.id]
+                if (previous?.status in listOf(DownloadState.COMPLETED, DownloadState.QUEUED,
+                        DownloadState.DOWNLOADING, DownloadState.PAUSED)) {
+                    duplicates++
+                    null
+                } else DownloadRecord(
+                    videoId = video.id, videoUrl = video.url, title = video.title,
+                    thumbnail = video.thumbnail, formatId = safeFormat,
                     createdAt = previous?.createdAt ?: System.currentTimeMillis(),
                 )
-            )
-            added++
+            }
+            if (records.isNotEmpty()) dao.upsertAll(records)
+            EnqueueSummary(records.size, duplicates)
         }
-        if (added > 0) start(context)
-        EnqueueSummary(added, duplicates)
+        // Also kick an existing queued selection after a previous interrupted enqueue.
+        if (summary.added > 0 || dao.pendingRecoveryCount() > 0) start(context)
+        summary
     }
 
     /** Delete the saved file first; only remove the history entry on success. */

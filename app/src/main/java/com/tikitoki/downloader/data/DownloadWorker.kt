@@ -20,16 +20,12 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -47,17 +43,16 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             // Recover tasks interrupted by process death, never resume manually paused tasks.
             dao.requeueInterrupted()
             setForeground(notification("Preparando descargas"))
-            while (!isStopped) {
-                val batch = mutableListOf<DownloadRecord>()
-                val parallel = applicationContext.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
-                    .getInt("parallel_downloads", 3).coerceIn(1, 4)
-                repeat(parallel) {
-                    val item = dao.nextQueued() ?: return@repeat
-                    if (dao.claimQueued(item.videoId) != 0) batch.add(item)
+            val parallel = applicationContext.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
+                .getInt("parallel_downloads", 3).coerceIn(1, 4)
+            drainParallelQueue(parallel, take = {
+                var claimed: DownloadRecord? = null
+                while (!isStopped && claimed == null) {
+                    val item = dao.nextQueued() ?: break
+                    if (dao.claimQueued(item.videoId) != 0) claimed = item
                 }
-                if (batch.isEmpty()) break
-                coroutineScope { batch.map { item -> async { downloadOne(item) } }.awaitAll() }
-            }
+                claimed
+            }, process = { downloadOne(it) })
             Result.success()
         } catch (_: CancellationException) {
             Result.success()
@@ -82,7 +77,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         if (dao.find(item.videoId)?.status == DownloadState.CANCELLED) {
                             runCatching { source.cancel(item.videoId) }
                         }
-                        delay(350)
+                        delay(1000)
                     }
                 }
                 try {
@@ -91,7 +86,6 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         DownloadInputPolicy.safeFormatId(item.formatId)
                     ) { percent ->
                         if (!isStopped) {
-                            setProgressAsync(workDataOf("videoId" to item.videoId, "percent" to percent))
                             val timestamp = System.currentTimeMillis()
                             if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) > 1000 || percent == 100) {
                                 lastDbUpdates[item.videoId] = timestamp
@@ -108,8 +102,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         file.delete()
                         return
                     }
-                    val uri = publishVideo(applicationContext, file, item)
-                    file.delete()
+                    val uri = try { publishVideo(applicationContext, file, item) }
+                        finally { file.delete() }
                     // A pause can occur during MediaStore publishing. Keep the saved file
                     // but only mark it completed when the record is still downloading.
                     if (dao.completeIfDownloading(item.videoId, uri.toString()) == 0) {
