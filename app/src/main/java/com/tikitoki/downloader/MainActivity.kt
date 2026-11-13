@@ -109,6 +109,7 @@ import com.tikitoki.downloader.ui.SafeAreaTopBar
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import com.tikitoki.downloader.ui.TechPlatformStrip
 import com.tikitoki.downloader.ui.TechShortcut
 import com.tikitoki.downloader.ui.TechPrimaryButton
@@ -342,6 +343,7 @@ private fun TikitokiApp(incomingLink: String) {
             )
         }
         Scaffold(
+            modifier = Modifier.imePadding(),
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 SafeAreaTopBar {
