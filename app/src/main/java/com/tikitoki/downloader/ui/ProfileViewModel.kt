@@ -17,6 +17,8 @@ import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.TikTokLinkType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -45,6 +47,21 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private var inspectionJob: Job? = null
     private var paginationJob: Job? = null
     private var countJob: Job? = null
+    private var nextScanPage = 2
+
+    private suspend fun scanPageWithRetry(fetch: suspend () -> List<VideoEntry>): List<VideoEntry> {
+        var last: Exception? = null
+        repeat(4) { attempt ->
+            try { return fetch() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                if (EngineFallback.isAccessDenied(e)) throw e
+                last = e
+                if (attempt < 3) delay(1500L * (1 shl attempt))
+            }
+        }
+        throw last ?: IllegalStateException("No se pudo recuperar la página")
+    }
 
     fun inspect(url: String, forceRefresh: Boolean = false) {
         val media = MediaLinkParser.parse(url)
@@ -63,6 +80,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         paginationJob?.cancel()
         countJob?.cancel()
         activeLink = media
+        nextScanPage = 2
         mutableState.value = ProfileUiState(loading = true)
         inspectionJob = viewModelScope.launch {
             try {
@@ -127,10 +145,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             var pageNumber = 2
             try {
                 while (token == generation) {
-                    val page = if (media.platform == MediaPlatform.TIKTOK && tikTokLink != null) {
-                        source.inspectPage(tikTokLink, pageNumber)
-                    } else {
-                        universal.inspect(media, (pageNumber - 1) * 60 + 1)
+                    val page = scanPageWithRetry {
+                        if (media.platform == MediaPlatform.TIKTOK && tikTokLink != null) {
+                            source.inspectPage(tikTokLink, pageNumber)
+                        } else {
+                            universal.inspect(media, (pageNumber - 1) * 60 + 1)
+                        }
                     }
                     if (token != generation) return@launch
                     val fresh = page.filter { seen.add(it.id) }
@@ -147,11 +167,57 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         )
                         return@launch
                     }
+                    nextScanPage = pageNumber + 1
                     pageNumber++
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false, hasMore = false, error = "No se pudieron recuperar todas las publicaciones.")
+                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false, hasMore = true, error = "Escaneo pausado por la conexión. Conservamos los videos cargados; pulsa Reanudar escaneo.")
+            }
+        }
+    }
+
+
+    fun resumeScan() {
+        val media = activeLink ?: return
+        if (!media.collection || mutableState.value.loading || mutableState.value.countingTotal) return
+        val token = generation
+        val parsed = if (media.platform == MediaPlatform.TIKTOK) TikTokLinkParser.parse(media.url) as? LinkParseResult.Success else null
+        val first = mutableState.value.videos
+        mutableState.value = mutableState.value.copy(error = null, countingTotal = true)
+        paginationJob?.cancel()
+        paginationJob = viewModelScope.launch {
+            val seen = first.mapTo(mutableSetOf()) { it.id }
+            var page = nextScanPage
+            try {
+                while (token == generation) {
+                    val number = page
+                    val result = scanPageWithRetry {
+                        if (parsed != null) source.inspectPage(parsed.link, number)
+                        else universal.inspect(media, (number - 1) * 60 + 1)
+                    }
+                    if (token != generation) return@launch
+                    val fresh = result.filter { seen.add(it.id) }
+                    nextScanPage = ++page
+                    mutableState.value = mutableState.value.copy(
+                        videos = mutableState.value.videos + fresh,
+                        nextPage = page,
+                        hasMore = result.size >= 60 && fresh.isNotEmpty()
+                    )
+                    if (result.size < 60 || fresh.isEmpty()) {
+                        mutableState.value = mutableState.value.copy(
+                            countingTotal = false, hasMore = false,
+                            totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size
+                        )
+                        return@launch
+                    }
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) {
+                if (token == generation) mutableState.value = mutableState.value.copy(
+                    countingTotal = false, hasMore = true,
+                    error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar desde la última página."
+                )
             }
         }
     }
@@ -189,6 +255,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         paginationJob?.cancel()
         countJob?.cancel()
         activeLink = null
+        nextScanPage = 2
         mutableState.value = ProfileUiState()
     }
 }
