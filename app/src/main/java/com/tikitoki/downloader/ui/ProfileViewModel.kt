@@ -24,6 +24,7 @@ data class ProfileUiState(
     val hasMore: Boolean = false,
     val nextPage: Int = 1,
     val totalVideos: Int? = null,
+    val totalIsDeclared: Boolean = false,
     val countingTotal: Boolean = false,
     val error: String? = null,
 )
@@ -66,11 +67,32 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         totalVideos = if (!isProfile || first.size < 60) first.distinctBy { it.id }.size else null,
                         countingTotal = isProfile && first.size >= 60
                     )
-                    if (isProfile && first.size >= 60) countProfileInBackground(media, link, first, token)
+                    if (isProfile) {
+                        if (media.platform != MediaPlatform.TIKTOK) fetchDeclaredTotal(media, token)
+                        if (first.size >= 60) countProfileInBackground(media, link, first, token)
+                    }
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (token == generation) mutableState.value = ProfileUiState(error = e.message ?: "Error de extracción")
+            }
+        }
+    }
+
+    private fun fetchDeclaredTotal(
+        media: com.tikitoki.downloader.domain.MediaLink,
+        token: Int,
+    ) {
+        viewModelScope.launch {
+            val declared = try { universal.declaredCollectionCount(media) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+            if (token == generation && declared != null) {
+                mutableState.value = mutableState.value.copy(
+                    totalVideos = declared,
+                    totalIsDeclared = true,
+                    countingTotal = false,
+                )
             }
         }
     }
@@ -96,7 +118,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     val added = page.count { seen.add(it.id) }
                     if (page.size < 60 || added == 0) {
                         mutableState.value = mutableState.value.copy(
-                            totalVideos = seen.size, countingTotal = false
+                            totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size,
+                            countingTotal = false
                         )
                         return@launch
                     }
