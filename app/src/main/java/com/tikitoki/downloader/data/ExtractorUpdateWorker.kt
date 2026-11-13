@@ -8,6 +8,9 @@ import androidx.work.NetworkType
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.ExistingWorkPolicy
+import androidx.work.workDataOf
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,15 +25,29 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
                 return@withContext Result.retry()
             val engine = YoutubeDL.getInstance()
             engine.init(applicationContext)
-            engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+            val updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+            val prefs = applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
+            prefs.edit().putLong("last_success", System.currentTimeMillis())
+                .putString("last_result", "Actualización ejecutada: $updated").apply()
             Result.success()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
+                .edit().putString("last_result", "Falló: ${e.message.orEmpty().take(120)}").apply()
             Result.retry()
         }
     }
 
     companion object {
         private const val WORK = "tikitoki_extractor_update"
+        fun updateNow(context: Context) {
+            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+                "tikitoki_extractor_update_now", ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<ExtractorUpdateWorker>()
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .build()
+            )
+        }
+
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<ExtractorUpdateWorker>(24, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
