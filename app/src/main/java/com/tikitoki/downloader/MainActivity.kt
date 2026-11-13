@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -436,7 +437,11 @@ private fun TikitokiApp(incomingLink: String) {
                                 },
                                 shape = RoundedCornerShape(18.dp),
                                 border = BorderStroke(1.dp, TechBorder)
-                            ) { Text("▢ Pegar") }
+                            ) {
+                                Icon(Icons.Outlined.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(5.dp))
+                                Text("Pegar")
+                            }
                         TechPrimaryButton(
                             modifier = Modifier.weight(1f),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
