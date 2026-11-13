@@ -582,7 +582,7 @@ private fun TikitokiApp(incomingLink: String) {
                             if (gridMode) {
                                 Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Box(Modifier.fillMaxWidth().aspectRatio(1.15f)) {
-                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize())
+                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize(), deferLookup = profileState.countingTotal)
                                         Checkbox(checked = checked, onCheckedChange = null,
                                             modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp)).size(36.dp))
                                     }
@@ -591,7 +591,7 @@ private fun TikitokiApp(incomingLink: String) {
                             } else {
                                 Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Box(Modifier.width(116.dp).aspectRatio(16f / 10f)) {
-                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize())
+                                        VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxSize(), deferLookup = profileState.countingTotal)
                                         Checkbox(checked = checked, onCheckedChange = null,
                                             modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp)).size(36.dp))
                                     }
@@ -861,9 +861,10 @@ private fun VideoThumbnail(
     video: VideoEntry,
     resolver: VideoThumbnailResolver,
     modifier: Modifier = Modifier,
+    deferLookup: Boolean = false,
 ) {
-    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail) {
-        value = video.thumbnail ?: resolver.resolve(video)
+    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail, key3 = deferLookup) {
+        value = video.thumbnail ?: if (deferLookup) null else resolver.resolve(video)
     }
     Surface(
         modifier = modifier,
