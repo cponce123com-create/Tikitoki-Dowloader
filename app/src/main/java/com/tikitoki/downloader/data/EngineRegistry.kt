@@ -26,4 +26,14 @@ object EngineRegistry {
     )
     fun available(capability: EngineCapability) =
         engines.filter { it.installed && capability in it.capabilities }
+
+    fun fallbackExtractors(exclude: String = "yt-dlp"): List<EngineDescriptor> =
+        available(EngineCapability.EXTRACT).filterNot { it.id == exclude }
+
+    fun statusMessage(): String =
+        if (fallbackExtractors().isEmpty()) {
+            "No hay extractores alternativos instalados. FFmpeg no extrae páginas web."
+        } else {
+            "Extractores alternativos: " + fallbackExtractors().joinToString { it.name }
+        }
 }
