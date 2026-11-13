@@ -20,6 +20,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Path
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
 val TechPurple = Color(0xFF9736FF)
@@ -54,12 +57,10 @@ fun TechPlatformStrip(selected: String?, onSelect: (String) -> Unit) {
             Surface(modifier = Modifier.weight(1f).clickable { onSelect(platform) }, shape = RoundedCornerShape(12.dp),
                 color = if (selected == platform) TechPurple.copy(alpha = 0.25f) else TechPanel,
                 border = BorderStroke(if (selected == platform) 2.dp else 1.dp, if (selected == platform) TechPink else TechBorder)) {
-                Column(Modifier.padding(vertical = 6.dp, horizontal = 2.dp),
+                Column(Modifier.padding(vertical = 12.dp, horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (platform == "Auto") Text("↗", color = TechPink, fontSize = 24.sp) else PlatformLogo(platform, Modifier.size(25.dp))
-                    Text(platform, style = MaterialTheme.typography.labelSmall,
-                        color = Color.White, maxLines = 1)
+                    if (platform == "Auto") Icon(Icons.Outlined.Public, contentDescription = "Web", tint = Color(0xFF46C8FF), modifier = Modifier.size(31.dp)) else PlatformLogo(platform, Modifier.size(31.dp))
                 }
             }
         }
@@ -120,9 +121,6 @@ fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier 
     Button(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 42.dp),
         colors = ButtonDefaults.buttonColors(containerColor = TechPurple, contentColor = Color.White),
         shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
-        Box(Modifier.fillMaxWidth().background(if (enabled) TechGradient else Brush.horizontalGradient(listOf(TechBorder, TechBorder)),
-            RoundedCornerShape(10.dp)).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-            Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-        }
+        Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
     }
 }
