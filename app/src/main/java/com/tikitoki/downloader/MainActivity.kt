@@ -474,7 +474,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         enabled = !profileState.countingTotal && profileState.hasMore) { Text("↻") }
                                 }
                             }
-                            val allSelected = selected.size == videos.size
+                            val allSelected = videos.isNotEmpty() && videos.all { it.id in selected }
                             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder)) {
                                 Row(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     listOf(
@@ -512,8 +512,8 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                             if (gridMode) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Fixed(if (visibleVideos.size == 1) 1 else 3),
-                                    modifier = Modifier.fillMaxWidth().height((if (visibleVideos.size == 1) 190 else ((visibleVideos.size + 2) / 3 * 145).coerceAtMost(580)).dp),
+                                    columns = GridCells.Adaptive(minSize = 112.dp),
+                                    modifier = Modifier.fillMaxWidth().height((if (visibleVideos.size == 1) 190 else ((visibleVideos.size + 1) / 2 * 145).coerceAtMost(580)).dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -526,7 +526,7 @@ private fun TikitokiApp(incomingLink: String) {
                                             Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                                 VideoThumbnail(video, thumbnailResolver, Modifier.fillMaxWidth().height(if (visibleVideos.size == 1) 110.dp else 105.dp))
                                                 Text(video.title, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                Text(if (video.id in selected) "☑ Seleccionado" else "□",
+                                                Text(if (video.id in selected) "☑" else "□",
                                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
