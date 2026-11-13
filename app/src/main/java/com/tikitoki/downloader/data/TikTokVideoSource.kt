@@ -224,18 +224,32 @@ class TikTokVideoSource(private val context: Context) {
 
     private fun readableError(cause: Exception): IllegalStateException {
         val detail = cause.message.orEmpty()
+        // yt-dlp often writes warnings before the actual error. Do not mistake
+        // "attempting impersonation" or an outdated-version warning for a fatal cause.
+        val errorLine = detail.lines().lastOrNull {
+            it.contains("ERROR:", ignoreCase = true) ||
+                it.contains("HTTP Error", ignoreCase = true)
+        }?.substringAfter("ERROR:", missingDelimiterValue = detail).orEmpty().trim()
+        val fatal = errorLine.ifBlank { detail }
         val message = when {
-            detail.contains("secondary user ID", ignoreCase = true) ->
-                "TikTok no permitió identificar este perfil. Prueba con un video público del mismo usuario. Si también falla, actualiza el motor yt-dlp."
-            detail.contains("Unable to extract webpage video data", ignoreCase = true) ->
-                "TikTok no entregó los datos del video. El motor yt-dlp puede estar desactualizado o TikTok puede estar restringiendo el acceso."
-            detail.contains("impersonat", ignoreCase = true) ->
-                "El extractor necesita compatibilidad adicional de navegador. Actualiza yt-dlp y sus dependencias Android."
-            detail.contains("HTTP Error 429", ignoreCase = true) ->
-                "TikTok limitó temporalmente las solicitudes. Espera antes de volver a intentar."
-            detail.contains("login", ignoreCase = true) ->
-                "TikTok solicita autenticación para este contenido. No se puede descargar sin acceso autorizado."
-            else -> "No se pudo extraer el contenido de TikTok. Comprueba el enlace y la versión de yt-dlp."
+            fatal.contains("HTTP Error 429", ignoreCase = true) ->
+                "TikTok limitó temporalmente las solicitudes (429). Espera unos minutos y reintenta."
+            fatal.contains("HTTP Error 403", ignoreCase = true) ->
+                "TikTok rechazó el acceso al archivo (403). Puede requerir sesión autorizada."
+            fatal.contains("login", ignoreCase = true) ||
+                fatal.contains("private video", ignoreCase = true) ->
+                "El video requiere autenticación o no es público."
+            fatal.contains("Unable to extract webpage video data", ignoreCase = true) ||
+                fatal.contains("secondary user ID", ignoreCase = true) ->
+                "TikTok cambió la respuesta del sitio. Actualiza yt-dlp y vuelve a intentar."
+            fatal.contains("impersonat", ignoreCase = true) &&
+                (fatal.contains("required", ignoreCase = true) ||
+                 fatal.contains("not available", ignoreCase = true)) ->
+                "El extractor requiere compatibilidad de navegador no disponible."
+            else -> {
+                val concise = fatal.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
+                "Falló la descarga: " + MetadataSanitizer.error(concise).take(210)
+            }
         }
         return IllegalStateException(message, cause)
     }
