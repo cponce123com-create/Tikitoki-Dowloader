@@ -730,6 +730,17 @@ private fun TikitokiApp(incomingLink: String) {
                     else -> {
                         Text("Acerca de", style = MaterialTheme.typography.titleLarge)
                         Text("Tikitoki Downloader · v0.5")
+                        Text("Motor yt-dlp", style = MaterialTheme.typography.titleMedium)
+                        val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
+                        val lastResult = updateStatus.getString("last_result", "Actualización aún no ejecutada.")
+                        Text(lastResult ?: "", color = TechMuted)
+                        val lastSuccess = updateStatus.getLong("last_success", 0L)
+                        if (lastSuccess > 0L) Text("Última actualización: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastSuccess)))
+                        OutlinedButton(onClick = {
+                            ExtractorUpdateWorker.updateNow(context)
+                            message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
+                        }) { Text("↻ Actualizar yt-dlp ahora") }
+                        Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
                         Text("Archivos: Descargas/TikitokiDownloader")
                         
                         Text("Uso de contenido autorizado · GPL-3.0")
