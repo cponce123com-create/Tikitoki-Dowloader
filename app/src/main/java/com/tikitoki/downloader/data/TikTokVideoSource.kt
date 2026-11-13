@@ -197,6 +197,13 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--no-playlist")
             .addOption("--newline")
             .addOption("--continue")
+            // Parallel fragments accelerate DASH/HLS streams where the host allows it.
+            // Limit concurrency to avoid saturating mobile networks and HTTP 429.
+            .addOption("--concurrent-fragments", "4")
+            .addOption("--fragment-retries", "3")
+            .addOption("--retries", "3")
+            .addOption("--retry-sleep", "fragment:exp=1:8")
+            .addOption("--socket-timeout", "20")
             .addOption("-f", formatId)
             .addOption("--merge-output-format", "mp4")
             .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
