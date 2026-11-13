@@ -171,7 +171,6 @@ private fun TikitokiApp(incomingLink: String) {
     }
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
-    var visiblePages by remember { mutableStateOf(1) }
     var selectedPlatform by remember { mutableStateOf<String?>(null) }
     var exportFormat by rememberSaveable { mutableStateOf("json") }
     var monitorRevision by remember { mutableStateOf(0) }
@@ -200,21 +199,17 @@ private fun TikitokiApp(incomingLink: String) {
         }
     }
 
-    LaunchedEffect(profileState.videos) {
-        val existing = selected.toSet()
-        profileState.videos.forEach { if (it.id !in existing && it.id !in selected) selected.add(it.id) }
-    }
-
     val addToQueue: () -> Unit = {
         if (!queueBusy && selected.isNotEmpty()) {
             queueBusy = true
-            val batch = videos.filter { it.id in selected }
+            val batch = videos.filter { it.id in selected }.take(60)
             val formatId = if (batch.size == 1) chosenFormat.id else defaultFormat.id
             scope.launch {
                 try {
                     val result = DownloadQueue.enqueue(context, batch, formatId)
                     message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
-                    tab = 1
+                    if (result.added > 0 || result.duplicates > 0) batch.forEach { selected.remove(it.id) }
+                    if (selected.isEmpty()) tab = 1
                 } catch (e: Exception) {
                     message = "No se pudo crear la cola: ${e.message ?: "error desconocido"}"
                 } finally {
@@ -348,7 +343,7 @@ private fun TikitokiApp(incomingLink: String) {
                                         addToQueue()
                                     }
                                 }
-                            ) { Text("↓ Descargar (${selected.size})", fontWeight = FontWeight.Bold) }
+                            ) { Text("↓ Descargar ${minOf(selected.size, 60)}${if (selected.size > 60) " de ${selected.size}" else ""}", fontWeight = FontWeight.Bold) }
                         }
                     }
                 NavigationBar(containerColor = Color(0xFF110D20)) {
@@ -384,7 +379,7 @@ private fun TikitokiApp(incomingLink: String) {
                             onValueChange = {
                                 url = it
                                 profileViewModel.reset()
-                                visiblePages = 1
+                                
                                 selected.clear()
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
@@ -421,7 +416,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     null -> message = "Pega un enlace HTTPS válido de TikTok, YouTube, Facebook o Instagram."
                                     else -> {
 
-                                        visiblePages = 1
+                                        
                                         selected.clear()
                                         profileViewModel.inspect(url, forceRefresh)
                                         forceRefresh = false
@@ -446,9 +441,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 (search.isBlank() || it.title.contains(search, ignoreCase = true) || it.id.contains(search)) &&
                                     (!onlyUndownloaded || it.id !in downloadedIds)
                             } }
-                            val visibleVideos = remember(filteredVideos, visiblePages) {
-                                filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
-                            }
+                            val visibleVideos = filteredVideos
                             val allSelected = selected.size == videos.size
                             Text("Total ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"}  ·  Cargados ${videos.size}  ·  Selección ${selected.size}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -468,7 +461,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 singleLine = true,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded; visiblePages = 1 }, label = { Text("Pendientes") })
+                                FilterChip(selected = onlyUndownloaded, onClick = { onlyUndownloaded = !onlyUndownloaded }, label = { Text("Pendientes") })
                                 FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })
                                 FilterChip(selected = !gridMode, onClick = { gridMode = false }, label = { Text("Lista") })
                             }
@@ -529,13 +522,8 @@ private fun TikitokiApp(incomingLink: String) {
                                 }
                             }
 
-                            if (profileState.hasMore || visibleVideos.size < filteredVideos.size) {
-                                Text("Mostrando ${visibleVideos.size} · Registrados ${videos.size}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(modifier = Modifier.fillMaxWidth(), enabled = !profileState.loadingMore, onClick = {
-                                    if (visibleVideos.size < filteredVideos.size) visiblePages++ else profileViewModel.loadMore()
-                                }) {
-                                    Text(if (profileState.loadingMore) "Cargando..." else "Ver más")
-                                }
+                            if (profileState.countingTotal) {
+                                Text("Cargando más videos… ${videos.size} encontrados", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             }
 
 
