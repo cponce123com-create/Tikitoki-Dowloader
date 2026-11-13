@@ -20,7 +20,7 @@ object EngineRegistry {
         EngineDescriptor("gallery-dl", "gallery-dl", setOf(EngineCapability.EXTRACT, EngineCapability.TRANSFER),
             false, "Requiere integración Python Android"),
         EngineDescriptor("newpipe", "NewPipe Extractor", setOf(EngineCapability.EXTRACT),
-            false, "Requiere dependencia Android y pruebas"),
+            true, "Extractor de metadatos para videos individuales de YouTube; no descarga archivos"),
         EngineDescriptor("aria2", "aria2", setOf(EngineCapability.TRANSFER),
             false, "Requiere binarios Android")
     )
