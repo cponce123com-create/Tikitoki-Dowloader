@@ -755,7 +755,7 @@ private fun TikitokiApp(incomingLink: String) {
                         Text(message, style = MaterialTheme.typography.bodySmall)
                     }
                     5 -> {
-                        Image(painter = painterResource(R.drawable.ic_tikitoki_brand), contentDescription = "Logo Tikitoki", modifier = Modifier.size(76.dp))
+                        Image(painter = painterResource(R.drawable.tikitoki_logo_oficial), contentDescription = "Logo Tikitoki", modifier = Modifier.size(76.dp))
                         Text("Configuración", style = MaterialTheme.typography.titleLarge)
                         Text("Tikitoki Downloader · v0.5")
                         Text("Motor yt-dlp", style = MaterialTheme.typography.titleMedium)

@@ -41,7 +41,7 @@ fun TechHeader(onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.size(40.dp).background(TechGradient, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-            Image(painter = painterResource(R.drawable.ic_tikitoki_brand), contentDescription = "Tikitoki Downloader", modifier = Modifier.size(38.dp))
+            Image(painter = painterResource(R.drawable.tikitoki_logo_oficial), contentDescription = "Tikitoki Downloader", modifier = Modifier.size(38.dp))
         }
         Column(Modifier.weight(1f)) {
             Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
