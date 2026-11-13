@@ -8,6 +8,13 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -35,6 +42,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
@@ -177,7 +185,7 @@ private fun TikitokiApp(incomingLink: String) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
-    var exportFormat by rememberSaveable { mutableStateOf("json") }
+    var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
     var monitorRevision by remember { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -219,28 +227,6 @@ private fun TikitokiApp(incomingLink: String) {
                     message = "No se pudo crear la cola: ${e.message ?: "error desconocido"}"
                 } finally {
                     queueBusy = false
-                }
-            }
-        }
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri ->
-        if (uri != null) {
-            val snapshot = records.toList()
-            val format = exportFormat
-            scope.launch {
-                try {
-                    withContext(Dispatchers.IO) {
-                    val content = if (format == "csv") LibraryExport.toCsv(snapshot) else LibraryExport.toJson(snapshot)
-                    context.contentResolver.openOutputStream(uri)?.use {
-                        it.write(content.toByteArray(Charsets.UTF_8))
-                    } ?: error("No se pudo abrir el destino")
-                    }
-                    message = "Respaldo de metadatos exportado."
-                } catch (e: Exception) {
-                    message = "No se pudo exportar: ${e.message}"
                 }
             }
         }
@@ -297,6 +283,26 @@ private fun TikitokiApp(incomingLink: String) {
                     Spacer(Modifier.height(18.dp))
                 }
             }
+        }
+        deleteCandidate?.let { item ->
+            AlertDialog(
+                onDismissRequest = { deleteCandidate = null },
+                title = { Text("Eliminar video") },
+                text = { Text("¿Eliminar este video del dispositivo y del historial de Tikitoki? Esta acción no se puede deshacer.") },
+                confirmButton = { Button(onClick = {
+                    deleteCandidate = null
+                    scope.launch {
+                        try {
+                            message = if (DownloadQueue.deleteCompleted(context, item.videoId))
+                                "Video eliminado del dispositivo y del historial."
+                            else "No se pudo eliminar el archivo. El registro se conserva."
+                        } catch (e: Exception) {
+                            message = "No se pudo eliminar: ${e.message.orEmpty().take(100)}"
+                        }
+                    }
+                }) { Text("Eliminar") } },
+                dismissButton = { OutlinedButton(onClick = { deleteCandidate = null }) { Text("Cancelar") } }
+            )
         }
         Scaffold(
             bottomBar = {
@@ -357,7 +363,7 @@ private fun TikitokiApp(incomingLink: String) {
                         NavigationBarItem(
                             selected = tab == target,
                             onClick = { tab = target },
-                            icon = { Text(listOf("⌂", "↓", "◈", "▦", "▤")[index], fontSize = 23.sp) },
+                            icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.Explore, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
                             label = { Text(name, maxLines = 1) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White, selectedTextColor = Color.White,
@@ -374,7 +380,7 @@ private fun TikitokiApp(incomingLink: String) {
                     .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                TechHeader(onSettings = { tab = 4 })
+                TechHeader(onSettings = { tab = 5 })
 
                 when (tab) {
                     0 -> {
@@ -411,7 +417,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 },
                                 shape = RoundedCornerShape(18.dp),
                                 border = BorderStroke(1.dp, TechBorder)
-                            ) { Text("▣ Pegar") }
+                            ) { Text("▢ Pegar") }
                         TechPrimaryButton(
                             modifier = Modifier.weight(1f),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
@@ -648,7 +654,7 @@ private fun TikitokiApp(incomingLink: String) {
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(displayed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, onOpen = {
+                                DownloadHistoryCard(record, onDelete = { deleteCandidate = record }, onOpen = {
                                     val saved = record.savedUri ?: return@DownloadHistoryCard
                                     try {
                                         val uri = Uri.parse(saved)
@@ -675,11 +681,8 @@ private fun TikitokiApp(incomingLink: String) {
                         Text("Biblioteca", style = MaterialTheme.typography.titleLarge)
                         Text("${completed.size} descargados")
                         
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { exportFormat = "json"; exportLauncher.launch("tikitoki-respaldo.json") }) { Text("Exportar JSON") }
-                            OutlinedButton(onClick = { exportFormat = "csv"; exportLauncher.launch("tikitoki-respaldo.csv") }) { Text("Exportar CSV") }
-                        }
-                        Text("Estadísticas locales", style = MaterialTheme.typography.titleMedium)
+
+                        Text("Mis videos descargados", style = MaterialTheme.typography.titleMedium)
                         Text("Completados: ${completed.size} · Fallidos: ${records.count { it.status == DownloadState.FAILED }} · En cola: ${records.count { it.status == DownloadState.QUEUED }}")
                         if (completed.isEmpty()) Text("Aún no hay videos descargados.")
                         else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -727,8 +730,8 @@ private fun TikitokiApp(incomingLink: String) {
                         if (monitored.isEmpty()) Text("Todavía no sigues perfiles.")
                         Text(message, style = MaterialTheme.typography.bodySmall)
                     }
-                    else -> {
-                        Text("Acerca de", style = MaterialTheme.typography.titleLarge)
+                    5 -> {
+                        Text("Configuración", style = MaterialTheme.typography.titleLarge)
                         Text("Tikitoki Downloader · v0.5")
                         Text("Motor yt-dlp", style = MaterialTheme.typography.titleMedium)
                         val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
@@ -741,9 +744,18 @@ private fun TikitokiApp(incomingLink: String) {
                             message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
                         }) { Text("↻ Actualizar yt-dlp ahora") }
                         Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
-                        Text("Archivos: Descargas/TikitokiDownloader")
+                        Text("Carpeta actual: Descargas/TikitokiDownloader")
                         
                         Text("Uso de contenido autorizado · GPL-3.0")
+                    }
+                    else -> {
+                        Text("Archivos descargados", style = MaterialTheme.typography.titleLarge)
+                        Text("Tus videos están disponibles en Descargas/TikitokiDownloader.")
+                        OutlinedButton(onClick = {
+                            try { context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, "vnd.android.document/directory")
+                            }) } catch (_: Exception) { message = "Abre la carpeta Descargas desde el administrador de archivos." }
+                        }) { Text("Abrir Descargas") }
                     }
                 }
             }
@@ -752,7 +764,7 @@ private fun TikitokiApp(incomingLink: String) {
 }
 
 @Composable
-private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
+private fun DownloadHistoryCard(record: DownloadRecord, onDelete: () -> Unit, onOpen: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder)) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -784,6 +796,7 @@ private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
                 }
             }
             if (record.status == DownloadState.DOWNLOADING) {
+                Text("Progreso: ${record.progress}%", color = TechMuted)
                 LinearProgressIndicator(
                     progress = { record.progress / 100f },
                     modifier = Modifier.fillMaxWidth(),
@@ -794,7 +807,10 @@ private fun DownloadHistoryCard(record: DownloadRecord, onOpen: () -> Unit) {
                     color = MaterialTheme.colorScheme.error)
             }
             if (record.status == DownloadState.COMPLETED && record.savedUri != null) {
-                OutlinedButton(onClick = onOpen) { Text("Abrir video") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onOpen) { Text("▶ Ver") }
+                    OutlinedButton(onClick = onDelete) { Text("🗑 Eliminar") }
+                }
             }
         }
     }
