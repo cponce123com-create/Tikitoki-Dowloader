@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.UniversalMediaSource
+import com.tikitoki.downloader.data.EngineRegistry
+import com.tikitoki.downloader.data.EngineFallback
+import com.tikitoki.downloader.data.NewPipeSource
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.LinkParseResult
@@ -33,6 +36,7 @@ data class ProfileUiState(
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val source = TikTokVideoSource(application)
     private val universal = UniversalMediaSource(application)
+    private val newPipe = NewPipeSource()
     private val mutableState = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = mutableState
     private var activeLink: com.tikitoki.downloader.domain.MediaLink? = null
@@ -62,7 +66,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                             if (isProfile) source.inspectPage(link, 1) else source.inspect(link, forceRefresh)
                         } else universal.inspect(media)
                     },
-                    alternatives = emptyList<Pair<String, suspend () -> List<VideoEntry>>>()
+                    alternatives = if (media.platform == MediaPlatform.YOUTUBE && !media.collection) {
+                        listOf("newpipe" to suspend { listOf(newPipe.inspectVideo(media.url)) })
+                    } else emptyList()
                 ).execute()
                 if (token == generation) {
                     mutableState.value = ProfileUiState(
