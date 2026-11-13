@@ -25,6 +25,7 @@ object MediaLinkParser {
             domain("youtube.com") || domain("youtu.be") || domain("youtube-nocookie.com") -> MediaPlatform.YOUTUBE
             domain("facebook.com") || domain("fb.watch") -> MediaPlatform.FACEBOOK
             domain("instagram.com") -> MediaPlatform.INSTAGRAM
+            domain("xvideos.com") -> MediaPlatform.DIRECT_MEDIA
             else -> return null
         }
         val collection = when (platform) {
