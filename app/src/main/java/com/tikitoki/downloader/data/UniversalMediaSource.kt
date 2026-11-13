@@ -99,10 +99,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         if (response.out.isBlank()) return@withContext null
         val root = runCatching { JSONObject(response.out.trim()) }.getOrNull()
             ?: return@withContext null
-        listOf("playlist_count", "channel_follower_count").firstNotNullOfOrNull { key ->
-            if (key != "playlist_count") null
-            else root.optInt(key, -1).takeIf { it >= 0 }
-        }
+        root.optInt("playlist_count", -1).takeIf { it >= 0 }
     }
 
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
