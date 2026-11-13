@@ -405,7 +405,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 filteredVideos.take(VideoPagination.visibleCount(filteredVideos.size, visiblePages))
                             }
                             val allSelected = selected.size == videos.size
-                            Text("Videos: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else videos.size.toString()} · ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Total: ${profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "calculando…" else "no disponible"} · ${selected.size} seleccionados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = {
                                     selected.clear()
