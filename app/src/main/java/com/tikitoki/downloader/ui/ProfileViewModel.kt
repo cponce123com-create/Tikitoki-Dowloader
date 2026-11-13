@@ -97,7 +97,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Count the full public catalog separately from the 60-at-a-time display. */
+    /** Fetch all accessible pages progressively; each page becomes visible immediately. */
     private fun countProfileInBackground(
         media: com.tikitoki.downloader.domain.MediaLink,
         tikTokLink: TikTokLink?,
@@ -115,8 +115,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         universal.inspect(media, (pageNumber - 1) * 60 + 1)
                     }
                     if (token != generation) return@launch
-                    val added = page.count { seen.add(it.id) }
-                    if (page.size < 60 || added == 0) {
+                    val fresh = page.filter { seen.add(it.id) }
+                    val latest = mutableState.value
+                    mutableState.value = latest.copy(
+                        videos = (latest.videos + fresh).distinctBy { it.id },
+                        nextPage = pageNumber + 1,
+                        hasMore = page.size >= 60 && fresh.isNotEmpty(),
+                    )
+                    if (page.size < 60 || fresh.isEmpty()) {
                         mutableState.value = mutableState.value.copy(
                             totalVideos = if (mutableState.value.totalIsDeclared) mutableState.value.totalVideos else seen.size,
                             countingTotal = false
@@ -127,7 +133,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false)
+                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false, hasMore = false, error = "No se pudieron recuperar todas las publicaciones.")
             }
         }
     }
