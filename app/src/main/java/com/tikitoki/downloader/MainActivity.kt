@@ -174,7 +174,7 @@ private fun TikitokiApp(incomingLink: String) {
     }
     var tab by rememberSaveable { mutableStateOf(0) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
-    var selectedPlatform by remember { mutableStateOf<String?>(null) }
+    var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var exportFormat by rememberSaveable { mutableStateOf("json") }
     var monitorRevision by remember { mutableStateOf(0) }
     var url by rememberSaveable { mutableStateOf(incomingLink) }
@@ -376,7 +376,7 @@ private fun TikitokiApp(incomingLink: String) {
 
                 when (tab) {
                     0 -> {
-                        TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = if (selectedPlatform == platform) null else platform }
+                        TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
@@ -389,8 +389,7 @@ private fun TikitokiApp(incomingLink: String) {
                             },
                             placeholder = { Text("Pega un enlace") },
                             modifier = Modifier.fillMaxWidth(),
-                            minLines = 1,
-                            maxLines = 2,
+                            singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                         )
 
@@ -434,6 +433,10 @@ private fun TikitokiApp(incomingLink: String) {
 
                         // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
+                        if (profileState.countingTotal && videos.isNotEmpty()) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = TechPurple)
+                            Text("Detectando publicaciones… ${videos.size} cargadas. Puedes seguir explorando.", color = TechMuted, fontSize = 12.sp)
+                        }
                         profileState.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
@@ -452,6 +455,25 @@ private fun TikitokiApp(incomingLink: String) {
                                     (!onlyUndownloaded || it.id !in downloadedIds)
                             } }
                             val visibleVideos = filteredVideos
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel),
+                                border = BorderStroke(1.dp, TechBorder)) {
+                                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Box(Modifier.size(52.dp).background(TechGradient, RoundedCornerShape(26.dp)),
+                                        contentAlignment = Alignment.Center) {
+                                        Text("@", fontSize = 26.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(url.substringAfter("tiktok.com/").substringBefore("?").substringBefore("/video/").take(35)
+                                            .ifBlank { selectedPlatform ?: "Perfil" }, fontWeight = FontWeight.Bold,
+                                            color = Color.White, maxLines = 1)
+                                        Text("${videos.size} videos detectados", color = TechMuted, fontSize = 12.sp)
+                                    }
+                                    OutlinedButton(onClick = { profileViewModel.resumeScan() },
+                                        enabled = !profileState.countingTotal && profileState.hasMore) { Text("↻") }
+                                }
+                            }
                             val allSelected = selected.size == videos.size
                             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder)) {
                                 Row(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
