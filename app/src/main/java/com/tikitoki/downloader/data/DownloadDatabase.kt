@@ -90,6 +90,9 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = 'QUEUED', progress = 0, error = NULL, updatedAt = :now WHERE status = 'FAILED'")
     suspend fun retryFailed(now: Long = System.currentTimeMillis())
 
+    @Query("DELETE FROM downloads WHERE videoId = :id AND status = 'COMPLETED'")
+    suspend fun deleteCompleted(id: String): Int
+
     @Query("DELETE FROM downloads WHERE status = 'FAILED'")
     suspend fun clearFailed()
 }
