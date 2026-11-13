@@ -16,6 +16,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.tikitoki.downloader.R
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -38,7 +41,7 @@ fun TechHeader(onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.size(40.dp).background(TechGradient, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-            Text("↓", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+            Image(painter = painterResource(R.drawable.ic_tikitoki_brand), contentDescription = "Tikitoki Downloader", modifier = Modifier.size(38.dp))
         }
         Column(Modifier.weight(1f)) {
             Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
