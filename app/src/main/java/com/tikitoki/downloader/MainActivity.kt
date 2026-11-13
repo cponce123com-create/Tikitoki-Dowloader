@@ -172,6 +172,7 @@ private fun TikitokiApp(incomingLink: String) {
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
     var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
+    var parallelDownloads by remember { mutableStateOf(settings.getInt("parallel_downloads", 3).coerceIn(1, 4)) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
@@ -765,6 +766,16 @@ private fun TikitokiApp(incomingLink: String) {
                                     preferredQuality = option
                                     settings.edit().putString("quality", option).apply()
                                 }, label = { Text(option) })
+                            }
+                        }
+                        Text("Descargas simultáneas", style = MaterialTheme.typography.titleMedium)
+                        Text("Más descargas pueden consumir más datos y batería.", color = TechMuted)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(1, 2, 3, 4).forEach { count ->
+                                FilterChip(selected = parallelDownloads == count, onClick = {
+                                    parallelDownloads = count
+                                    settings.edit().putInt("parallel_downloads", count).apply()
+                                }, label = { Text(count.toString()) })
                             }
                         }
                         

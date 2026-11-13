@@ -72,7 +72,7 @@ object DownloadQueue {
                 @Suppress("DEPRECATION")
                 val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TikitokiDownloader").canonicalFile
                 val target = File(uri.path ?: "").canonicalFile
-                target.parentFile == root && target.exists() && target.delete()
+                target.path.startsWith(root.path + File.separator) && target.exists() && target.delete()
             }
             else -> false
         }

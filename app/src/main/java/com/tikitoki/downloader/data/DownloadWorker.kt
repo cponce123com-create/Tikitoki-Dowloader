@@ -2,6 +2,7 @@ package com.tikitoki.downloader.data
 
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.DestinationNaming
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -34,6 +35,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    companion object { private val documentFolderLock = Any() }
     private val dao = DownloadDatabase.get(context).downloads()
     private val source = TikTokVideoSource(context.applicationContext)
     private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -47,7 +49,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             setForeground(notification("Preparando descargas"))
             while (!isStopped) {
                 val batch = mutableListOf<DownloadRecord>()
-                repeat(2) {
+                val parallel = applicationContext.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
+                    .getInt("parallel_downloads", 3).coerceIn(1, 4)
+                repeat(parallel) {
                     val item = dao.nextQueued() ?: return@repeat
                     if (dao.claimQueued(item.videoId) != 0) batch.add(item)
                 }
@@ -104,7 +108,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         file.delete()
                         return
                     }
-                    val uri = publishVideo(applicationContext, file)
+                    val uri = publishVideo(applicationContext, file, item)
                     file.delete()
                     // A pause can occur during MediaStore publishing. Keep the saved file
                     // but only mark it completed when the record is still downloading.
@@ -147,8 +151,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         } else ForegroundInfo(901, notification)
     }
 
-    private fun publishVideo(context: Context, file: File): Uri {
+    private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri {
         val extension = file.extension.lowercase().ifBlank { "mp4" }
+        val account = DestinationNaming.account(item.videoUrl)
+        val displayName = DestinationNaming.filename(item.title, item.videoId, extension)
         val mime = when (extension) {
             "mp4" -> "video/mp4"
             "webm" -> "video/webm"
@@ -165,8 +171,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         if (folderUri != null) {
             val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
                 ?: throw IllegalStateException("La carpeta seleccionada ya no está disponible.")
-            val target = folder.createFile(mime, file.name)
-                ?: throw IllegalStateException("No se pudo crear el archivo en la carpeta seleccionada.")
+            val target = synchronized(documentFolderLock) {
+                val accountFolder = folder.findFile(account)?.takeIf { it.isDirectory }
+                    ?: folder.createDirectory(account)
+                    ?: throw IllegalStateException("No se pudo crear la carpeta de la cuenta.")
+                accountFolder.createFile(mime, displayName)
+                    ?: throw IllegalStateException("No se pudo crear el archivo en la carpeta seleccionada.")
+            }
             try {
                 context.contentResolver.openOutputStream(target.uri, "w")?.use { output ->
                     file.inputStream().use { input -> input.copyTo(output) }
@@ -179,9 +190,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                 put(MediaStore.MediaColumns.MIME_TYPE, mime)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/TikitokiDownloader")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/TikitokiDownloader/" + account)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
             val resolver = context.contentResolver
@@ -206,10 +217,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         @Suppress("DEPRECATION")
         val folder = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "TikitokiDownloader"
+            "TikitokiDownloader/$account"
         )
         if (!folder.exists() && !folder.mkdirs()) throw IllegalStateException("No se pudo crear Descargas.")
-        val destination = File(folder, file.name)
+        val destination = File(folder, displayName)
         file.copyTo(destination, overwrite = false)
         return Uri.fromFile(destination)
     }
