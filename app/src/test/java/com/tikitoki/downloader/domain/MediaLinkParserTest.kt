@@ -12,6 +12,16 @@ class MediaLinkParserTest {
         assertEquals(MediaPlatform.TIKTOK, MediaLinkParser.parse("https://www.tiktok.com/@creator/video/123456789")?.platform)
     }
 
+    @Test fun supportsXvideosWithoutAcceptingImpostorDomains() {
+        val link = IncomingLinkValidator.validate(
+            "https://www.xvideos.com/video.oluuolc0d43/fodi_a_loira_casada_gostosa"
+        )
+        assertEquals(MediaPlatform.DIRECT_MEDIA, link?.platform)
+        assertFalse(link!!.collection)
+        assertNull(IncomingLinkValidator.validate("https://xvideos.com.evil.test/video.123/a"))
+        assertNull(IncomingLinkValidator.validate("http://www.xvideos.com/video.123/a"))
+    }
+
     @Test fun rejectsUnsafeHostsAndSchemes() {
         assertNull(MediaLinkParser.parse("http://youtube.com/watch?v=123"))
         assertNull(MediaLinkParser.parse("https://youtube.com.evil.example/watch?v=123"))
