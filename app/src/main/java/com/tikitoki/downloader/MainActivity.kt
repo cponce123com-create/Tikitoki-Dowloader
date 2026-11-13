@@ -105,6 +105,10 @@ import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import com.tikitoki.downloader.ui.TechHeader
+import com.tikitoki.downloader.ui.SafeAreaTopBar
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.consumeWindowInsets
 import com.tikitoki.downloader.ui.TechPlatformStrip
 import com.tikitoki.downloader.ui.TechShortcut
 import com.tikitoki.downloader.ui.TechPrimaryButton
@@ -338,8 +342,9 @@ private fun TikitokiApp(incomingLink: String) {
             )
         }
         Scaffold(
+            contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
-                Column(Modifier.fillMaxWidth().background(Color(0xFF110D20))) {
+                SafeAreaTopBar {
                     if (tab == 0 && selected.isNotEmpty() && videos.isNotEmpty()) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -401,7 +406,7 @@ private fun TikitokiApp(incomingLink: String) {
                             selected = tab == target,
                             onClick = { tab = target },
                             icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.Explore, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
-                            label = { Text(name, maxLines = 1) },
+                            label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas") 10.sp else 12.sp) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White, selectedTextColor = Color.White,
                                 indicatorColor = TechPurple, unselectedIconColor = TechMuted,
@@ -420,7 +425,7 @@ private fun TikitokiApp(incomingLink: String) {
             if (tab == 0) {
                 LazyVerticalGrid(
                     columns = if (gridMode) GridCells.Adaptive(minSize = 112.dp) else GridCells.Fixed(1),
-                    modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets),
+                    modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -605,7 +610,7 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                 }
             } else Column(
-                modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets)
+                modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets)
                     .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
