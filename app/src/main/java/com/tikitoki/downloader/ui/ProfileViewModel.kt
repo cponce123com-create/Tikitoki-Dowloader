@@ -74,7 +74,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (token == generation) mutableState.value = ProfileUiState(error = e.message ?: "Error de extracción")
+                if (token == generation) mutableState.value = ProfileUiState(error = (e.message ?: "Error de extracción") + "\n" + EngineRegistry.statusMessage())
             }
         }
     }
