@@ -711,7 +711,7 @@ private fun TikitokiApp(incomingLink: String) {
                         if (completed.isEmpty()) Text("Aún no hay videos descargados.")
                         else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(completed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, onOpen = {
+                                DownloadHistoryCard(record, onDelete = { deleteCandidate = record }, onOpen = {
                                     val saved = record.savedUri
                                     if (saved.isNullOrBlank()) {
                                         message = "No se encontró la ubicación del archivo."
