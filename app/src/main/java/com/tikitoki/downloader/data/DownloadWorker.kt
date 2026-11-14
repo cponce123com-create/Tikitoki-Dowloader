@@ -172,7 +172,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             .setContentText(if (showDetails && progress != null) "$message · avance aproximado $progress%" else if (showDetails) message else "Descargas en curso")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setProgress(if (showDetails && progress != null) 100 else 0, progress ?: 0, !showDetails || progress == null)
+            .setProgress(if (showDetails && progress != null) 100 else 0, if (showDetails) progress ?: 0 else 0, showDetails && progress == null)
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
