@@ -37,9 +37,10 @@ object ProfileMonitor {
         schedule(context)
     }
     fun add(context: Context, url: String): Boolean {
-        val parsed = TikTokLinkParser.parse(url)
-        if (parsed !is LinkParseResult.Success || parsed.link.type != com.tikitoki.downloader.domain.TikTokLinkType.PROFILE) return false
-        prefs(context).edit().putStringSet("urls", profiles(context) + parsed.link.url).apply()
+        val canonical = TikTokLinkParser.canonicalProfile(url) ?: return false
+        val existing = profiles(context)
+        if (existing.none { TikTokLinkParser.sameProfile(it, canonical) })
+            prefs(context).edit().putStringSet("urls", existing + canonical).apply()
         schedule(context)
         return true
     }
@@ -171,4 +172,5 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
         Result.success()
     }
 }
+
 

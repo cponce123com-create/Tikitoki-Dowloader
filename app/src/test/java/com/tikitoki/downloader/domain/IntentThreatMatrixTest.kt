@@ -35,11 +35,12 @@ class IntentThreatMatrixTest {
     @Test fun exercisesValidationBoundaryBranches() {
         assertNull(IncomingLinkValidator.validate(null))
         assertNull(IncomingLinkValidator.validate(""))
-        assertNull(IncomingLinkValidator.validate("https://youtube.com/--exec"))
-        assertNull(IncomingLinkValidator.validate("https://youtube.com/-o"))
-        assertNull(IncomingLinkValidator.validate("https://youtube.com/-P"))
-        assertNull(IncomingLinkValidator.validate("https://youtube.com/--load-info-json"))
-        assertNull(IncomingLinkValidator.validate("https://youtube.com/--batch-file"))
+        // These are URL paths, not command-line options. The URL remains a single argument.
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/--exec"))
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/-o"))
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/-P"))
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/--load-info-json"))
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/--batch-file"))
         assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202a"))
         assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202b"))
         assertNull(IncomingLinkValidator.validate("https://youtube.com/\u202c"))
@@ -58,3 +59,4 @@ class IntentThreatMatrixTest {
         assertNotNull(IncomingLinkValidator.validate("https://vm.tiktok.com/ZM123/"))
     }
 }
+
