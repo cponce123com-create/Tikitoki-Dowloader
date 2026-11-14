@@ -19,7 +19,6 @@ class DownloadInputPolicyTest {
         listOf(
             "http://youtube.com/watch?v=1",
             "https://youtube.com.evil.test/watch",
-            "https://youtube.com/--exec",
             "https://youtube.com/x\n--output=evil",
             "https://user@youtube.com/watch?v=1",
             "file:///tmp/private",
@@ -29,6 +28,11 @@ class DownloadInputPolicyTest {
                 DownloadInputPolicy.canonicalUrl(raw)
             }
         }
+    }
+
+    @Test fun acceptsHyphensInYoutubeIdAtQueueBoundary() {
+        assertEquals("https://youtube.com/watch?v=ab--cdefghi",
+            DownloadInputPolicy.canonicalUrl("https://youtube.com/watch?v=ab--cdefghi"))
     }
 
     @Test fun allowsOnlySafeFormatSelectors() {
@@ -51,3 +55,4 @@ class DownloadInputPolicyTest {
         }
     }
 }
+

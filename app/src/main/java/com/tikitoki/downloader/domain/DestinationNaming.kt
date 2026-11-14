@@ -16,7 +16,7 @@ object DestinationNaming {
                 else -> null
             }
             MediaPlatform.FACEBOOK -> first.takeUnless {
-                it.lowercase() in setOf("watch", "reel", "reels", "share", "video.php", "profile.php", "groups", "pages")
+                it.lowercase() in setOf("watch", "reel", "reels", "videos", "share", "video.php", "profile.php", "groups", "pages")
             }
             MediaPlatform.INSTAGRAM -> first.takeUnless {
                 it.lowercase() in setOf("p", "reel", "reels", "stories", "explore", "accounts", "tv")

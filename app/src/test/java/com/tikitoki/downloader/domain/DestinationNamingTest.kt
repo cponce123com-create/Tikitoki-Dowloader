@@ -17,6 +17,7 @@ class DestinationNamingTest {
         assertEquals("creador", DestinationNaming.account("https://instagram.com/creador/"))
         assertEquals("Sin cuenta", DestinationNaming.account("https://youtube.com/watch?v=abc"))
         assertEquals("Sin cuenta", DestinationNaming.account("https://facebook.com/watch/?v=123"))
+        assertEquals("Sin cuenta", DestinationNaming.account("https://facebook.com/videos/123"))
         assertEquals("Sin cuenta", DestinationNaming.account("https://instagram.com/reel/abc"))
     }
 
