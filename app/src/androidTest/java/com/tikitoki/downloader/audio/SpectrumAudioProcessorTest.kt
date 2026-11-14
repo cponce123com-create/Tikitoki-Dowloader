@@ -3,6 +3,7 @@ package com.tikitoki.downloader.audio
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.nio.ByteBuffer
@@ -16,6 +17,15 @@ import kotlin.math.sin
 @RunWith(AndroidJUnit4::class)
 @OptIn(UnstableApi::class)
 class SpectrumAudioProcessorTest {
+    @Test fun emptyInputDoesNotInterruptPlayback() {
+        val processor = SpectrumAudioProcessor()
+        processor.configure(AudioFormat(8000, 1, C.ENCODING_PCM_16BIT))
+        processor.flush()
+        processor.queueInput(AudioProcessor.EMPTY_BUFFER)
+        assertFalse(processor.output.hasRemaining())
+        processor.reset()
+    }
+
     @Test fun collectsSamplesAcrossSmallBuffers() {
         val processor = SpectrumAudioProcessor()
         processor.configure(AudioFormat(8000, 1, C.ENCODING_PCM_16BIT))

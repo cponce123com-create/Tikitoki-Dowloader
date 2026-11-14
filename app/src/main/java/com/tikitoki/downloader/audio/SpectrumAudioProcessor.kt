@@ -29,6 +29,7 @@ internal class SpectrumAudioProcessor : BaseAudioProcessor() {
             inputAudioFormat else AudioFormat.NOT_SET
 
     override fun queueInput(inputBuffer: ByteBuffer) {
+        if (!inputBuffer.hasRemaining()) return
         val channels = inputAudioFormat.channelCount
         val bytesPerFrame = channels * 2
         val now = System.nanoTime()
