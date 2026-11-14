@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +80,7 @@ private suspend fun readArtwork(context: Context, uri: String): ArtworkInfo = wi
 @Composable
 fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onRequestConsumed: () -> Unit = {}) {
     val context = LocalContext.current
+    val compact = LocalConfiguration.current.screenWidthDp < 360
     val prefs = remember { context.getSharedPreferences("music_player", Context.MODE_PRIVATE) }
     val tracks = remember {
         mutableStateListOf<MusicTrack>().apply {
@@ -220,8 +222,11 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         }
         Column(Modifier.fillMaxWidth().background(Color(0xFF0B1D17), RoundedCornerShape(14.dp)).border(1.dp, Color(0xFF526B5E), RoundedCornerShape(14.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(6.dp)); Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                if (!compact) {
+                    Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 IconButton(onClick = { favoritesOnly = !favoritesOnly }, modifier = Modifier.size(40.dp)) {
                     Icon(if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (favoritesOnly) "Ver todas" else "Ver favoritos", tint = Mint)
