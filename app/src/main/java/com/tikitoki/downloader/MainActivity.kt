@@ -653,7 +653,7 @@ private fun TikitokiApp(incomingLink: String) {
                         if (active.isNotEmpty()) {
                             Text("Descargando ahora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             active.forEach { record ->
-                                DownloadHistoryCard(record, onDelete = {}, onCancel = {
+                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = {}, onCancel = {
                                     scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
                                 }, onOpen = {})
                             }
@@ -722,7 +722,7 @@ private fun TikitokiApp(incomingLink: String) {
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(displayed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, onDelete = { deleteCandidate = record }, onCancel = {
+                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = { deleteCandidate = record }, onCancel = {
                                     scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
                                 }, onOpen = { openPlayback(record) })
                             }
@@ -741,7 +741,7 @@ private fun TikitokiApp(incomingLink: String) {
                         if (completed.isEmpty()) Text("Aún no hay videos descargados.")
                         else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(completed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, onDelete = { deleteCandidate = record }, onOpen = { openPlayback(record) })
+                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = { deleteCandidate = record }, onOpen = { openPlayback(record) })
                             }
                         }
                         Text(message, style = MaterialTheme.typography.bodySmall)
@@ -840,21 +840,18 @@ private fun TikitokiApp(incomingLink: String) {
 }
 
 @Composable
-private fun DownloadHistoryCard(record: DownloadRecord, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
+private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder)) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (!record.thumbnail.isNullOrBlank()) {
-                    AsyncImage(
-                        model = record.thumbnail,
-                        contentDescription = "Miniatura",
-                        modifier = Modifier.width(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 72.dp else 106.dp).aspectRatio(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 9f / 16f else 16f / 9f),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
+                VideoThumbnail(
+                    VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), resolver,
+                    Modifier.width(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 72.dp else 106.dp)
+                        .aspectRatio(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 9f / 16f else 16f / 9f),
+                )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(record.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
