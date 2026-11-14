@@ -1,12 +1,18 @@
 package com.tikitoki.downloader
 
 import android.content.Context
+import android.content.ContentValues
+import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.tikitoki.downloader.ui.MusicScreen
@@ -50,6 +56,15 @@ class MusicIntegratedPlaybackTest {
                     compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "music-playing.png")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+            }
+            val screenshot = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+            context.contentResolver.openOutputStream(screenshot)!!.use {
+                compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
             compose.onNodeWithContentDescription("Pausar").performClick()
         } finally {
             prefs.edit().putString("tracks", before).commit()

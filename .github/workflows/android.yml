@@ -74,10 +74,14 @@ jobs:
           script: |
             gradle --no-daemon connectedDebugAndroidTest
             adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
+            adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload music layout
         uses: actions/upload-artifact@v4
         with:
           name: music-layout
-          path: music-layout.png
+          path: |
+            music-layout.png
+            music-playing.png
           if-no-files-found: error
+
 
