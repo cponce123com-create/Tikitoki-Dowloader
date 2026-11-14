@@ -36,12 +36,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val source = TikTokVideoSource(application)
     private val universal = UniversalMediaSource(application)
     private val newPipe = NewPipeSource()
+    private val avatarResolver = ProfileAvatarResolver()
     private val mutableState = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = mutableState
     private var activeLink: MediaLink? = null
     private var generation = 0
     private var inspectionJob: Job? = null
     private var paginationJob: Job? = null
+    private var avatarJob: Job? = null
     private var nextScanPage = 1
     // A reattempt may contain only items already saved from the partial response.
     private var retryingPartial = false
@@ -78,16 +80,23 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         val token = ++generation
         inspectionJob?.cancel()
         paginationJob?.cancel()
+        avatarJob?.cancel()
         activeLink = media
         nextScanPage = 1
         retryingPartial = false
         mutableState.value = ProfileUiState(loading = true)
+        if (media.collection && media.platform == MediaPlatform.TIKTOK) {
+            avatarJob = viewModelScope.launch {
+                val avatar = avatarResolver.resolve(media.url)
+                if (token == generation && avatar != null) mutableState.value = mutableState.value.copy(profileImage = avatar)
+            }
+        }
         inspectionJob = viewModelScope.launch {
             try {
                 if (media.collection) {
                     val page = fetchPage(media, 1)
                     if (token != generation) return@launch
-                    mutableState.value = ProfileUiState(profileImage = page.profileImage)
+                    mutableState.value = ProfileUiState(profileImage = mutableState.value.profileImage ?: page.profileImage)
                     processPage(page, token)
                 } else {
                     val first = EngineFallback(
@@ -204,6 +213,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         generation++
         inspectionJob?.cancel()
         paginationJob?.cancel()
+        avatarJob?.cancel()
         activeLink = null
         nextScanPage = 1
         retryingPartial = false

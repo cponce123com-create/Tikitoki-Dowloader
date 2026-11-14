@@ -406,7 +406,7 @@ private fun TikitokiApp(incomingLink: String) {
                         val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
                             selected = tab == target,
-                            onClick = { tab = target },
+                            onClick = { focusManager.clearFocus(); keyboard?.hide(); tab = target },
                             icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.Explore, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
                             label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas") 10.sp else 12.sp) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
@@ -459,6 +459,8 @@ private fun TikitokiApp(incomingLink: String) {
                             OutlinedButton(
                                 modifier = Modifier.weight(0.75f).height(44.dp),
                                 onClick = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
                                     val pasted = clipboard.getText()?.text.orEmpty()
                                     if (IncomingLinkValidator.validate(pasted) != null) {
                                         url = pasted
@@ -467,8 +469,6 @@ private fun TikitokiApp(incomingLink: String) {
                                         formats = listOf(defaultFormat)
                                         chosenFormat = defaultFormat
                                         message = ""
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
                                     } else message = "El portapapeles no contiene un enlace válido."
                                 },
                                 shape = RoundedCornerShape(18.dp),
@@ -482,13 +482,13 @@ private fun TikitokiApp(incomingLink: String) {
                             modifier = Modifier.weight(1f),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
+                                focusManager.clearFocus()
+                                keyboard?.hide()
                                 when (val parsed = IncomingLinkValidator.validate(url)) {
                                     null -> message = "Pega un enlace HTTPS válido de TikTok, YouTube, Facebook o Instagram."
                                     else -> {
 
                                         
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
                                         selected.clear()
                                         profileViewModel.inspect(url, forceRefresh)
                                         forceRefresh = false
