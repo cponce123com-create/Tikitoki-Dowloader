@@ -1,6 +1,7 @@
 package com.tikitoki.downloader.data
 
 import com.tikitoki.downloader.domain.DownloadInputPolicy
+import com.tikitoki.downloader.domain.MetadataSanitizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
@@ -65,8 +66,9 @@ class NewPipeSource {
         VideoEntry(
             id = "newpipe:${info.id}",
             url = safe,
-            title = info.name,
+            title = MetadataSanitizer.title(info.name),
             durationSeconds = info.duration.toInt().coerceAtLeast(0)
         )
     }
 }
+
