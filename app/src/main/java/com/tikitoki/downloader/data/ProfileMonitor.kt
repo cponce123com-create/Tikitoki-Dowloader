@@ -15,6 +15,7 @@ import androidx.work.*
 import com.tikitoki.downloader.MainActivity
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
+import com.tikitoki.downloader.domain.ProfileSnapshot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,7 +96,7 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
                 if (page.incomplete || page.items.isEmpty()) throw IllegalStateException("No se pudo completar la consulta del perfil.")
                 if (url !in ProfileMonitor.profiles(applicationContext)) continue
                 val ids = page.items.map { it.id }.toSet()
-                val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet() + prefs.getStringSet("snapshot:$url", emptySet()).orEmpty()
+                val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
                 val newIds = if (old.isEmpty()) emptySet() else ids - old
                 prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newIds.size)
                     .putLong("checked:$url", System.currentTimeMillis()).remove("error:$url").apply()
@@ -131,12 +132,15 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                 if (!complete || all.isEmpty() || url !in ProfileMonitor.profiles(applicationContext)) continue
                 val previous = prefs.getStringSet("snapshot:$url", emptySet()).orEmpty().toSet()
                 val missingOnce = prefs.getStringSet("missing:$url", emptySet()).orEmpty().toSet()
-                val missingNow = previous - all
-                val confirmed = missingNow intersect missingOnce
-                // Keep missing IDs in the snapshot until a second full scan; reappearing IDs are restored.
-                val retained = all + (missingNow - confirmed)
-                prefs.edit().putStringSet("snapshot:$url", retained).putStringSet("missing:$url", missingNow - confirmed)
-                    .putInt("count:$url", all.size).apply()
+                val result = ProfileSnapshot.compare(previous, missingOnce, all, complete = true)
+                val confirmed = result.possiblyUnavailable
+                val edit = prefs.edit().putStringSet("snapshot:$url", result.snapshot).putStringSet("missing:$url", result.pending)
+                    .putInt("count:$url", all.size)
+                if (previous.isEmpty()) {
+                    val known = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
+                    edit.putStringSet("ids:$url", known + all)
+                }
+                edit.apply()
                 if (confirmed.isNotEmpty()) ProfileNotice.send(applicationContext, url, "@${parsed.link.username}: ${confirmed.size} video(s) podrían no estar disponibles.")
             } catch (e: CancellationException) { throw e }
               catch (_: Exception) { /* Never report disappearance on a failed scan. */ }

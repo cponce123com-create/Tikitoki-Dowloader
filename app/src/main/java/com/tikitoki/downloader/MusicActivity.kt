@@ -3,7 +3,16 @@ package com.tikitoki.downloader
 import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.BitmapFactory
+import android.graphics.drawable.GradientDrawable
+import android.media.MediaMetadataRetriever
+import android.widget.ImageView
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.net.Uri
+import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -37,6 +46,8 @@ class MusicActivity : ComponentActivity() {
     private var controller: MediaController? = null
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var trackTitle: TextView
+    private lateinit var artwork: ImageView
+    private var artworkUri: String? = null
     private lateinit var time: TextView
     private lateinit var seek: SeekBar
     private lateinit var play: Button
@@ -63,6 +74,13 @@ class MusicActivity : ComponentActivity() {
         fun label(size: Float) = TextView(this).apply { textSize = size; setTextColor(Color.WHITE) }
         fun button(text: String, action: () -> Unit) = Button(this).apply { this.text = text; setOnClickListener { action() } }
         root.addView(label(26f).apply { text = "Baja.pe · Mi música" })
+        artwork = ImageView(this).apply {
+            setBackgroundColor(Color.rgb(0, 70, 49))
+            setImageResource(android.R.drawable.ic_media_play)
+            contentDescription = "Carátula de la canción"
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
+        root.addView(artwork, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (110 * resources.displayMetrics.density).toInt()))
         trackTitle = label(20f).apply { text = "Selecciona una canción" }; root.addView(trackTitle)
         time = label(14f).apply { text = "00:00 / 00:00" }; root.addView(time)
         seek = SeekBar(this).apply {
@@ -83,6 +101,17 @@ class MusicActivity : ComponentActivity() {
         repeat = button("Repetir") { controller?.let { it.repeatMode = when (it.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }; updateUi() }; modes.addView(repeat)
         favorite = button("♡") { val uri = controller?.currentMediaItem?.localConfiguration?.uri?.toString() ?: return@button; if (!favorites.add(uri)) favorites.remove(uri); save(); updateUi() }; modes.addView(favorite)
         root.addView(modes)
+        root.addView(label(14f).apply { text = "Volumen" })
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        root.addView(SeekBar(this).apply {
+            max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            progress = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onStartTrackingTouch(bar: SeekBar?) {}
+                override fun onStopTrackingTouch(bar: SeekBar?) {}
+                override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0) }
+            })
+        })
         root.addView(button("Agregar canciones") { picker.launch(arrayOf("audio/*")) })
         root.addView(label(20f).apply { text = "Lista de reproducción" })
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -115,6 +144,17 @@ class MusicActivity : ComponentActivity() {
     private fun updateUi() {
         val player = controller ?: return
         trackTitle.text = player.mediaMetadata.title?.toString() ?: "Selecciona una canción"
+        val current = player.currentMediaItem?.localConfiguration?.uri?.toString()
+        if (current != artworkUri) {
+            artworkUri = current
+            artwork.setImageResource(android.R.drawable.ic_media_play)
+            if (current != null) lifecycleScope.launch {
+                val bytes = withContext(Dispatchers.IO) {
+                    try { MediaMetadataRetriever().let { retriever -> try { retriever.setDataSource(this@MusicActivity, Uri.parse(current)); retriever.embeddedPicture } finally { retriever.release() } } } catch (_: Exception) { null }
+                }
+                if (current == artworkUri && bytes != null) artwork.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+            }
+        }
         val duration = player.duration.coerceAtLeast(0L)
         fun clock(ms: Long): String = "%02d:%02d".format(ms / 60000, ms / 1000 % 60)
         time.text = "${clock(player.currentPosition.coerceAtLeast(0L))} / ${clock(duration)}"
