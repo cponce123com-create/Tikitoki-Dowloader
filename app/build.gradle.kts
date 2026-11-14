@@ -42,6 +42,7 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.27.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
@@ -118,4 +119,5 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
         }
     }
 }
+
 
