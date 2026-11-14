@@ -10,6 +10,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.documentfile.provider.DocumentFile
 import kotlin.math.roundToInt
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -130,6 +131,7 @@ import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import com.tikitoki.downloader.ui.TechHeader
+import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.SafeAreaTopBar
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -280,6 +282,9 @@ private fun TikitokiApp(incomingLink: String) {
         FormatChoice(selector, preferredQuality)
     }
     var tab by rememberSaveable { mutableStateOf(0) }
+    var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var musicRequestTitle by rememberSaveable { mutableStateOf("") }
+    BackHandler(enabled = tab == 6) { tab = 2 }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
@@ -384,9 +389,11 @@ private fun TikitokiApp(incomingLink: String) {
                         type to (displayName ?: uri.lastPathSegment)
                     } else null to uri.lastPathSegment
                 }
-                val activity = if (PlaybackKind.isAudio(record.formatId, mime, name))
-                    MusicActivity::class.java else PlayerActivity::class.java
-                context.startActivity(Intent(context, activity).apply {
+                if (PlaybackKind.isAudio(record.formatId, mime, name)) {
+                    musicRequestUri = saved
+                    musicRequestTitle = record.title
+                    tab = 6
+                } else context.startActivity(Intent(context, PlayerActivity::class.java).apply {
                     data = uri
                     putExtra("title", record.title)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -498,7 +505,7 @@ private fun TikitokiApp(incomingLink: String) {
                     listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
-                            selected = tab == target,
+                            selected = tab == target || (tab == 6 && target == 3),
                             onClick = { focusManager.clearFocus(); keyboard?.hide(); tab = target },
                             icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.VideoLibrary, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
                             label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas" || name == "Biblioteca") 10.sp else 12.sp) },
@@ -772,7 +779,7 @@ private fun TikitokiApp(incomingLink: String) {
                         Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            OutlinedButton(onClick = { context.startActivity(Intent(context, MusicActivity::class.java)) }) { Text("Mi música") }
+                            OutlinedButton(onClick = { tab = 6 }) { Text("Mi música") }
                             if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
@@ -803,6 +810,11 @@ private fun TikitokiApp(incomingLink: String) {
             ) {
                 TechHeader(onSettings = { tab = 5 })
                 when (tab) {
+                    6 -> MusicScreen(
+                        requestedUri = musicRequestUri,
+                        requestedTitle = musicRequestTitle,
+                        onRequestConsumed = { musicRequestUri = null },
+                    )
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
                         val failedCount = records.count { it.status == DownloadState.FAILED }
@@ -813,6 +825,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
                             }
                         }
+                        OutlinedButton(onClick = { tab = 6 }) { Text("Mi música") }
                         Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         
                         OutlinedButton(onClick = {
@@ -1074,6 +1087,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

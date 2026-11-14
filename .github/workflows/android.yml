@@ -71,4 +71,13 @@ jobs:
           target: default
           disable-animations: true
           emulator-boot-timeout: 900
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: |
+            gradle --no-daemon connectedDebugAndroidTest
+            adb pull /sdcard/Android/data/com.tikitoki.downloader/files/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
+      - name: Upload music layout
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-layout
+          path: music-layout.png
+          if-no-files-found: error
+
