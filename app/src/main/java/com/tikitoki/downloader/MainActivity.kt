@@ -104,6 +104,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
+import com.tikitoki.downloader.data.DeleteCompletedResult
 import com.tikitoki.downloader.data.DownloadSettings
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.DownloadRecord
@@ -458,9 +459,11 @@ private fun TikitokiApp(incomingLink: String) {
                     deleteCandidate = null
                     scope.launch {
                         try {
-                            message = if (DownloadQueue.deleteCompleted(context, item.videoId))
-                                "Video eliminado del dispositivo y del historial."
-                            else "No se pudo eliminar el archivo. El registro se conserva."
+                            message = when (DownloadQueue.deleteCompleted(context, item.videoId)) {
+                                DeleteCompletedResult.DELETED -> "Video eliminado del dispositivo y del historial."
+                                DeleteCompletedResult.FILE_MISSING -> "El archivo ya no existía. Se eliminó del historial."
+                                DeleteCompletedResult.FAILED -> "No se pudo eliminar el archivo. El registro se conserva."
+                            }
                         } catch (e: Exception) {
                             message = "No se pudo eliminar el archivo. Comprueba que siga disponible."
                         }
@@ -756,7 +759,7 @@ private fun TikitokiApp(incomingLink: String) {
                             OutlinedButton(onClick = { context.startActivity(Intent(context, MusicActivity::class.java)) }) { Text("Mi música") }
                             if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                            if (message.startsWith("No se")) Text(message, style = MaterialTheme.typography.bodySmall)
+                            if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     gridItems(completed, key = { it.videoId }) { record ->
@@ -1055,4 +1058,5 @@ private fun VideoThumbnail(
         }
     }
 }
+
 

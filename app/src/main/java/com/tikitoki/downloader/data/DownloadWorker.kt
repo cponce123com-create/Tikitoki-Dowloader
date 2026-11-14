@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.media.MediaScannerConnection
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -135,8 +136,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     val batches = dao.pendingBatchIds(item.videoId)
                     if (dao.markCompleted(item.videoId, uri.toString()) == 0) {
                         // Avoid leaving an orphaned file if the user paused the task.
-                        if (uri.scheme == "content") applicationContext.contentResolver.delete(uri, null, null)
-                        else if (uri.scheme == "file") uri.path?.let { File(it).delete() }
+                        runCatching { deleteSavedFile(applicationContext, uri) }
                     } else runCatching { CompletionNotifier.notifyFinished(applicationContext, batches) }
                 } catch (e: CancellationException) {
                     // Leave DOWNLOADING untouched: the next worker requeues interrupted work.
@@ -148,6 +148,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                             runCatching { CompletionNotifier.notifyFinished(applicationContext, batches) }
                     }
                 } finally {
+                    withContext(NonCancellable) {
+                        val status = runCatching { dao.find(item.videoId)?.status }.getOrNull()
+                        // A stopped DOWNLOADING task is requeued by doWork's finally block.
+                        val resumable = retainVideoTemporaryFiles(status, isStopped)
+                        if (!resumable && status != null)
+                            runCatching { clearVideoTemporaryFiles(safeTemporaryDirectory(applicationContext.cacheDir), item.videoId) }
+                    }
                     activeIds.remove(item.videoId)
                     activeProgress.remove(item.videoId)
                     if (activeIds.isNotEmpty()) runCatching {
@@ -249,9 +256,16 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             "TikitokiDownloader/$account"
         )
         if (!folder.exists() && !folder.mkdirs()) throw IllegalStateException("No se pudo crear Descargas.")
-        val destination = File(folder, displayName)
-        file.copyTo(destination, overwrite = false)
+        val destination = reserveUniqueFile(folder, displayName)
+        try {
+            file.inputStream().use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
+        } catch (e: Exception) {
+            destination.delete()
+            throw e
+        }
+        runCatching { MediaScannerConnection.scanFile(context, arrayOf(destination.absolutePath), arrayOf(mime), null) }
         return Uri.fromFile(destination)
     }
 }
+
 

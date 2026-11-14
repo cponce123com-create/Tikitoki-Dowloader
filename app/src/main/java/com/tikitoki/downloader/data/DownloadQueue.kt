@@ -68,24 +68,14 @@ object DownloadQueue {
         summary
     } }
 
-    /** Delete the saved file first; only remove the history entry on success. */
-    suspend fun deleteCompleted(context: Context, id: String): Boolean = withContext(Dispatchers.IO) {
+    /** Preserve history on permission or provider errors; remove it if the file is already gone. */
+    suspend fun deleteCompleted(context: Context, id: String): DeleteCompletedResult = withContext(Dispatchers.IO) {
         val dao = DownloadDatabase.get(context).downloads()
-        val record = dao.find(id) ?: return@withContext false
-        if (record.status != DownloadState.COMPLETED) return@withContext false
-        val saved = record.savedUri ?: return@withContext false
-        val uri = Uri.parse(saved)
-        val deleted = when (uri.scheme) {
-            "content" -> context.contentResolver.delete(uri, null, null) > 0
-            "file" -> {
-                @Suppress("DEPRECATION")
-                val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TikitokiDownloader").canonicalFile
-                val target = File(uri.path ?: "").canonicalFile
-                target.path.startsWith(root.path + File.separator) && target.exists() && target.delete()
-            }
-            else -> false
-        }
-        if (deleted) dao.deleteCompleted(id) > 0 else false
+        val record = dao.find(id) ?: return@withContext DeleteCompletedResult.FAILED
+        if (record.status != DownloadState.COMPLETED) return@withContext DeleteCompletedResult.FAILED
+        val outcome = deleteSavedFile(context, record.savedUri?.let(Uri::parse))
+        if (outcome != DeleteCompletedResult.FAILED && dao.deleteCompleted(id) == 0)
+            DeleteCompletedResult.FAILED else outcome
     }
 
     private fun request(context: Context) = OneTimeWorkRequestBuilder<DownloadWorker>()
@@ -159,8 +149,11 @@ object DownloadQueue {
         val batches = dao.pendingBatchIds(id)
         if (dao.markCancelled(id) > 0) {
             runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
+            if (id !in ActiveDownloadProcesses.ids)
+                runCatching { clearVideoTemporaryFiles(safeTemporaryDirectory(context.cacheDir), id) }
             runCatching { CompletionNotifier.notifyFinished(context, batches) }
         }
     }
 }
+
 
