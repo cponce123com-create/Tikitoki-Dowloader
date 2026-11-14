@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material.Slider as ClassicSlider
+import androidx.compose.material.SliderDefaults as ClassicSliderDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +52,7 @@ import org.json.JSONObject
 private data class MusicTrack(val uri: String, val title: String)
 private val Mint = Color(0xFF43E6A1)
 private val Muted = Color(0xFFADC8BC)
-private val Metal = Brush.verticalGradient(listOf(Color(0xFF56645E), Color(0xFF222E2A), Color(0xFF111B18)))
+private val Metal = Brush.verticalGradient(listOf(Color(0xFF7C8982), Color(0xFF3D4A44), Color(0xFF1A2922), Color(0xFF101A16)))
 private val artworkSlots = Semaphore(3)
 private data class ArtworkInfo(val bitmap: androidx.compose.ui.graphics.ImageBitmap?, val artist: String?)
 
@@ -190,9 +192,9 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     Text("${clock(position)} / ${clock(duration)}", color = Mint, fontSize = 13.sp)
                 }
             }
-            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+            ClassicSlider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                 onValueChange = { seeking = true; position = (it * duration).toLong() }, onValueChangeFinished = { if (duration > 0) controller?.seekTo(position); seeking = false },
-                enabled = duration > 0, colors = SliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))
+                enabled = duration > 0, colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 DeckButton(Icons.Default.Shuffle, "Aleatorio", shuffle, Modifier.weight(1f)) { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled; shuffle = it.shuffleModeEnabled } }
                 DeckButton(Icons.Default.SkipPrevious, "Anterior", false, Modifier.weight(1f)) { controller?.seekToPreviousMediaItem() }
@@ -212,19 +214,19 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.VolumeDown, contentDescription = "Volumen", tint = Muted)
-                Slider(value = volume.coerceIn(0f, maxVolume), onValueChange = { volume = it; audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0) }, valueRange = 0f..maxVolume, modifier = Modifier.weight(1f), colors = SliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint))
+                ClassicSlider(value = volume.coerceIn(0f, maxVolume), onValueChange = { volume = it; audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0) }, valueRange = 0f..maxVolume, modifier = Modifier.weight(1f), colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))
                 Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Muted)
             }
         }
         Column(Modifier.fillMaxWidth().background(Color(0xFF0B1D17), RoundedCornerShape(14.dp)).border(1.dp, Color(0xFF526B5E), RoundedCornerShape(14.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(8.dp)); Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                IconButton(onClick = { favoritesOnly = !favoritesOnly }) {
+                Spacer(Modifier.width(6.dp)); Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                IconButton(onClick = { favoritesOnly = !favoritesOnly }, modifier = Modifier.size(40.dp)) {
                     Icon(if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (favoritesOnly) "Ver todas" else "Ver favoritos", tint = Mint)
                 }
-                OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp) }
+                OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp, maxLines = 1) }
             }
             val visible = tracks.filter { !favoritesOnly || it.uri in favorites }
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
