@@ -155,10 +155,11 @@ fun TechShortcut(title: String, value: String, symbol: String, modifier: Modifie
 }
 
 @Composable
-fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) {
     Button(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 42.dp),
         colors = ButtonDefaults.buttonColors(containerColor = TechPurple, contentColor = Color.White),
         shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
+        if (icon != null) { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
         Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
     }
 }

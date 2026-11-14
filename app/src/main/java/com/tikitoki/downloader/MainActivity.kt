@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,6 +26,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import coil.ImageLoader
+import coil.decode.VideoFrameDecoder
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -95,8 +101,11 @@ import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadState
+import com.tikitoki.downloader.data.LibraryVisibility
 import com.tikitoki.downloader.data.LibraryExport
 import com.tikitoki.downloader.data.ProfileMonitor
+import com.tikitoki.downloader.data.ProfileAvatarResolver
+import com.tikitoki.downloader.data.ProfileIdentity
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -146,6 +155,7 @@ class MainActivity : ComponentActivity() {
     private var sharedLink by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         sharedLink = receivedText(intent)
         ExtractorUpdateWorker.schedule(applicationContext)
@@ -177,7 +187,7 @@ private val TikitokiColors = darkColorScheme(
     onSurface = Color(0xFFF4F4F7),
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun TikitokiApp(incomingLink: String) {
     val context = LocalContext.current
@@ -202,6 +212,10 @@ private fun TikitokiApp(incomingLink: String) {
     val scope = rememberCoroutineScope()
     val source = remember(context) { TikTokVideoSource(context.applicationContext) }
     val thumbnailResolver = remember(context) { VideoThumbnailResolver(context.applicationContext) }
+    val avatarResolver = remember { ProfileAvatarResolver() }
+    val galleryImageLoader = remember(context) {
+        ImageLoader.Builder(context).components { add(VideoFrameDecoder.Factory()) }.build()
+    }
     val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
     val profileViewModel: ProfileViewModel = viewModel()
     val profileState by profileViewModel.state.collectAsState()
@@ -352,7 +366,7 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                         }
                     }
-                    TechPrimaryButton("↓ Descargar", enabled = !queueBusy && !formatsBusy,
+                    TechPrimaryButton("Descargar", icon = Icons.Outlined.Download, enabled = !queueBusy && !formatsBusy,
                         modifier = Modifier.fillMaxWidth(), onClick = {
                             showQualitySheet = false
                             requestDownload()
@@ -402,13 +416,13 @@ private fun TikitokiApp(incomingLink: String) {
             bottomBar = {
                 Column(Modifier.fillMaxWidth().background(Color(0xFF110D20))) {
                 NavigationBar(containerColor = Color(0xFF110D20)) {
-                    listOf("Inicio", "Descargas", "Explorar", "Herramientas", "Archivos").forEachIndexed { index, name ->
+                    listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
                             selected = tab == target,
                             onClick = { focusManager.clearFocus(); keyboard?.hide(); tab = target },
                             icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.Explore, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
-                            label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas") 10.sp else 12.sp) },
+                            label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas" || name == "Biblioteca") 10.sp else 12.sp) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White, selectedTextColor = Color.White,
                                 indicatorColor = TechPurple, unselectedIconColor = TechMuted,
@@ -497,7 +511,8 @@ private fun TikitokiApp(incomingLink: String) {
                                     }
                                 }
                             },
-                            text = if (profileState.loading) "Analizando…" else "⌕ Analizar",
+                            icon = Icons.Outlined.Search,
+                            text = if (profileState.loading) "Analizando…" else "Analizar",
                         )
                         }
 
@@ -574,7 +589,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     chosenFormat = defaultFormat
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 Button(modifier = Modifier.weight(1f), enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
-                                    onClick = requestDownload) { Text("↓ Descargar ${selected.size}", maxLines = 1) }
+                                    onClick = requestDownload) { Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Descargar ${selected.size}", maxLines = 1) }
                             }
                             if (selected.size == 1) {
                                 OutlinedButton(onClick = chooseQuality, enabled = !formatsBusy) { Text("⚙ Calidad") }
@@ -634,6 +649,73 @@ private fun TikitokiApp(incomingLink: String) {
                         }
                     }
                 }
+            } else if (tab == 1) {
+                val queue = records.filter { LibraryVisibility.inQueue(it.status) }
+                    .sortedBy { if (it.status == DownloadState.DOWNLOADING) 0 else if (it.status == DownloadState.QUEUED) 1 else 2 }
+                val active = queue.count { it.status == DownloadState.DOWNLOADING || it.status == DownloadState.QUEUED }
+                val paused = queue.count { it.status == DownloadState.PAUSED }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TechHeader(onSettings = { tab = 5 })
+                            Text("Cola de descargas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            if (queue.isEmpty()) Text("No hay descargas en curso.", color = TechMuted)
+                            else {
+                                Text("${queue.count { it.status == DownloadState.DOWNLOADING }} descargando · ${queue.count { it.status == DownloadState.QUEUED }} en espera · $paused pausadas", color = TechMuted)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(enabled = active > 0, onClick = { scope.launch { DownloadQueue.pause(context); message = "Cola pausada." } }) { Text("Pausar") }
+                                    Button(enabled = paused > 0, onClick = { scope.launch { DownloadQueue.resume(context); message = "Cola reanudada." } }) { Text("Continuar") }
+                                }
+                            }
+                            if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    items(queue, key = { it.videoId }) { record ->
+                        DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = {}, onCancel = {
+                            scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
+                        }, onOpen = {})
+                    }
+                }
+            } else if (tab == 2) {
+                val completed = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TechHeader(onSettings = { tab = 5 })
+                            Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
+                            else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                            if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    gridItems(completed, key = { it.videoId }) { record ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).combinedClickable(
+                                onClick = { openPlayback(record) }, onLongClick = { deleteCandidate = record }),
+                            shape = RoundedCornerShape(8.dp), color = TechPanel,
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                coil.compose.SubcomposeAsyncImage(
+                                    model = record.savedUri?.let { Uri.parse(it) }, imageLoader = galleryImageLoader,
+                                    contentDescription = "Reproducir ${record.title}",
+                                    modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                                    error = { VideoThumbnail(VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), thumbnailResolver, Modifier.fillMaxSize(), deferLookup = true) },
+                                    loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
+                                )
+                            }
+                        }
+                    }
+                }
             } else Column(
                 modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets)
                     .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
@@ -641,113 +723,16 @@ private fun TikitokiApp(incomingLink: String) {
             ) {
                 TechHeader(onSettings = { tab = 5 })
                 when (tab) {
-                    1 -> {
-                        val finished = records.count { it.status == DownloadState.COMPLETED }
-                        val pending = records.count { it.status == DownloadState.QUEUED || it.status == DownloadState.DOWNLOADING }
-                        val paused = records.count { it.status == DownloadState.PAUSED }
-                        val failed = records.count { it.status == DownloadState.FAILED }
-
-                        Text("Cola de descargas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text("$finished completadas · $pending pendientes · $failed errores")
-                        val active = records.filter { it.status == DownloadState.DOWNLOADING }
-                        if (active.isNotEmpty()) {
-                            Text("Descargando ahora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            active.forEach { record ->
-                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = {}, onCancel = {
-                                    scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
-                                }, onOpen = {})
-                            }
-                        }
-
-                        
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                enabled = pending > 0,
-                                onClick = {
-                                    scope.launch {
-                                        DownloadQueue.pause(context)
-                                        message = "Cola pausada."
-                                    }
-                                },
-                            ) { Text("Pausar") }
-                            Button(
-                                enabled = paused > 0 || pending > 0,
-                                onClick = {
-                                    scope.launch {
-                                        DownloadQueue.resume(context)
-                                        message = "Cola reanudada."
-                                    }
-                                },
-                            ) { Text("Continuar") }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                enabled = failed > 0,
-                                onClick = {
-                                    scope.launch {
-                                        DownloadQueue.retryFailed(context)
-                                        message = "Reintentando descargas fallidas."
-                                    }
-                                },
-                            ) { Text("Reintentar errores") }
-                            OutlinedButton(
-                                enabled = failed > 0,
-                                onClick = { scope.launch { dao.clearFailed() } },
-                            ) { Text("Limpiar errores") }
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("TODOS", "COMPLETED", "FAILED").forEach { filter ->
-                                FilterChip(
-                                    selected = historyFilter == filter,
-                                    onClick = { historyFilter = filter },
-                                    label = {
-                                        Text(when (filter) {
-                                            "COMPLETED" -> "Listos"
-                                            "FAILED" -> "Errores"
-                                            else -> "Todos"
-                                        })
-                                    },
-                                )
-                            }
-                        }
-
-                        val displayed = records.filter {
-                            (historyFilter == "TODOS" || it.status == historyFilter) && it.status != DownloadState.DOWNLOADING
-                        }
-                        if (displayed.isEmpty()) Text("Todavía no hay descargas en esta categoría.")
-                        else LazyColumn(
-                            modifier = Modifier.fillMaxWidth().height(440.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(displayed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = { deleteCandidate = record }, onCancel = {
-                                    scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
-                                }, onOpen = { openPlayback(record) })
-                            }
-                        }
-                        if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
-                    }
-
-                    2 -> {
-                        val completed = records.filter { it.status == DownloadState.COMPLETED }
-                        Text("Biblioteca", style = MaterialTheme.typography.titleLarge)
-                        Text("${completed.size} descargados")
-                        
-
-                        Text("Mis videos descargados", style = MaterialTheme.typography.titleMedium)
-                        Text("Completados: ${completed.size} · Fallidos: ${records.count { it.status == DownloadState.FAILED }} · En cola: ${records.count { it.status == DownloadState.QUEUED }}")
-                        if (completed.isEmpty()) Text("Aún no hay videos descargados.")
-                        else LazyColumn(modifier = Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(completed, key = { it.videoId }) { record ->
-                                DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = { deleteCandidate = record }, onOpen = { openPlayback(record) })
-                            }
-                        }
-                        Text(message, style = MaterialTheme.typography.bodySmall)
-                    }
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
+                        val failedCount = records.count { it.status == DownloadState.FAILED }
+                        if (failedCount > 0) {
+                            Text("Descargas con errores: $failedCount", style = MaterialTheme.typography.titleMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { scope.launch { DownloadQueue.retryFailed(context); tab = 1; message = "Reintentando descargas." } }) { Text("Reintentar") }
+                                OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
+                            }
+                        }
                         Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         
                         OutlinedButton(onClick = {
@@ -757,9 +742,30 @@ private fun TikitokiApp(incomingLink: String) {
                             } else message = "Pega un enlace válido de perfil en Buscar."
                         }) { Text("Seguir perfil del enlace actual") }
                         monitored.forEach { profile ->
+                            val parsedProfile = TikTokLinkParser.parse(profile) as? LinkParseResult.Success
+                            val username = parsedProfile?.link?.username.orEmpty()
+                            val activeUsername = (TikTokLinkParser.parse(url) as? LinkParseResult.Success)?.link?.username
+                            val initialAvatar = profileState.profileImage.takeIf { username.isNotBlank() && username.equals(activeUsername, ignoreCase = true) }
+                            val identity by produceState<ProfileIdentity?>(initialValue = ProfileIdentity(null, initialAvatar), key1 = profile) {
+                                val found = avatarResolver.resolveIdentity(profile)
+                                if (found != null) value = found.copy(avatar = found.avatar ?: value?.avatar)
+                            }
                             Card {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(profile, maxLines = 2)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(Modifier.size(52.dp).clip(RoundedCornerShape(26.dp)).background(TechGradient), contentAlignment = Alignment.Center) {
+                                            if (identity?.avatar != null) coil.compose.SubcomposeAsyncImage(
+                                                model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                    .data(identity?.avatar).addHeader("Referer", "https://www.tiktok.com/").build(),
+                                                contentDescription = "Foto de perfil", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                                                error = { Text("@", color = Color.White) }, loading = { Text("@", color = Color.White) },
+                                            ) else Text("@", color = Color.White)
+                                        }
+                                        Column(Modifier.weight(1f)) {
+                                            Text(identity?.displayName ?: "@$username", fontWeight = FontWeight.Bold, maxLines = 1)
+                                            if (identity?.displayName != null) Text("@$username", color = TechMuted, maxLines = 1)
+                                        }
+                                    }
                                     Text("Nuevos desde la última revisión: ${ProfileMonitor.newCount(context, profile)}")
                                     val checked = ProfileMonitor.lastChecked(context, profile)
                                     Text(if (checked > 0) "Última revisión: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(checked))}" else "Pendiente de primera revisión")
