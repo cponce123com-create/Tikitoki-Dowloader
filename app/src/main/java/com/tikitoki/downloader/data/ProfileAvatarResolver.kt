@@ -14,8 +14,12 @@ import java.util.ArrayDeque
 import java.util.Locale
 
 /** Best-effort public profile metadata lookup; no login or private-profile access. */
+data class ProfileIdentity(val displayName: String?, val avatar: String?)
+
 class ProfileAvatarResolver {
-    suspend fun resolve(profileUrl: String): String? = withContext(Dispatchers.IO) {
+    suspend fun resolve(profileUrl: String): String? = resolveIdentity(profileUrl)?.avatar
+
+    suspend fun resolveIdentity(profileUrl: String): ProfileIdentity? = withContext(Dispatchers.IO) {
         val parsed = TikTokLinkParser.parse(profileUrl) as? LinkParseResult.Success ?: return@withContext null
         if (parsed.link.type != TikTokLinkType.PROFILE) return@withContext null
         val username = parsed.link.username ?: return@withContext null
@@ -28,14 +32,18 @@ class ProfileAvatarResolver {
             if (connection.responseCode != 200) return@withContext null
             val bytes = connection.inputStream.use { it.readNBytes(2 * 1024 * 1024 + 1) }
             if (bytes.size > 2 * 1024 * 1024) return@withContext null
-            findAvatar(bytes.toString(Charsets.UTF_8), username)
+            findIdentity(bytes.toString(Charsets.UTF_8), username)
         } catch (_: Exception) { null }
         finally { connection.disconnect() }
     }
 
-    internal fun findAvatar(html: String, username: String): String? {
+    internal fun findAvatar(html: String, username: String): String? = findIdentity(html, username)?.avatar
+
+    internal fun findIdentity(html: String, username: String): ProfileIdentity? {
         val script = Regex("<script\\b[^>]*\\bid=[\"'](?:SIGI_STATE|__UNIVERSAL_DATA_FOR_REHYDRATION__)[\"'][^>]*>(.*?)</script>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        var knownName: String? = null
+        var knownAvatar: String? = null
         for (match in script.findAll(html)) {
             val root = runCatching { JSONObject(match.groupValues[1]) }.getOrNull() ?: continue
             val pending = ArrayDeque<Any>()
@@ -45,10 +53,13 @@ class ProfileAvatarResolver {
                 when (val node = pending.removeFirst()) {
                     is JSONObject -> {
                         if (node.optString("uniqueId").equals(username, ignoreCase = true)) {
-                            for (key in listOf("avatarLarger", "avatarMedium", "avatarThumb")) {
-                                val url = node.optString(key).takeIf(::safeAvatarUrl)
-                                if (url != null) return url
-                            }
+                            val avatar = listOf("avatarLarger", "avatarMedium", "avatarThumb")
+                                .firstNotNullOfOrNull { node.optString(it).takeIf(::safeAvatarUrl) }
+                            val name = node.optString("nickname").takeIf { it.isNotBlank() && it != "null" }
+                                ?.let { com.tikitoki.downloader.domain.MetadataSanitizer.title(it) }
+                            if (name != null) knownName = name
+                            if (avatar != null) knownAvatar = avatar
+                            if (knownName != null && knownAvatar != null) return ProfileIdentity(knownName, knownAvatar)
                         }
                         val keys = node.keys()
                         while (keys.hasNext()) {
@@ -63,7 +74,7 @@ class ProfileAvatarResolver {
                 }
             }
         }
-        return null
+        return if (knownName != null || knownAvatar != null) ProfileIdentity(knownName, knownAvatar) else null
     }
 
     private fun safeAvatarUrl(raw: String): Boolean = runCatching {

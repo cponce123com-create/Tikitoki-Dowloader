@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Tikitoki.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#090914</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@android:style/Theme.Material.Light.NoActionBar</item>
+    </style>
+</resources>
