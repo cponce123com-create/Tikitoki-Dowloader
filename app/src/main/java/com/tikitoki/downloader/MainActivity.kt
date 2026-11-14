@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.ContentPaste
@@ -421,7 +422,7 @@ private fun TikitokiApp(incomingLink: String) {
                         NavigationBarItem(
                             selected = tab == target,
                             onClick = { focusManager.clearFocus(); keyboard?.hide(); tab = target },
-                            icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.Explore, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
+                            icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.VideoLibrary, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
                             label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas" || name == "Biblioteca") 10.sp else 12.sp) },
                             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White, selectedTextColor = Color.White,
