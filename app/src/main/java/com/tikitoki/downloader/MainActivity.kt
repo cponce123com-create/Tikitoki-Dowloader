@@ -885,13 +885,13 @@ private fun TikitokiApp(incomingLink: String) {
                                 }
                             })
                         }
-                        Text("Límite por video", style = MaterialTheme.typography.titleMedium)
+                        Text("Límite aproximado por descarga", style = MaterialTheme.typography.titleMedium)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(0 to "Sin límite", 256 to "256 KiB/s", 512 to "512 KiB/s", 1024 to "1 MiB/s", 2048 to "2 MiB/s").forEach { (rate, label) ->
                                 FilterChip(selected = rateKiB == rate, onClick = { rateKiB = rate; settings.edit().putInt("rate_kib", rate).apply() }, label = { Text(label) })
                             }
                         }
-                        Text("El límite es por video y se aplica a los siguientes. Con varias descargas, el total puede ser mayor.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Se aplica a las siguientes descargas. El total puede variar por los fragmentos y la cantidad de videos activos.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Notificaciones", style = MaterialTheme.typography.titleMedium)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Mostrar avance aproximado", modifier = Modifier.weight(1f))

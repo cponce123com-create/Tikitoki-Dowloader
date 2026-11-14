@@ -10,7 +10,7 @@ import android.database.sqlite.SQLiteDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,7 +38,8 @@ class DownloadDaoBatchTest {
         assertNull(dao.find("id1"))
         db.withTransaction { dao.upsertAll(records) }
         assertEquals(3, dao.findMany(listOf("id1", "id2", "id3")).size)
-        assertNotEquals("id1", dao.nextQueuedExcluding(listOf("id1"))?.videoId)
+        val nextId = dao.nextQueuedExcluding(listOf("id1"))?.videoId.orEmpty()
+        assertTrue(nextId == "id2" || nextId == "id3")
     }
 
     @Test fun summaryCountsEachTerminalOutcomeOnce() = runBlocking {
