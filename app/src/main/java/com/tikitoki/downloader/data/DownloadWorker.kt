@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
@@ -27,28 +28,36 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import java.io.File
+
+internal object ActiveDownloadProcesses {
+    val ids = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+}
 
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     companion object { private val documentFolderLock = Any() }
     private val dao = DownloadDatabase.get(context).downloads()
     private val source = TikTokVideoSource(context.applicationContext)
     private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val activeIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val activeIds = ActiveDownloadProcesses.ids
     private val lastDbUpdates = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val activeProgress = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val lastNotification = java.util.concurrent.atomic.AtomicLong(0)
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
+            setForeground(notification("Preparando descargas"))
+            // A cancelled worker may still be stopping yt-dlp; never launch a replacement over it.
+            while (activeIds.isNotEmpty() && !isStopped) delay(250)
+            if (isStopped) return@withContext Result.success()
             // Recover tasks interrupted by process death, never resume manually paused tasks.
             dao.requeueInterrupted()
-            setForeground(notification("Preparando descargas"))
-            val parallel = applicationContext.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
-                .getInt("parallel_downloads", 3).coerceIn(1, 4)
-            drainParallelQueue(parallel, take = {
+            drainAdaptiveQueue(limit = { DownloadSettings.currentLimit(applicationContext) }, take = {
                 var claimed: DownloadRecord? = null
                 while (!isStopped && claimed == null) {
-                    val item = dao.nextQueued() ?: break
+                    val item = dao.nextQueuedExcluding(activeIds.toList().ifEmpty { listOf("") }) ?: break
                     if (dao.claimQueued(item.videoId) != 0) claimed = item
                 }
                 claimed
@@ -63,8 +72,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
     private suspend fun downloadOne(item: DownloadRecord) {
                 activeIds.add(item.videoId)
-                setForeground(notification("Descargando ${activeIds.size} videos"))
-                val stopMonitor = progressScope.launch {
+                var stopMonitor: Job? = null
+                try {
+                    activeProgress[item.videoId] = 0
+                    setForeground(notification("Descargando ${activeIds.size} videos"))
+                    stopMonitor = progressScope.launch {
                     // CoroutineWorker.onStopped is final. Observe cancellation from a
                     // separate scope and stop the blocking yt-dlp process directly.
                     while (item.videoId in activeIds) {
@@ -79,22 +91,25 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         }
                         delay(1000)
                     }
-                }
-                try {
+                    }
                     val file = source.downloadToCache(
                         VideoEntry(item.videoId, DownloadInputPolicy.canonicalUrl(item.videoUrl), item.title, item.thumbnail),
                         DownloadInputPolicy.safeFormatId(item.formatId)
                     ) { percent ->
                         if (!isStopped) {
+                            activeProgress[item.videoId] = percent
                             val timestamp = System.currentTimeMillis()
                             if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) > 1000 || percent == 100) {
                                 lastDbUpdates[item.videoId] = timestamp
                                 progressScope.launch { dao.setProgress(item.videoId, percent) }
                             }
+                            val last = lastNotification.get()
+                            if (timestamp - last >= 1000 && lastNotification.compareAndSet(last, timestamp)) {
+                                runCatching { NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification) }
+                            }
                         }
                     }
                     if (isStopped) {
-                        dao.pauseIfDownloading(item.videoId)
                         file.delete()
                         return
                     }
@@ -106,22 +121,29 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         finally { file.delete() }
                     // A pause can occur during MediaStore publishing. Keep the saved file
                     // but only mark it completed when the record is still downloading.
+                    val batches = dao.pendingBatchIds(item.videoId)
                     if (dao.markCompleted(item.videoId, uri.toString()) == 0) {
                         // Avoid leaving an orphaned file if the user paused the task.
                         if (uri.scheme == "content") applicationContext.contentResolver.delete(uri, null, null)
                         else if (uri.scheme == "file") uri.path?.let { File(it).delete() }
-                    }
+                    } else runCatching { CompletionNotifier.notifyFinished(applicationContext, batches) }
                 } catch (e: CancellationException) {
-                    // Cancellation can race with a newly resumed worker; do not overwrite its state.
-                    dao.pauseIfDownloading(item.videoId)
+                    // Leave DOWNLOADING untouched: the next worker requeues interrupted work.
                     throw e
                 } catch (e: Exception) {
-                    if (isStopped) dao.pauseIfDownloading(item.videoId)
-                    else dao.markFailed(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" })
+                    if (!isStopped) {
+                        val batches = dao.pendingBatchIds(item.videoId)
+                        if (dao.markFailed(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" }) > 0)
+                            runCatching { CompletionNotifier.notifyFinished(applicationContext, batches) }
+                    }
                 } finally {
                     activeIds.remove(item.videoId)
+                    activeProgress.remove(item.videoId)
+                    if (activeIds.isNotEmpty()) runCatching {
+                        NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification)
+                    }
                     lastDbUpdates.remove(item.videoId)
-                    stopMonitor.cancel()
+                    stopMonitor?.cancel()
                 }
     }
 
@@ -131,13 +153,15 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         manager.createNotificationChannel(
             NotificationChannel(channelId, "Descargas de Tikitoki", NotificationManager.IMPORTANCE_LOW)
         )
+        val showDetails = DownloadSettings.showProgress(applicationContext)
+        val progress = activeProgress.values.toList().let { if (it.isEmpty()) null else it.average().toInt().coerceIn(0, 100) }
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Tikitoki Downloader")
-            .setContentText(message)
+            .setContentText(if (showDetails && progress != null) "$message · avance aproximado $progress%" else if (showDetails) message else "Descargas en curso")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setProgress(0, 0, true)
+            .setProgress(if (showDetails && progress != null) 100 else 0, progress ?: 0, !showDetails || progress == null)
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

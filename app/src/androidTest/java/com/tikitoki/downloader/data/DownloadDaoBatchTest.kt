@@ -10,6 +10,7 @@ import android.database.sqlite.SQLiteDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,6 +38,7 @@ class DownloadDaoBatchTest {
         assertNull(dao.find("id1"))
         db.withTransaction { dao.upsertAll(records) }
         assertEquals(3, dao.findMany(listOf("id1", "id2", "id3")).size)
+        assertNotEquals("id1", dao.nextQueuedExcluding(listOf("id1"))?.videoId)
     }
 
     @Test fun summaryCountsEachTerminalOutcomeOnce() = runBlocking {
@@ -48,10 +50,12 @@ class DownloadDaoBatchTest {
             dao.insertBatchItems(records.map { DownloadBatchItem("batch", it.videoId) })
         }
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        assertEquals(listOf("batch"), dao.pendingBatchIds("v1"))
         dao.claimQueued("v1"); dao.claimQueued("v2")
         dao.markCompleted("v1", "content://example/1")
         dao.markFailed("v2", "failed")
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        assertEquals(0, dao.finishedBatches(listOf("batch")).size)
         dao.markCancelled("v3")
         val result = dao.observeFinishedBatches().first().single()
         assertEquals(3, result.total)
@@ -59,8 +63,11 @@ class DownloadDaoBatchTest {
         assertEquals(1, result.failed)
         assertEquals(1, result.cancelled)
         assertEquals(2, result.duplicates)
+        assertEquals(result, dao.finishedBatches(listOf("batch")).single())
         dao.acknowledgeBatch("batch")
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        // The notification query must remain valid even if the user already closed the dialog.
+        assertEquals(result, dao.finishedBatches(listOf("batch")).single())
     }
 
     @Test fun migrationPreservesPendingDownloads() = runBlocking {

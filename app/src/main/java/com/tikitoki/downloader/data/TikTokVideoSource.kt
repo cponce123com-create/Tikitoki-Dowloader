@@ -210,7 +210,7 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--continue")
             // Parallel fragments accelerate DASH/HLS streams where the host allows it.
             // Limit concurrency to avoid saturating mobile networks and HTTP 429.
-            .addOption("--concurrent-fragments", "4")
+            .addOption("--concurrent-fragments", if (DownloadSettings.currentLimit(context) > 4) "2" else "4")
             .addOption("--fragment-retries", "3")
             .addOption("--retries", "3")
             .addOption("--retry-sleep", "fragment:exp=1:8")
@@ -218,6 +218,9 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("-f", formatId)
             .addOption("--merge-output-format", "mp4")
             .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
+
+        val rate = DownloadSettings.rateKiB(context)
+        if (rate > 0) request.addOption("--limit-rate", "${rate}K")
 
         val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(
             request,
