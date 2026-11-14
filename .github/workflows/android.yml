@@ -72,7 +72,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 900
           script: |
-            gradle --no-daemon connectedDebugAndroidTest
+            gradle --no-daemon connectedDebugAndroidTest || { adb logcat -d -s ExoPlayerImplInternal:E; exit 1; }
             adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
             adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload music layout
