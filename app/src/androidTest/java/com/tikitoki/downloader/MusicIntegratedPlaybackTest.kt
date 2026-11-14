@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Looper
 import android.provider.MediaStore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -61,13 +62,14 @@ class MusicIntegratedPlaybackTest {
                 compose.waitUntil(60_000) { PlaybackSpectrum.levels.value.any { it > 0.05f } }
             } catch (error: Throwable) {
                 val pauseVisible = compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
-                val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+                val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
+                    .setApplicationLooper(Looper.getMainLooper()).buildAsync()
                 val probe = future.get(10, TimeUnit.SECONDS)
                 var details = ""
                 compose.runOnIdle {
                     details = "estado=${probe.playbackState}, playWhenReady=${probe.playWhenReady}, isPlaying=${probe.isPlaying}, item=${probe.currentMediaItem?.mediaId}, error=${probe.playerError}"
+                    MediaController.releaseFuture(future)
                 }
-                MediaController.releaseFuture(future)
                 throw AssertionError("Solicitud=${consumed.get()}, reproduciendo=$pauseVisible, niveles=${PlaybackSpectrum.levels.value}, $details", error)
             }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
