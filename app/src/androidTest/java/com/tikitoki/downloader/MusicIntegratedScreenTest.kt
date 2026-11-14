@@ -1,6 +1,8 @@
 package com.tikitoki.downloader
 
 import android.graphics.Bitmap
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
@@ -15,7 +17,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class MusicIntegratedScreenTest {
@@ -33,8 +34,14 @@ class MusicIntegratedScreenTest {
         compose.onNodeWithContentDescription("Repetir").assertIsDisplayed()
         compose.onNodeWithText("Biblioteca").assertIsDisplayed()
 
-        val dir = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
-        File(dir, "music-layout.png").outputStream().use {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "music-layout.png")
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+        }
+        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+        context.contentResolver.openOutputStream(uri)!!.use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
