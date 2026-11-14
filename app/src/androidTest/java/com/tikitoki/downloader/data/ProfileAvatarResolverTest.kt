@@ -17,4 +17,11 @@ class ProfileAvatarResolverTest {
         val unsafe = html.replace("p16.tiktokcdn.com", "example.com")
         assertNull(resolver.findAvatar(unsafe, "carlos"))
     }
+
+    @Test fun findsAvatarAfterNameOnlyRecord() {
+        val html = """<script id="SIGI_STATE">{"a":{"uniqueId":"carlos","nickname":"Carlos"},"b":{"uniqueId":"carlos","avatarThumb":"https://p16.tiktokcdn.com/avatar.jpg"}}</script>"""
+        val result = ProfileAvatarResolver().findIdentity(html, "carlos")
+        assertEquals("Carlos", result?.displayName)
+        assertEquals("https://p16.tiktokcdn.com/avatar.jpg", result?.avatar)
+    }
 }

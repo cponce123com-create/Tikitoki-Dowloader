@@ -42,6 +42,8 @@ class ProfileAvatarResolver {
     internal fun findIdentity(html: String, username: String): ProfileIdentity? {
         val script = Regex("<script\\b[^>]*\\bid=[\"'](?:SIGI_STATE|__UNIVERSAL_DATA_FOR_REHYDRATION__)[\"'][^>]*>(.*?)</script>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        var knownName: String? = null
+        var knownAvatar: String? = null
         for (match in script.findAll(html)) {
             val root = runCatching { JSONObject(match.groupValues[1]) }.getOrNull() ?: continue
             val pending = ArrayDeque<Any>()
@@ -55,7 +57,9 @@ class ProfileAvatarResolver {
                                 .firstNotNullOfOrNull { node.optString(it).takeIf(::safeAvatarUrl) }
                             val name = node.optString("nickname").takeIf { it.isNotBlank() && it != "null" }
                                 ?.let { com.tikitoki.downloader.domain.MetadataSanitizer.title(it) }
-                            if (avatar != null || name != null) return ProfileIdentity(name, avatar)
+                            if (name != null) knownName = name
+                            if (avatar != null) knownAvatar = avatar
+                            if (knownName != null && knownAvatar != null) return ProfileIdentity(knownName, knownAvatar)
                         }
                         val keys = node.keys()
                         while (keys.hasNext()) {
@@ -70,7 +74,7 @@ class ProfileAvatarResolver {
                 }
             }
         }
-        return null
+        return if (knownName != null || knownAvatar != null) ProfileIdentity(knownName, knownAvatar) else null
     }
 
     private fun safeAvatarUrl(raw: String): Boolean = runCatching {
