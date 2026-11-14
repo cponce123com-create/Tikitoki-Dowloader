@@ -19,6 +19,7 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:extractNativeLibs="true"
         android:usesCleartextTraffic="false">
+        <activity android:name=".MusicActivity" android:exported="false" />
         <activity android:name=".PlayerActivity" android:exported="false" />
         <service android:name=".PlaybackService" android:exported="false"
             android:foregroundServiceType="mediaPlayback">
