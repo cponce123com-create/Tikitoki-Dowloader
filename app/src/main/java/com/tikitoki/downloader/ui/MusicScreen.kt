@@ -11,6 +11,7 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,10 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +47,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.tikitoki.downloader.PlaybackService
+import com.tikitoki.downloader.audio.PlaybackSpectrum
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -98,6 +104,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(false) }
+    val spectrum by PlaybackSpectrum.levels.collectAsState()
     var shuffle by remember { mutableStateOf(false) }
     var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var seeking by remember { mutableStateOf(false) }
@@ -193,6 +200,19 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     Text(artwork.artist ?: "Música local", color = Muted, fontSize = 12.sp, maxLines = 1)
                     Text("${clock(position)} / ${clock(duration)}", color = Mint, fontSize = 13.sp)
                 }
+                Canvas(Modifier.width(if (compact) 58.dp else 76.dp).height(44.dp)
+                    .semantics { contentDescription = "Visualizador de audio" }) {
+                    val gap = 2.dp.toPx()
+                    val barWidth = ((size.width - gap * (spectrum.size - 1)) / spectrum.size).coerceAtLeast(1f)
+                    spectrum.forEachIndexed { index, level ->
+                        val height = if (playing) (level.coerceIn(0f, 1f) * size.height) else 0f
+                        if (height > 0f) drawRect(
+                            color = Mint,
+                            topLeft = Offset(index * (barWidth + gap), size.height - height),
+                            size = Size(barWidth, height),
+                        )
+                    }
+                }
             }
             ClassicSlider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                 onValueChange = { seeking = true; position = (it * duration).toLong() }, onValueChangeFinished = { if (duration > 0) controller?.seekTo(position); seeking = false },
@@ -279,3 +299,4 @@ private fun DeckButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
         Icon(icon, contentDescription = label, tint = if (active) Mint else Color.White, modifier = Modifier.size(26.dp))
     }
 }
+

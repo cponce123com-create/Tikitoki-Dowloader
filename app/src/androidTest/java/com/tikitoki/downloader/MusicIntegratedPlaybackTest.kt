@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.tikitoki.downloader.ui.MusicScreen
+import com.tikitoki.downloader.audio.PlaybackSpectrum
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -18,6 +19,8 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.PI
+import kotlin.math.sin
 
 @RunWith(AndroidJUnit4::class)
 class MusicIntegratedPlaybackTest {
@@ -33,6 +36,9 @@ class MusicIntegratedPlaybackTest {
         wav.put("RIFF".toByteArray()).putInt(36 + samples).put("WAVEfmt ".toByteArray())
         wav.putInt(16).putShort(1).putShort(1).putInt(8000).putInt(16000).putShort(2).putShort(16)
         wav.put("data".toByteArray()).putInt(samples)
+        repeat(8000 * 30) { index ->
+            wav.putShort((sin(2.0 * PI * 440.0 * index / 8000.0) * 16000).toInt().toShort())
+        }
         file.writeBytes(wav.array())
         val consumed = AtomicBoolean(false)
         try {
@@ -40,7 +46,8 @@ class MusicIntegratedPlaybackTest {
                 MaterialTheme { MusicScreen(Uri.fromFile(file).toString(), "Audio de prueba") { consumed.set(true) } }
             }
             compose.waitUntil(30_000) {
-                consumed.get() && compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
+                consumed.get() && PlaybackSpectrum.levels.value.any { it > 0.05f } &&
+                    compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
             compose.onNodeWithContentDescription("Pausar").performClick()
@@ -50,3 +57,4 @@ class MusicIntegratedPlaybackTest {
         }
     }
 }
+
