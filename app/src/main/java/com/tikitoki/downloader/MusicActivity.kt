@@ -59,6 +59,7 @@ class MusicActivity : ComponentActivity() {
     private lateinit var list: LinearLayout
     private var seeking = false
     private var favoritesOnly = false
+    private var pendingUri: String? = null
     private val prefs by lazy { getSharedPreferences("music_player", MODE_PRIVATE) }
     private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val existing = tracks.map { it.uri }.toSet()
@@ -88,6 +89,17 @@ class MusicActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         load()
+        if (savedInstanceState == null) {
+            intent.data?.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { uri ->
+                val value = uri.toString()
+                if (tracks.none { it.uri == value }) {
+                    val title = intent.getStringExtra("title")?.takeIf { it.isNotBlank() } ?: displayName(uri)
+                    tracks.add(Track(value, title))
+                    save()
+                }
+                pendingUri = value
+            }
+        }
         val dp = resources.displayMetrics.density
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((16*dp).toInt(), (16*dp).toInt(), (16*dp).toInt(), (12*dp).toInt()); setBackgroundColor(Color.rgb(3, 25, 20)) }
         fun label(size: Float) = TextView(this).apply { textSize = size; setTextColor(Color.WHITE) }
@@ -174,6 +186,11 @@ class MusicActivity : ComponentActivity() {
                     }
                 })
             }
+            pendingUri?.let { uri ->
+                val index = tracks.indexOfFirst { it.uri == uri }
+                pendingUri = null
+                if (index >= 0) startAt(index)
+            }
             updateUi()
         } catch (_: Exception) { Toast.makeText(this, "No se pudo conectar el reproductor.", Toast.LENGTH_LONG).show() } }, ContextCompat.getMainExecutor(this))
         handler.post(refresh)
@@ -243,4 +260,5 @@ class MusicActivity : ComponentActivity() {
     }
     override fun onDestroy() { handler.removeCallbacks(refresh); future?.let { MediaController.releaseFuture(it) }; controller = null; super.onDestroy() }
 }
+
 
