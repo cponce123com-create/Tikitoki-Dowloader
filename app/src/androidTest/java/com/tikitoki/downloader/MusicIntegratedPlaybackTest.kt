@@ -67,7 +67,7 @@ class MusicIntegratedPlaybackTest {
                 val probe = future.get(10, TimeUnit.SECONDS)
                 var details = ""
                 compose.runOnIdle {
-                    details = "estado=${probe.playbackState}, playWhenReady=${probe.playWhenReady}, isPlaying=${probe.isPlaying}, item=${probe.currentMediaItem?.mediaId}, error=${probe.playerError}"
+                    details = "estado=${probe.playbackState}, playWhenReady=${probe.playWhenReady}, isPlaying=${probe.isPlaying}, item=${probe.currentMediaItem?.mediaId}, error=${probe.playerError}, causa=${probe.playerError?.cause}"
                     MediaController.releaseFuture(future)
                 }
                 throw AssertionError("Solicitud=${consumed.get()}, reproduciendo=$pauseVisible, niveles=${PlaybackSpectrum.levels.value}, $details", error)
