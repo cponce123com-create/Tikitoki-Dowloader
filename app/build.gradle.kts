@@ -6,6 +6,10 @@ plugins {
     jacoco
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.tikitoki.downloader"
     compileSdk = 35
@@ -119,5 +123,6 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
         }
     }
 }
+
 
 

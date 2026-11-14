@@ -38,6 +38,12 @@ jobs:
           name: M1-URL-security-coverage
           path: app/build/reports/jacoco/m1CoverageReport/
           if-no-files-found: warn
+      - name: Upload Room schemas
+        uses: actions/upload-artifact@v4
+        with:
+          name: Room-schemas
+          path: app/schemas/
+          if-no-files-found: error
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -72,3 +78,4 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 900
           script: gradle --no-daemon connectedDebugAndroidTest
+
