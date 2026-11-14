@@ -42,6 +42,8 @@ import com.tikitoki.downloader.PlaybackService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -49,6 +51,28 @@ private data class MusicTrack(val uri: String, val title: String)
 private val Mint = Color(0xFF43E6A1)
 private val Muted = Color(0xFFADC8BC)
 private val Metal = Brush.verticalGradient(listOf(Color(0xFF56645E), Color(0xFF222E2A), Color(0xFF111B18)))
+private val artworkSlots = Semaphore(3)
+private data class ArtworkInfo(val bitmap: androidx.compose.ui.graphics.ImageBitmap?, val artist: String?)
+
+private suspend fun readArtwork(context: Context, uri: String): ArtworkInfo = withContext(Dispatchers.IO) {
+    artworkSlots.withPermit {
+        runCatching {
+            MediaMetadataRetriever().let { r ->
+                try {
+                    r.setDataSource(context, Uri.parse(uri))
+                    val bytes = r.embeddedPicture?.takeIf { it.size <= 5 * 1024 * 1024 }
+                    val bitmap = bytes?.let {
+                        val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+                        BitmapFactory.decodeByteArray(it, 0, it.size, options)?.asImageBitmap()
+                    }
+                    val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                        ?.filterNot { it.isISOControl() }?.trim()?.take(100)?.takeIf { it.isNotBlank() }
+                    ArtworkInfo(bitmap, artist)
+                } finally { r.release() }
+            }
+        }.getOrElse { ArtworkInfo(null, null) }
+    }
+}
 
 @Composable
 fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onRequestConsumed: () -> Unit = {}) {
@@ -143,11 +167,9 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             delay(500)
         }
     }
-    val artwork by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, currentUri) {
+    val artwork by produceState(ArtworkInfo(null, null), currentUri) {
         val uri = currentUri ?: return@produceState
-        value = withContext(Dispatchers.IO) {
-            runCatching { MediaMetadataRetriever().let { r -> try { r.setDataSource(context, Uri.parse(uri)); r.embeddedPicture?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } } finally { r.release() } } }.getOrNull()
-        }
+        value = readArtwork(context, uri)
     }
     fun clock(ms: Long) = "%02d:%02d".format(ms / 60000, ms / 1000 % 60)
     val shape = RoundedCornerShape(18.dp)
@@ -156,12 +178,12 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         Column(Modifier.fillMaxWidth().background(Metal, shape).border(1.dp, Color(0xFF798D83), shape).padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth().background(Color(0xFF041C13), RoundedCornerShape(12.dp)).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-                    if (artwork != null) Image(artwork!!, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    if (artwork.bitmap != null) Image(artwork.bitmap!!, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     else Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint, modifier = Modifier.size(34.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("Música local", color = Muted, fontSize = 12.sp)
+                    Text(artwork.artist ?: "Música local", color = Muted, fontSize = 12.sp, maxLines = 1)
                     Text("${clock(position)} / ${clock(duration)}", color = Mint, fontSize = 13.sp)
                 }
             }
@@ -195,21 +217,33 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
                 Spacer(Modifier.width(8.dp)); Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { favoritesOnly = !favoritesOnly }) {
+                    Icon(if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (favoritesOnly) "Ver todas" else "Ver favoritos", tint = Mint)
+                }
                 OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp) }
             }
-            TextButton(onClick = { favoritesOnly = !favoritesOnly }) { Text(if (favoritesOnly) "Ver todas" else "Ver favoritos", color = Mint) }
             val visible = tracks.filter { !favoritesOnly || it.uri in favorites }
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
             visible.forEach { track ->
                 val selected = currentUri == track.uri
+                val trackArtwork by produceState(ArtworkInfo(null, null), track.uri) { value = readArtwork(context, track.uri) }
                 Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(tracks.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint) }
+                    Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
+                        if (trackArtwork.bitmap != null) Image(trackArtwork.bitmap!!, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        else Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
+                    }
                     Spacer(Modifier.width(10.dp))
-                    Text(track.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save() }) { Icon(if (track.uri in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Favorito", tint = Mint) }
+                    Column(Modifier.weight(1f)) {
+                        Text(track.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        trackArtwork.artist?.let { Text(it, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
                     var menu by remember(track.uri) { mutableStateOf(false) }
                     Box { IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Opciones de canción", tint = Color.White) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(if (track.uri in favorites) "Quitar de favoritos" else "Añadir a favoritos") }, onClick = {
+                                menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()
+                            })
                             DropdownMenuItem(text = { Text("Quitar de la lista") }, onClick = {
                                 menu = false; tracks.remove(track)
                                 controller?.let { p -> for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == track.uri) p.removeMediaItem(i) }
