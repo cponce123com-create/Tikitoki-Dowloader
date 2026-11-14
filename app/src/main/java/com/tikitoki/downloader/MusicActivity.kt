@@ -57,6 +57,7 @@ class MusicActivity : ComponentActivity() {
     private lateinit var repeat: Button
     private lateinit var list: LinearLayout
     private var seeking = false
+    private var favoritesOnly = false
     private val prefs by lazy { getSharedPreferences("music_player", MODE_PRIVATE) }
     private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri ->
@@ -106,7 +107,7 @@ class MusicActivity : ComponentActivity() {
         val modes = LinearLayout(this).apply { gravity = Gravity.CENTER }
         shuffle = button("Aleatorio") { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }; updateUi() }; modes.addView(shuffle)
         repeat = button("Repetir") { controller?.let { it.repeatMode = when (it.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }; updateUi() }; modes.addView(repeat)
-        favorite = button("♡") { val uri = controller?.currentMediaItem?.localConfiguration?.uri?.toString() ?: return@button; if (!favorites.add(uri)) favorites.remove(uri); save(); updateUi() }; modes.addView(favorite)
+        favorite = button("♡") { val uri = controller?.currentMediaItem?.localConfiguration?.uri?.toString() ?: return@button; if (!favorites.add(uri)) favorites.remove(uri); save(); updateUi(); renderList() }; modes.addView(favorite)
         root.addView(modes)
         root.addView(label(14f).apply { text = "Volumen" })
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
@@ -123,6 +124,7 @@ class MusicActivity : ComponentActivity() {
         })
         root.addView(button("Agregar canciones") { picker.launch(arrayOf("audio/*")) })
         root.addView(label(20f).apply { text = "Lista de reproducción" })
+        root.addView(button("Mostrar favoritos") { favoritesOnly = !favoritesOnly; renderList() })
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
@@ -138,6 +140,7 @@ class MusicActivity : ComponentActivity() {
     private fun renderList() {
         list.removeAllViews()
         tracks.forEachIndexed { index, track ->
+            if (favoritesOnly && track.uri !in favorites) return@forEachIndexed
             val row = LinearLayout(this)
             row.addView(Button(this).apply { text = track.title; isAllCaps = false; setOnClickListener { startAt(index) } }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(Button(this).apply { text = "Quitar"; setOnClickListener { val removed = tracks.removeAt(index); controller?.let { p -> for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == removed.uri) p.removeMediaItem(i) }; save(); renderList() } })
