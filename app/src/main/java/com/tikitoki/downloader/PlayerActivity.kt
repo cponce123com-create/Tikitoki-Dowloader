@@ -64,6 +64,7 @@ class PlayerActivity : ComponentActivity() {
                 val decor = window.decorView
                 val isFull = decor.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN != 0
                 decor.systemUiVisibility = if (isFull) 0 else (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+                label.visibility = if (isFull) View.VISIBLE else View.GONE
                 text = if (isFull) "Pantalla completa" else "Salir de pantalla completa"
             }
         }
@@ -122,3 +123,4 @@ class PlayerActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
