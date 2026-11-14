@@ -133,9 +133,11 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
             try {
                 val all = mutableSetOf<String>()
                 var complete = false
+                var firstPageIds: List<String>? = null
                 for (number in 1..100) {
                     if (isStopped) return@withContext Result.success()
                     val page = source.inspectPageWithStatus(parsed.link, number, 100)
+                    if (number == 1) firstPageIds = page.items.map { it.id }
                     val fresh = page.items.count { all.add(it.id) }
                     when (scanPageState(page, 100, fresh)) {
                         ScanPageState.PARTIAL -> break
@@ -144,6 +146,10 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                     }
                 }
                 if (!complete || all.isEmpty() || url !in ProfileMonitor.profiles(applicationContext)) continue
+                // A changing first page may have shifted pagination while the catalog was being read.
+                // Do not infer removals from an unstable or failed scan.
+                val confirmation = source.inspectPageWithStatus(parsed.link, 1, 100)
+                if (confirmation.incomplete || confirmation.items.map { it.id } != firstPageIds) continue
                 recentLock.withLock {
                 if (url !in ProfileMonitor.profiles(applicationContext)) return@withLock
                 val previous = prefs.getStringSet("snapshot:$url", emptySet()).orEmpty().toSet()
@@ -165,3 +171,4 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
         Result.success()
     }
 }
+

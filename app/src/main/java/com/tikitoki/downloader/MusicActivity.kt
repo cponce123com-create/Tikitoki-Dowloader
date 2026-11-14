@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -60,9 +61,24 @@ class MusicActivity : ComponentActivity() {
     private var favoritesOnly = false
     private val prefs by lazy { getSharedPreferences("music_player", MODE_PRIVATE) }
     private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val existing = tracks.map { it.uri }.toSet()
+        val added = mutableListOf<Track>()
         uris.forEach { uri ->
-            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
-            if (tracks.none { it.uri == uri.toString() }) tracks.add(Track(uri.toString(), displayName(uri)))
+            if (tracks.none { it.uri == uri.toString() }) {
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val track = Track(uri.toString(), displayName(uri))
+                    tracks.add(track)
+                    added.add(track)
+                } catch (_: SecurityException) {
+                    Toast.makeText(this, "No se pudo guardar el acceso a una canción.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        controller?.let { player ->
+            if (player.currentMediaItem?.localConfiguration?.uri?.toString() in existing) {
+                player.addMediaItems(added.map(::mediaItem))
+            }
         }
         save(); renderList()
     }
@@ -72,23 +88,38 @@ class MusicActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         load()
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 20, 20, 20); setBackgroundColor(Color.rgb(0, 28, 20)) }
+        val dp = resources.displayMetrics.density
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((16*dp).toInt(), (16*dp).toInt(), (16*dp).toInt(), (12*dp).toInt()); setBackgroundColor(Color.rgb(3, 25, 20)) }
         fun label(size: Float) = TextView(this).apply { textSize = size; setTextColor(Color.WHITE) }
         fun button(text: String, action: () -> Unit) = Button(this).apply {
             this.text = text; isAllCaps = false; setTextColor(Color.WHITE)
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(37, 56, 52), Color.rgb(9, 31, 26))).apply { cornerRadius = 18f; setStroke(2, Color.rgb(28, 158, 112)) }
             setOnClickListener { action() }
         }
-        root.addView(label(26f).apply { text = "Baja.pe · Mi música" })
+        root.addView(label(22f).apply { text = "Baja.pe"; setTextColor(Color.rgb(180, 249, 220)) })
+        root.addView(label(26f).apply { text = "Mi música"; setPadding(0, (8*dp).toInt(), 0, (8*dp).toInt()) })
+        val playerCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((14*dp).toInt(), (14*dp).toInt(), (14*dp).toInt(), (14*dp).toInt())
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(26, 48, 42), Color.rgb(5, 31, 24))).apply {
+                cornerRadius = 22*dp
+                setStroke((1*dp).toInt().coerceAtLeast(1), Color.rgb(66, 122, 101))
+            }
+        }
+        root.addView(playerCard)
         artwork = ImageView(this).apply {
             setBackgroundColor(Color.rgb(0, 70, 49))
             setImageResource(android.R.drawable.ic_media_play)
             contentDescription = "Carátula de la canción"
             scaleType = ImageView.ScaleType.CENTER_CROP
         }
-        root.addView(artwork, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (110 * resources.displayMetrics.density).toInt()))
-        trackTitle = label(20f).apply { text = "Selecciona una canción" }; root.addView(trackTitle)
-        time = label(14f).apply { text = "00:00 / 00:00" }; root.addView(time)
+        val nowPlaying = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        nowPlaying.addView(artwork, LinearLayout.LayoutParams((76*dp).toInt(), (76*dp).toInt()))
+        val nowText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((12*dp).toInt(), 0, 0, 0) }
+        trackTitle = label(19f).apply { text = "Selecciona una canción"; maxLines = 2 }; nowText.addView(trackTitle)
+        time = label(14f).apply { text = "00:00 / 00:00"; setTextColor(Color.rgb(92, 232, 172)) }; nowText.addView(time)
+        nowPlaying.addView(nowText, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        playerCard.addView(nowPlaying)
         seek = SeekBar(this).apply {
             max = 1000
             progressTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
@@ -98,20 +129,22 @@ class MusicActivity : ComponentActivity() {
                 override fun onStopTrackingTouch(bar: SeekBar?) { val p = controller; if (p != null && p.duration > 0) p.seekTo(p.duration * progress / 1000); seeking = false }
                 override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) { }
             })
-        }; root.addView(seek)
+        }; playerCard.addView(seek)
         val controls = LinearLayout(this).apply { gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL }
-        controls.addView(button("⏮") { controller?.seekToPreviousMediaItem() })
-        play = button("▶") { controller?.let { p -> if (p.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri -> tracks.any { it.uri == uri } } != true) { if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } else if (p.isPlaying) p.pause() else if (p.mediaItemCount > 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }; controls.addView(play)
-        controls.addView(button("⏭") { controller?.seekToNextMediaItem() })
-        root.addView(controls)
+        controls.addView(button("⏮") { controller?.seekToPreviousMediaItem() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        play = button("▶") { controller?.let { p -> if (p.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri -> tracks.any { it.uri == uri } } != true) { if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } else if (p.isPlaying) p.pause() else if (p.mediaItemCount > 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }
+        play.contentDescription = "Reproducir o pausar"
+        controls.addView(play, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        controls.addView(button("⏭") { controller?.seekToNextMediaItem() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        playerCard.addView(controls)
         val modes = LinearLayout(this).apply { gravity = Gravity.CENTER }
         shuffle = button("Aleatorio") { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }; updateUi() }; modes.addView(shuffle)
         repeat = button("Repetir") { controller?.let { it.repeatMode = when (it.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }; updateUi() }; modes.addView(repeat)
         favorite = button("♡") { val uri = controller?.currentMediaItem?.localConfiguration?.uri?.toString() ?: return@button; if (!favorites.add(uri)) favorites.remove(uri); save(); updateUi(); renderList() }; modes.addView(favorite)
-        root.addView(modes)
-        root.addView(label(14f).apply { text = "Volumen" })
+        playerCard.addView(modes)
+        playerCard.addView(label(14f).apply { text = "Volumen" })
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        root.addView(SeekBar(this).apply {
+        playerCard.addView(SeekBar(this).apply {
             progressTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
             thumbTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
             max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -122,8 +155,10 @@ class MusicActivity : ComponentActivity() {
                 override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0) }
             })
         })
-        root.addView(button("Agregar canciones") { picker.launch(arrayOf("audio/*")) })
-        root.addView(label(20f).apply { text = "Lista de reproducción" })
+        val listHeader = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        listHeader.addView(label(20f).apply { text = "Lista de reproducción" }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        listHeader.addView(button("+ Agregar") { picker.launch(arrayOf("audio/*")) })
+        root.addView(listHeader)
         root.addView(button("Mostrar favoritos") { favoritesOnly = !favoritesOnly; renderList() })
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -131,7 +166,16 @@ class MusicActivity : ComponentActivity() {
         renderList()
         val pending = MediaController.Builder(this, SessionToken(this, ComponentName(this, PlaybackService::class.java))).buildAsync()
         future = pending
-        pending.addListener({ if (!isDestroyed && !isFinishing) try { controller = pending.get(); updateUi() } catch (_: Exception) { Toast.makeText(this, "No se pudo conectar el reproductor.", Toast.LENGTH_LONG).show() } }, ContextCompat.getMainExecutor(this))
+        pending.addListener({ if (!isDestroyed && !isFinishing) try {
+            controller = pending.get().also { player ->
+                player.addListener(object : Player.Listener {
+                    override fun onPlayerError(error: PlaybackException) {
+                        Toast.makeText(this@MusicActivity, "No se pudo reproducir el audio. Comprueba que el archivo siga disponible.", Toast.LENGTH_LONG).show()
+                    }
+                })
+            }
+            updateUi()
+        } catch (_: Exception) { Toast.makeText(this, "No se pudo conectar el reproductor.", Toast.LENGTH_LONG).show() } }, ContextCompat.getMainExecutor(this))
         handler.post(refresh)
     }
     private fun displayName(uri: Uri): String = try {
@@ -141,18 +185,31 @@ class MusicActivity : ComponentActivity() {
         list.removeAllViews()
         tracks.forEachIndexed { index, track ->
             if (favoritesOnly && track.uri !in favorites) return@forEachIndexed
-            val row = LinearLayout(this)
-            row.addView(Button(this).apply { text = track.title; isAllCaps = false; setOnClickListener { startAt(index) } }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(Button(this).apply { text = "Quitar"; setOnClickListener { val removed = tracks.removeAt(index); controller?.let { p -> for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == removed.uri) p.removeMediaItem(i) }; save(); renderList() } })
+            val row = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply { setColor(Color.rgb(10, 43, 32)); cornerRadius = 12 * resources.displayMetrics.density }
+            }
+            row.addView(Button(this).apply {
+                text = track.title; isAllCaps = false; setTextColor(Color.WHITE); setBackgroundColor(Color.TRANSPARENT)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                maxLines = 1
+                setOnClickListener { startAt(index) }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Button(this).apply {
+                text = "Quitar"; isAllCaps = false; setTextColor(Color.rgb(132, 235, 188)); setBackgroundColor(Color.TRANSPARENT)
+                setOnClickListener { val removed = tracks.removeAt(index); controller?.let { p -> for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == removed.uri) p.removeMediaItem(i) }; save(); renderList() }
+            })
             list.addView(row)
         }
     }
     private fun startAt(index: Int) {
         val player = controller ?: return
-        val items = tracks.map { track -> MediaItem.Builder().setUri(track.uri).setMediaMetadata(MediaMetadata.Builder().setTitle(track.title).build()).build() }
+        val items = tracks.map(::mediaItem)
         try { player.setMediaItems(items, index, 0L); player.prepare(); player.play() }
         catch (_: Exception) { Toast.makeText(this, "No se pudo abrir el audio.", Toast.LENGTH_LONG).show() }
     }
+    private fun mediaItem(track: Track): MediaItem = MediaItem.Builder().setUri(track.uri)
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(track.title).build()).build()
     private fun updateUi() {
         val player = controller ?: return
         trackTitle.text = player.mediaMetadata.title?.toString() ?: "Selecciona una canción"
@@ -186,3 +243,4 @@ class MusicActivity : ComponentActivity() {
     }
     override fun onDestroy() { handler.removeCallbacks(refresh); future?.let { MediaController.releaseFuture(it) }; controller = null; super.onDestroy() }
 }
+
