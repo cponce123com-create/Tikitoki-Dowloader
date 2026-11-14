@@ -71,6 +71,20 @@ class DownloadDaoBatchTest {
         assertEquals(result, dao.finishedBatches(listOf("batch")).single())
     }
 
+    @Test fun recoveryRequeuesInterruptedButKeepsExplicitPauses() = runBlocking {
+        val dao = db.downloads()
+        val records = (1..3).map { DownloadRecord("r$it", "https://www.youtube.com/watch?v=$it", "Video", null, "best") }
+        dao.upsertAll(records)
+        dao.claimQueued("r1")
+        dao.claimQueued("r2")
+        dao.pauseIfDownloading("r2")
+        dao.markCancelled("r3")
+        dao.requeueInterrupted()
+        assertEquals(DownloadState.QUEUED, dao.find("r1")?.status)
+        assertEquals(DownloadState.PAUSED, dao.find("r2")?.status)
+        assertEquals(DownloadState.CANCELLED, dao.find("r3")?.status)
+    }
+
     @Test fun migrationPreservesPendingDownloads() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "download-migration-test.db"

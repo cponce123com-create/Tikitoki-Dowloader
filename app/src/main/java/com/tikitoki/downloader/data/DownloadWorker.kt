@@ -29,11 +29,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
 internal object ActiveDownloadProcesses {
     val ids = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    val workerLock = Mutex()
 }
 
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -49,20 +53,27 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             setForeground(notification("Preparando descargas"))
-            // A cancelled worker may still be stopping yt-dlp; never launch a replacement over it.
-            while (activeIds.isNotEmpty() && !isStopped) delay(250)
-            if (isStopped) return@withContext Result.success()
-            // Recover tasks interrupted by process death, never resume manually paused tasks.
-            dao.requeueInterrupted()
-            drainAdaptiveQueue(limit = { DownloadSettings.currentLimit(applicationContext) }, take = {
-                var claimed: DownloadRecord? = null
-                while (!isStopped && claimed == null) {
-                    val item = dao.nextQueuedExcluding(activeIds.toList().ifEmpty { listOf("") }) ?: break
-                    if (dao.claimQueued(item.videoId) != 0) claimed = item
+            ActiveDownloadProcesses.workerLock.withLock {
+                // A cancelled worker may still be stopping yt-dlp; never overlap replacements.
+                while (activeIds.isNotEmpty() && !isStopped) delay(250)
+                if (isStopped) return@withLock Result.success()
+                dao.requeueInterrupted()
+                try {
+                    drainAdaptiveQueue(limit = { DownloadSettings.currentLimit(applicationContext) }, take = {
+                        var claimed: DownloadRecord? = null
+                        while (!isStopped && claimed == null) {
+                            val item = dao.nextQueuedExcluding(activeIds.toList().ifEmpty { listOf("") }) ?: break
+                            if (dao.claimQueued(item.videoId) != 0) claimed = item
+                        }
+                        claimed
+                    }, process = { downloadOne(it) })
+                    Result.success()
+                } finally {
+                    // Network constraints may stop work without the user pausing it.
+                    // Keep such records queued; explicit PAUSED/CANCELLED states are untouched.
+                    withContext(NonCancellable) { dao.requeueInterrupted() }
                 }
-                claimed
-            }, process = { downloadOne(it) })
-            Result.success()
+            }
         } catch (_: CancellationException) {
             Result.success()
         } finally {
