@@ -151,7 +151,7 @@ object DownloadQueue {
         val running = ActiveDownloadProcesses.ids.isNotEmpty() || WorkManager.getInstance(context.applicationContext).getWorkInfosForUniqueWork(UNIQUE_WORK)
             .get().any { it.state == androidx.work.WorkInfo.State.RUNNING }
         check(!running && dao.activeOrPausedCount() == 0) { "Espera a que terminen o cancela las descargas pendientes y pausadas." }
-        clearOwnTemporaryFiles(File(context.cacheDir, "tikitoki"))
+        clearOwnTemporaryFiles(safeTemporaryDirectory(context.cacheDir))
     } }
 
     suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {

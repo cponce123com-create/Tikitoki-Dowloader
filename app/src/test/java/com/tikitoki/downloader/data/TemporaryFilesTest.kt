@@ -3,6 +3,7 @@ package com.tikitoki.downloader.data
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class TemporaryFilesTest {
@@ -15,6 +16,15 @@ class TemporaryFilesTest {
             Files.createSymbolicLink(cache.resolve("link").toPath(), outside.toPath())
             assertEquals(1, clearOwnTemporaryFiles(cache))
             assertTrue(outside.exists())
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun cacheDirectoryItselfCannotRedirectOutside() {
+        val root = Files.createTempDirectory("tikitoki-root-test").toFile()
+        try {
+            val outside = root.resolve("other").apply { mkdirs() }
+            Files.createSymbolicLink(root.resolve("tikitoki").toPath(), outside.toPath())
+            assertThrows(IllegalArgumentException::class.java) { safeTemporaryDirectory(root) }
         } finally { root.deleteRecursively() }
     }
 }

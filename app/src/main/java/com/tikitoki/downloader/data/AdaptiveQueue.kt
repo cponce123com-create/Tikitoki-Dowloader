@@ -31,7 +31,7 @@ internal suspend fun <T> drainAdaptiveQueue(
                 }
                 if (done) break
                 val claimed = item
-                if (claimed == null) { delay(300); continue }
+                if (claimed == null) { delay(750); continue }
                 try { process(claimed) }
                 finally { lock.withLock { active-- } }
             }
