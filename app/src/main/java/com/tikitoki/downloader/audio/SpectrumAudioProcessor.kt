@@ -21,6 +21,8 @@ internal object PlaybackSpectrum {
 @OptIn(UnstableApi::class)
 internal class SpectrumAudioProcessor : BaseAudioProcessor() {
     private var lastCapture = 0L
+    private var capturedFrames = 0
+    private var channelWindows: Array<FloatArray> = emptyArray()
 
     override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat =
         if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT && inputAudioFormat.channelCount > 0)
@@ -30,26 +32,31 @@ internal class SpectrumAudioProcessor : BaseAudioProcessor() {
         val channels = inputAudioFormat.channelCount
         val bytesPerFrame = channels * 2
         val now = System.nanoTime()
-        if (channels > 0 && inputBuffer.remaining() / bytesPerFrame >= SpectrumAnalyzer.WINDOW &&
-            now - lastCapture >= 80_000_000L) {
+        if (channels > 0 && now - lastCapture >= 80_000_000L) {
+            if (channelWindows.size != channels) {
+                channelWindows = Array(channels) { FloatArray(SpectrumAnalyzer.WINDOW) }
+                capturedFrames = 0
+            }
             val read = inputBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
             val start = read.position()
-            // Use the loudest channel so stereo signals with opposite phases do not cancel.
-            var chosenChannel = 0
-            var highestEnergy = -1.0
-            for (channel in 0 until channels) {
-                var energy = 0.0
-                for (frame in 0 until SpectrumAnalyzer.WINDOW) {
-                    val sample = read.getShort(start + frame * bytesPerFrame + channel * 2).toDouble()
-                    energy += sample * sample
+            val available = inputBuffer.remaining() / bytesPerFrame
+            val count = minOf(available, SpectrumAnalyzer.WINDOW - capturedFrames)
+            for (frame in 0 until count) {
+                for (channel in 0 until channels) {
+                    channelWindows[channel][capturedFrames + frame] =
+                        read.getShort(start + frame * bytesPerFrame + channel * 2).toFloat() / 32768f
                 }
-                if (energy > highestEnergy) { highestEnergy = energy; chosenChannel = channel }
             }
-            val samples = FloatArray(SpectrumAnalyzer.WINDOW) { frame ->
-                read.getShort(start + frame * bytesPerFrame + chosenChannel * 2).toFloat() / 32768f
+            capturedFrames += count
+            if (capturedFrames == SpectrumAnalyzer.WINDOW) {
+                // Use the loudest channel so opposite stereo phases do not cancel.
+                val loudest = channelWindows.maxByOrNull { samples ->
+                    samples.sumOf { sample -> (sample * sample).toDouble() }
+                }!!
+                PlaybackSpectrum.publish(SpectrumAnalyzer.analyze(loudest))
+                capturedFrames = 0
+                lastCapture = now
             }
-            PlaybackSpectrum.publish(SpectrumAnalyzer.analyze(samples))
-            lastCapture = now
         }
         // Forward the input unchanged; the analyzer reads a separate view.
         replaceOutputBuffer(inputBuffer.remaining()).put(inputBuffer).flip()
@@ -57,8 +64,10 @@ internal class SpectrumAudioProcessor : BaseAudioProcessor() {
 
     override fun onFlush() {
         lastCapture = 0L
+        capturedFrames = 0
+        channelWindows = emptyArray()
         PlaybackSpectrum.clear()
     }
 
-    override fun onReset() { PlaybackSpectrum.clear() }
+    override fun onReset() { capturedFrames = 0; channelWindows = emptyArray(); PlaybackSpectrum.clear() }
 }

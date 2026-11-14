@@ -16,6 +16,24 @@ import kotlin.math.sin
 @RunWith(AndroidJUnit4::class)
 @OptIn(UnstableApi::class)
 class SpectrumAudioProcessorTest {
+    @Test fun collectsSamplesAcrossSmallBuffers() {
+        val processor = SpectrumAudioProcessor()
+        processor.configure(AudioFormat(8000, 1, C.ENCODING_PCM_16BIT))
+        processor.flush()
+        repeat(2) { part ->
+            val input = ByteBuffer.allocateDirect(256).order(ByteOrder.LITTLE_ENDIAN)
+            repeat(128) { i ->
+                input.putShort((sin(2 * PI * 14 * (part * 128 + i) / 256) * 16000).toInt().toShort())
+            }
+            input.flip()
+            processor.queueInput(input)
+            val output = processor.output
+            output.position(output.limit())
+        }
+        assertTrue(PlaybackSpectrum.levels.value[7] > 0.5f)
+        processor.reset()
+    }
+
     @Test fun oppositeStereoPhasesStillProduceRealLevels() {
         val processor = SpectrumAudioProcessor()
         processor.configure(AudioFormat(8000, 2, C.ENCODING_PCM_16BIT))
