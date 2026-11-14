@@ -52,7 +52,12 @@ object DownloadQueue {
                     createdAt = previous?.createdAt ?: System.currentTimeMillis(),
                 )
             }
-            if (records.isNotEmpty()) dao.upsertAll(records)
+            if (records.isNotEmpty()) {
+                dao.upsertAll(records)
+                val batchId = java.util.UUID.randomUUID().toString()
+                dao.insertBatch(DownloadBatch(batchId, System.currentTimeMillis(), duplicates))
+                dao.insertBatchItems(records.map { DownloadBatchItem(batchId, it.videoId) })
+            }
             EnqueueSummary(records.size, duplicates)
         }
         // Also kick an existing queued selection after a previous interrupted enqueue.
@@ -112,13 +117,24 @@ object DownloadQueue {
     }
 
     suspend fun retryFailed(context: Context) = withContext(Dispatchers.IO) {
-        DownloadDatabase.get(context).downloads().retryFailed()
-        start(context)
+        val db = DownloadDatabase.get(context)
+        val dao = db.downloads()
+        val count = db.withTransaction {
+            val failed = dao.failedRecords()
+            if (failed.isNotEmpty()) {
+                val id = java.util.UUID.randomUUID().toString()
+                dao.insertBatch(DownloadBatch(id, System.currentTimeMillis(), 0))
+                dao.insertBatchItems(failed.map { DownloadBatchItem(id, it.videoId) })
+                dao.retryFailed()
+            }
+            failed.size
+        }
+        if (count > 0) start(context)
     }
 
     suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {
         val dao = DownloadDatabase.get(context).downloads()
-        if (dao.cancelPending(id) > 0) runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
+        if (dao.markCancelled(id) > 0) runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
     }
 }
 
