@@ -19,6 +19,8 @@ import com.tikitoki.downloader.domain.ProfileSnapshot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 /** Monitoring is limited to profiles explicitly followed by the user. */
@@ -84,25 +86,36 @@ private object ProfileNotice {
     }
 }
 
+private val recentLock = Mutex()
+
+/** Shared by both workers so the daily pass checks the newest entries first. */
+private suspend fun checkRecent(context: Context, url: String, source: TikTokVideoSource): Boolean = recentLock.withLock {
+    val prefs = context.getSharedPreferences(ProfileMonitor.PREFS, Context.MODE_PRIVATE)
+    val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: return@withLock false
+    try {
+        val page = source.inspectPageWithStatus(parsed.link, page = 1, pageSize = 10)
+        if (page.incomplete || page.items.isEmpty()) throw IllegalStateException("No se pudo completar la consulta del perfil.")
+        if (url !in ProfileMonitor.profiles(context)) return@withLock false
+        val ids = page.items.map { it.id }.toSet()
+        val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
+        val newIds = if (old.isEmpty()) emptySet() else ids - old
+        prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newIds.size)
+            .putLong("checked:$url", System.currentTimeMillis()).remove("error:$url").apply()
+        if (newIds.isNotEmpty()) ProfileNotice.send(context, url, "@${parsed.link.username}: ${newIds.size} video(s) nuevo(s).")
+        true
+    } catch (e: CancellationException) { throw e }
+      catch (e: Exception) {
+        prefs.edit().putString("error:$url", e.message?.take(180) ?: "Error temporal de consulta").apply()
+        false
+    }
+}
+
 class ProfileMonitorWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val prefs = applicationContext.getSharedPreferences(ProfileMonitor.PREFS, Context.MODE_PRIVATE)
         val source = TikTokVideoSource(applicationContext)
         for (url in ProfileMonitor.profiles(applicationContext)) {
             if (isStopped) return@withContext Result.success()
-            val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: continue
-            try {
-                val page = source.inspectPageWithStatus(parsed.link, page = 1, pageSize = 10)
-                if (page.incomplete || page.items.isEmpty()) throw IllegalStateException("No se pudo completar la consulta del perfil.")
-                if (url !in ProfileMonitor.profiles(applicationContext)) continue
-                val ids = page.items.map { it.id }.toSet()
-                val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
-                val newIds = if (old.isEmpty()) emptySet() else ids - old
-                prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newIds.size)
-                    .putLong("checked:$url", System.currentTimeMillis()).remove("error:$url").apply()
-                if (newIds.isNotEmpty()) ProfileNotice.send(applicationContext, url, "@${parsed.link.username}: ${newIds.size} video(s) nuevo(s).")
-            } catch (e: CancellationException) { throw e }
-              catch (e: Exception) { prefs.edit().putString("error:$url", e.message?.take(180) ?: "Error temporal de consulta").apply() }
+            checkRecent(applicationContext, url, source)
         }
         Result.success()
     }
@@ -116,6 +129,7 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
         for (url in ProfileMonitor.profiles(applicationContext)) {
             if (isStopped) return@withContext Result.success()
             val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: continue
+            if (!checkRecent(applicationContext, url, source)) continue
             try {
                 val all = mutableSetOf<String>()
                 var complete = false
@@ -130,6 +144,8 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                     }
                 }
                 if (!complete || all.isEmpty() || url !in ProfileMonitor.profiles(applicationContext)) continue
+                recentLock.withLock {
+                if (url !in ProfileMonitor.profiles(applicationContext)) return@withLock
                 val previous = prefs.getStringSet("snapshot:$url", emptySet()).orEmpty().toSet()
                 val missingOnce = prefs.getStringSet("missing:$url", emptySet()).orEmpty().toSet()
                 val result = ProfileSnapshot.compare(previous, missingOnce, all, complete = true)
@@ -142,6 +158,7 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                 }
                 edit.apply()
                 if (confirmed.isNotEmpty()) ProfileNotice.send(applicationContext, url, "@${parsed.link.username}: ${confirmed.size} video(s) podrían no estar disponibles.")
+                }
             } catch (e: CancellationException) { throw e }
               catch (_: Exception) { /* Never report disappearance on a failed scan. */ }
         }
