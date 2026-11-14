@@ -9,6 +9,7 @@ import androidx.work.WorkerParameters
 import com.tikitoki.downloader.domain.ProfileDiff
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -50,12 +51,12 @@ object ProfileMonitor {
 
     fun schedule(context: Context) {
         if (profiles(context).isEmpty()) return
-        val request = PeriodicWorkRequestBuilder<ProfileMonitorWorker>(12, TimeUnit.HOURS)
+        val request = PeriodicWorkRequestBuilder<ProfileMonitorWorker>(1, TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "tikitoki_public_profile_monitor",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
     }
@@ -70,7 +71,8 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
             val parsed = TikTokLinkParser.parse(url)
             if (parsed !is LinkParseResult.Success) continue
             try {
-                val videos = source.inspect(parsed.link, forceRefresh = true)
+                // Inspect only the newest page instead of loading the entire catalogue.
+                val videos = source.inspectPage(parsed.link, page = 1, pageSize = 100)
                 if (videos.isEmpty()) continue // Never erase the baseline on an empty/blocked response.
                 val ids = videos.map { it.id }.toSet()
                 val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty()
@@ -79,6 +81,8 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
                 prefs.edit().putStringSet("ids:$url", diff.knownIds).putInt("new:$url", diff.newIds.size)
                     .putLong("checked:$url", System.currentTimeMillis())
                     .remove("error:$url").apply()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 prefs.edit().putString("error:$url", e.message?.take(180) ?: "Error temporal de consulta").apply()
             }

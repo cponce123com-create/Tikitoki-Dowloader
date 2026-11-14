@@ -2,6 +2,7 @@ package com.tikitoki.downloader
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -13,6 +14,9 @@ class LaunchTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun applicationStartsAndDisplaysItsHeader() {
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText("Baja.pe").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Baja.pe").assertIsDisplayed()
     }
 }

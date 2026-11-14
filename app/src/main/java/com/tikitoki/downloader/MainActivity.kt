@@ -155,6 +155,7 @@ import androidx.compose.ui.unit.Dp
 import com.tikitoki.downloader.ui.ProfileViewModel
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
@@ -166,13 +167,32 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         sharedLink = receivedText(intent)
         ExtractorUpdateWorker.schedule(applicationContext)
+        ProfileMonitor.schedule(applicationContext)
         lifecycleScope.launch {
             val pending = withContext(Dispatchers.IO) {
                 DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount()
             }
             if (pending > 0) DownloadQueue.start(applicationContext)
         }
-        setContent { TikitokiApp(sharedLink) }
+        setContent {
+            var showBrand by rememberSaveable { mutableStateOf(savedInstanceState == null) }
+            if (showBrand) {
+                LaunchedEffect(Unit) {
+                    delay(1000)
+                    showBrand = false
+                }
+                Box(Modifier.fillMaxSize().background(TechBackground), contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = painterResource(R.drawable.bajape_logo),
+                        contentDescription = "Baja.pe",
+                        modifier = Modifier.size(280.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            } else {
+                TikitokiApp(sharedLink)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -805,10 +825,6 @@ private fun TikitokiApp(incomingLink: String) {
                                             if (identity?.displayName != null) Text("@$username", color = TechMuted, maxLines = 1)
                                         }
                                     }
-                                    Text("Nuevos desde la última revisión: ${ProfileMonitor.newCount(context, profile)}")
-                                    val checked = ProfileMonitor.lastChecked(context, profile)
-                                    Text(if (checked > 0) "Última revisión: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(checked))}" else "Pendiente de primera revisión")
-                                    ProfileMonitor.lastError(context, profile)?.let { Text("No se pudo revisar el perfil. Se intentará más tarde.", color = MaterialTheme.colorScheme.error) }
                                     OutlinedButton(onClick = { ProfileMonitor.remove(context, profile); monitorRevision++ }) { Text("Dejar de seguir") }
                                 }
                             }
