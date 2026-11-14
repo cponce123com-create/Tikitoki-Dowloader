@@ -17,18 +17,21 @@ import kotlinx.coroutines.withContext
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.MetadataSanitizer
 import androidx.room.withTransaction
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class EnqueueSummary(val added: Int, val duplicates: Int)
 
 /** Persistent, serial background queue. Only authorized/available TikTok media. */
 object DownloadQueue {
     const val UNIQUE_WORK = "tikitoki_download_queue"
+    private val mutationLock = Mutex()
 
     suspend fun enqueue(
         context: Context,
         videos: List<VideoEntry>,
         formatId: String = TikTokVideoSource.DEFAULT_FORMAT,
-    ): EnqueueSummary = withContext(Dispatchers.IO) {
+    ): EnqueueSummary = withContext(Dispatchers.IO) { mutationLock.withLock {
         val db = DownloadDatabase.get(context)
         val dao = db.downloads()
         val safeFormat = DownloadInputPolicy.safeFormatId(formatId)
@@ -63,7 +66,7 @@ object DownloadQueue {
         // Also kick an existing queued selection after a previous interrupted enqueue.
         if (summary.added > 0 || dao.pendingRecoveryCount() > 0) start(context)
         summary
-    }
+    } }
 
     /** Delete the saved file first; only remove the history entry on success. */
     suspend fun deleteCompleted(context: Context, id: String): Boolean = withContext(Dispatchers.IO) {
@@ -85,8 +88,8 @@ object DownloadQueue {
         if (deleted) dao.deleteCompleted(id) > 0 else false
     }
 
-    private fun request() = OneTimeWorkRequestBuilder<DownloadWorker>()
-        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+    private fun request(context: Context) = OneTimeWorkRequestBuilder<DownloadWorker>()
+        .setConstraints(Constraints.Builder().setRequiredNetworkType(if (DownloadSettings.allowMetered(context)) NetworkType.CONNECTED else NetworkType.UNMETERED).build())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
         .build()
 
@@ -95,28 +98,38 @@ object DownloadQueue {
             .enqueueUniqueWork(
                 UNIQUE_WORK,
                 ExistingWorkPolicy.APPEND_OR_REPLACE,
-                request(),
+                request(context),
             )
     }
 
-    suspend fun pause(context: Context) = withContext(Dispatchers.IO) {
+    suspend fun pause(context: Context) = withContext(Dispatchers.IO) { mutationLock.withLock {
         val dao = DownloadDatabase.get(context).downloads()
         dao.pausePending()
-        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK)
-    }
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK).result.get()
+    } }
 
-    suspend fun resume(context: Context) = withContext(Dispatchers.IO) {
+    /** Atomically pause pending work before changing the constraints for the next request. */
+    suspend fun changeMeteredPolicy(context: Context, allowed: Boolean): Boolean = withContext(Dispatchers.IO) { mutationLock.withLock {
+        val dao = DownloadDatabase.get(context).downloads()
+        val hadPending = dao.pendingRecoveryCount() > 0
+        dao.pausePending()
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK).result.get()
+        check(context.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE).edit().putBoolean("allow_metered", allowed).commit())
+        hadPending
+    } }
+
+    suspend fun resume(context: Context) = withContext(Dispatchers.IO) { mutationLock.withLock {
         // Wait for the old worker to stop before starting a replacement.
         WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK).result.get()
         DownloadDatabase.get(context).downloads().resumePending()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_WORK,
             ExistingWorkPolicy.REPLACE,
-            request(),
+            request(context),
         )
-    }
+    } }
 
-    suspend fun retryFailed(context: Context) = withContext(Dispatchers.IO) {
+    suspend fun retryFailed(context: Context) = withContext(Dispatchers.IO) { mutationLock.withLock {
         val db = DownloadDatabase.get(context)
         val dao = db.downloads()
         val count = db.withTransaction {
@@ -130,11 +143,24 @@ object DownloadQueue {
             failed.size
         }
         if (count > 0) start(context)
-    }
+    } }
+
+    /** Deletes only this app's temporary cache after the user confirms, never saved downloads. */
+    suspend fun clearTemporary(context: Context): Int = withContext(Dispatchers.IO) { mutationLock.withLock {
+        val dao = DownloadDatabase.get(context).downloads()
+        val running = ActiveDownloadProcesses.ids.isNotEmpty() || WorkManager.getInstance(context.applicationContext).getWorkInfosForUniqueWork(UNIQUE_WORK)
+            .get().any { it.state == androidx.work.WorkInfo.State.RUNNING }
+        check(!running && dao.activeOrPausedCount() == 0) { "Espera a que terminen o cancela las descargas pendientes y pausadas." }
+        clearOwnTemporaryFiles(safeTemporaryDirectory(context.cacheDir))
+    } }
 
     suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {
         val dao = DownloadDatabase.get(context).downloads()
-        if (dao.markCancelled(id) > 0) runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
+        val batches = dao.pendingBatchIds(id)
+        if (dao.markCancelled(id) > 0) {
+            runCatching { TikTokVideoSource(context.applicationContext).cancel(id) }
+            runCatching { CompletionNotifier.notifyFinished(context, batches) }
+        }
     }
 }
 

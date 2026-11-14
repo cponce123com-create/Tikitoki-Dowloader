@@ -70,6 +70,15 @@ interface DownloadDao {
     @Query("UPDATE download_batch_items SET outcome = :outcome WHERE videoId = :id AND outcome IS NULL")
     suspend fun finishBatchItem(id: String, outcome: String)
     @Query("UPDATE download_batches SET acknowledged = 1 WHERE batchId = :id") suspend fun acknowledgeBatch(id: String)
+    @Query("SELECT batchId FROM download_batch_items WHERE videoId = :id AND outcome IS NULL")
+    suspend fun pendingBatchIds(id: String): List<String>
+    @Query("""SELECT b.batchId AS batchId, COUNT(i.videoId) AS total,
+        SUM(CASE WHEN i.outcome = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
+        SUM(CASE WHEN i.outcome = 'FAILED' THEN 1 ELSE 0 END) AS failed,
+        SUM(CASE WHEN i.outcome = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
+        b.duplicates AS duplicates FROM download_batches b JOIN download_batch_items i ON i.batchId = b.batchId
+        WHERE b.batchId IN (:ids) GROUP BY b.batchId HAVING COUNT(i.videoId) = COUNT(i.outcome)""")
+    suspend fun finishedBatches(ids: List<String>): List<BatchSummary>
     @Query("""SELECT b.batchId AS batchId, COUNT(i.videoId) AS total,
         SUM(CASE WHEN i.outcome = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN i.outcome = 'FAILED' THEN 1 ELSE 0 END) AS failed,
@@ -100,8 +109,14 @@ interface DownloadDao {
     @Query("SELECT COUNT(*) FROM downloads WHERE status IN ('QUEUED', 'DOWNLOADING')")
     suspend fun pendingRecoveryCount(): Int
 
+    @Query("SELECT COUNT(*) FROM downloads WHERE status IN ('QUEUED', 'DOWNLOADING', 'PAUSED')")
+    suspend fun activeOrPausedCount(): Int
+
     @Query("SELECT * FROM downloads WHERE status = 'QUEUED' ORDER BY createdAt ASC LIMIT 1")
     suspend fun nextQueued(): DownloadRecord?
+
+    @Query("SELECT * FROM downloads WHERE status = 'QUEUED' AND videoId NOT IN (:excluded) ORDER BY createdAt ASC LIMIT 1")
+    suspend fun nextQueuedExcluding(excluded: List<String>): DownloadRecord?
 
     @Query("UPDATE downloads SET status = 'DOWNLOADING', updatedAt = :now WHERE videoId = :id AND status = 'QUEUED'")
     suspend fun claimQueued(id: String, now: Long = System.currentTimeMillis()): Int

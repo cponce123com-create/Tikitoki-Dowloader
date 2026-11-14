@@ -10,6 +10,7 @@ import android.database.sqlite.SQLiteDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,6 +38,8 @@ class DownloadDaoBatchTest {
         assertNull(dao.find("id1"))
         db.withTransaction { dao.upsertAll(records) }
         assertEquals(3, dao.findMany(listOf("id1", "id2", "id3")).size)
+        val nextId = dao.nextQueuedExcluding(listOf("id1"))?.videoId.orEmpty()
+        assertTrue(nextId == "id2" || nextId == "id3")
     }
 
     @Test fun summaryCountsEachTerminalOutcomeOnce() = runBlocking {
@@ -48,10 +51,12 @@ class DownloadDaoBatchTest {
             dao.insertBatchItems(records.map { DownloadBatchItem("batch", it.videoId) })
         }
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        assertEquals(listOf("batch"), dao.pendingBatchIds("v1"))
         dao.claimQueued("v1"); dao.claimQueued("v2")
         dao.markCompleted("v1", "content://example/1")
         dao.markFailed("v2", "failed")
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        assertEquals(0, dao.finishedBatches(listOf("batch")).size)
         dao.markCancelled("v3")
         val result = dao.observeFinishedBatches().first().single()
         assertEquals(3, result.total)
@@ -59,8 +64,25 @@ class DownloadDaoBatchTest {
         assertEquals(1, result.failed)
         assertEquals(1, result.cancelled)
         assertEquals(2, result.duplicates)
+        assertEquals(result, dao.finishedBatches(listOf("batch")).single())
         dao.acknowledgeBatch("batch")
         assertEquals(0, dao.observeFinishedBatches().first().size)
+        // The notification query must remain valid even if the user already closed the dialog.
+        assertEquals(result, dao.finishedBatches(listOf("batch")).single())
+    }
+
+    @Test fun recoveryRequeuesInterruptedButKeepsExplicitPauses() = runBlocking {
+        val dao = db.downloads()
+        val records = (1..3).map { DownloadRecord("r$it", "https://www.youtube.com/watch?v=$it", "Video", null, "best") }
+        dao.upsertAll(records)
+        dao.claimQueued("r1")
+        dao.claimQueued("r2")
+        dao.pauseIfDownloading("r2")
+        dao.markCancelled("r3")
+        dao.requeueInterrupted()
+        assertEquals(DownloadState.QUEUED, dao.find("r1")?.status)
+        assertEquals(DownloadState.PAUSED, dao.find("r2")?.status)
+        assertEquals(DownloadState.CANCELLED, dao.find("r3")?.status)
     }
 
     @Test fun migrationPreservesPendingDownloads() = runBlocking {

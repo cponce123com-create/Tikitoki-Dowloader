@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.documentfile.provider.DocumentFile
+import kotlin.math.roundToInt
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
@@ -57,6 +59,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Slider
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -99,6 +104,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
+import com.tikitoki.downloader.data.DownloadSettings
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadState
@@ -195,8 +201,25 @@ private fun TikitokiApp(incomingLink: String) {
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
     var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
-    var parallelDownloads by remember { mutableStateOf(settings.getInt("parallel_downloads", 3).coerceIn(1, 4)) }
+    var wifiParallel by remember { mutableStateOf(DownloadSettings.wifiLimit(context)) }
+    var meteredParallel by remember { mutableStateOf(DownloadSettings.meteredLimit(context)) }
+    var allowMetered by remember { mutableStateOf(DownloadSettings.allowMetered(context)) }
+    var showProgressNotice by remember { mutableStateOf(DownloadSettings.showProgress(context)) }
+    var completionNotice by remember { mutableStateOf(DownloadSettings.notifyCompletion(context)) }
+    var rateKiB by remember { mutableStateOf(DownloadSettings.rateKiB(context)) }
+    var networkSettingsBusy by remember { mutableStateOf(false) }
+    var showClearTemp by remember { mutableStateOf(false) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
+    val folderDescription by produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
+        val tree = downloadFolder
+        value = if (tree == null) "Descargas/TikitokiDownloader" else withContext(Dispatchers.IO) {
+            runCatching {
+                val folder = DocumentFile.fromTreeUri(context, Uri.parse(tree))
+                if (folder != null && folder.exists() && folder.canWrite()) folder.name ?: "Carpeta personalizada"
+                else "Carpeta no disponible. Elige otra ubicación."
+            }.getOrElse { "Carpeta no disponible. Elige otra ubicación." }
+        }
+    }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             try {
@@ -388,6 +411,21 @@ private fun TikitokiApp(incomingLink: String) {
                     if (batch.duplicates > 0) Text("Duplicados omitidos: ${batch.duplicates}")
                 } },
                 confirmButton = { Button(onClick = { scope.launch { dao.acknowledgeBatch(batch.batchId) } }) { Text("Aceptar") } }
+            )
+        }
+        if (showClearTemp) {
+            AlertDialog(
+                onDismissRequest = { showClearTemp = false },
+                title = { Text("Limpiar archivos temporales") },
+                text = { Text("Se borrarán solo los archivos temporales de Tikitoki. Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan.") },
+                confirmButton = { Button(onClick = {
+                    showClearTemp = false
+                    scope.launch {
+                        try { val deleted = DownloadQueue.clearTemporary(context); message = "Archivos temporales eliminados: $deleted." }
+                        catch (_: Exception) { message = "No se puede limpiar mientras haya descargas en curso, pendientes o pausadas." }
+                    }
+                }) { Text("Limpiar") } },
+                dismissButton = { OutlinedButton(onClick = { showClearTemp = false }) { Text("Cancelar") } }
             )
         }
         deleteCandidate?.let { item ->
@@ -794,7 +832,7 @@ private fun TikitokiApp(incomingLink: String) {
                         }) { Text("↻ Buscar actualización") }
                         Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
                         Text("Destino de las descargas", style = MaterialTheme.typography.titleMedium)
-                        Text(if (downloadFolder == null) "Descargas/TikitokiDownloader" else "Carpeta personalizada / tarjeta SD", color = TechMuted)
+                        Text(folderDescription, color = TechMuted)
                         OutlinedButton(onClick = { folderPicker.launch(null) }) { Text("📁 Elegir carpeta o memoria SD") }
                         if (downloadFolder != null) OutlinedButton(onClick = {
                             settings.edit().remove("download_tree").apply()
@@ -819,15 +857,61 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                         }
                         Text("Descargas simultáneas", style = MaterialTheme.typography.titleMedium)
-                        Text("Más descargas pueden consumir más datos y batería.", color = TechMuted)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(1, 2, 3, 4).forEach { count ->
-                                FilterChip(selected = parallelDownloads == count, onClick = {
-                                    parallelDownloads = count
-                                    settings.edit().putInt("parallel_downloads", count).apply()
-                                }, label = { Text(count.toString()) })
+                        Text("Wi-Fi y redes sin medición: $wifiParallel", color = TechMuted)
+                        Slider(value = wifiParallel.toFloat(), onValueChange = {
+                            wifiParallel = it.roundToInt().coerceIn(1, 8)
+                            settings.edit().putInt("wifi_parallel", wifiParallel).apply()
+                        }, valueRange = 1f..8f, steps = 6)
+                        Text("Datos y redes medidas: $meteredParallel", color = TechMuted)
+                        Slider(value = meteredParallel.toFloat(), onValueChange = {
+                            meteredParallel = it.roundToInt().coerceIn(1, 8)
+                            settings.edit().putInt("metered_parallel", meteredParallel).apply()
+                        }, valueRange = 1f..8f, steps = 6)
+                        Text("Entre 1 y 8 por red. Al reducir el límite, los videos activos terminan antes de iniciar otros.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Permitir redes medidas")
+                                Text("Incluye datos móviles y Wi-Fi con medición.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Switch(checked = allowMetered, enabled = !networkSettingsBusy, onCheckedChange = { allowed ->
+                                networkSettingsBusy = true
+                                scope.launch {
+                                    try {
+                                        val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
+                                        allowMetered = allowed
+                                        message = if (pending) "Cola pausada para cambiar la red. Pulsa Continuar en Descargas." else "Preferencia de red actualizada."
+                                    } catch (_: Exception) { message = "No se pudo cambiar la preferencia de red." }
+                                    finally { networkSettingsBusy = false }
+                                }
+                            })
+                        }
+                        Text("Límite aproximado por descarga", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(0 to "Sin límite", 256 to "256 KiB/s", 512 to "512 KiB/s", 1024 to "1 MiB/s", 2048 to "2 MiB/s").forEach { (rate, label) ->
+                                FilterChip(selected = rateKiB == rate, onClick = { rateKiB = rate; settings.edit().putInt("rate_kib", rate).apply() }, label = { Text(label) })
                             }
                         }
+                        Text("Se aplica a las siguientes descargas. El total puede variar por los fragmentos y la cantidad de videos activos.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Notificaciones", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Mostrar avance aproximado", modifier = Modifier.weight(1f))
+                            Switch(checked = showProgressNotice, onCheckedChange = {
+                                showProgressNotice = it; settings.edit().putBoolean("notify_progress_detail", it).apply()
+                                if (it && Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            })
+                        }
+                        Text("Android puede mantener una notificación general mientras se descarga.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Avisar al terminar cada grupo", modifier = Modifier.weight(1f))
+                            Switch(checked = completionNotice, onCheckedChange = {
+                                completionNotice = it; settings.edit().putBoolean("notify_completion", it).apply()
+                                if (it && Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            })
+                        }
+                        Text("Almacenamiento temporal", style = MaterialTheme.typography.titleMedium)
+                        Text("Limpia solo archivos temporales de Tikitoki cuando no haya descargas pendientes ni pausadas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = { showClearTemp = true }) { Text("Limpiar temporales") }
+                        if (message.isNotBlank()) Text(message, color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         
                         Text("Uso de contenido autorizado · GPL-3.0")
                     }

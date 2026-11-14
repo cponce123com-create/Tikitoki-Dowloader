@@ -9,7 +9,7 @@ internal suspend fun <T> drainParallelQueue(
     take: suspend () -> T?,
     process: suspend (T) -> Unit,
 ) = coroutineScope {
-    repeat(parallelism.coerceIn(1, 4)) {
+    repeat(parallelism.coerceIn(1, 8)) {
         launch {
             while (true) {
                 val item = take() ?: break
