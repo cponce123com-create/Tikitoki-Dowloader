@@ -51,9 +51,14 @@ class MusicIntegratedPlaybackTest {
             compose.setContent {
                 MaterialTheme { MusicScreen(Uri.fromFile(file).toString(), "Audio de prueba") { consumed.set(true) } }
             }
-            compose.waitUntil(60_000) { consumed.get() }
-            compose.waitUntil(60_000) { compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(60_000) { PlaybackSpectrum.levels.value.any { it > 0.05f } }
+            try {
+                compose.waitUntil(60_000) { consumed.get() }
+                compose.waitUntil(60_000) { compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty() }
+                compose.waitUntil(60_000) { PlaybackSpectrum.levels.value.any { it > 0.05f } }
+            } catch (error: Throwable) {
+                val pauseVisible = compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
+                throw AssertionError("Solicitud=${consumed.get()}, reproduciendo=$pauseVisible, niveles=${PlaybackSpectrum.levels.value}", error)
+            }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "music-playing.png")
