@@ -671,7 +671,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     Button(enabled = paused > 0, onClick = { scope.launch { DownloadQueue.resume(context); message = "Cola reanudada." } }) { Text("Continuar") }
                                 }
                             }
-                            if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
+                            if (queue.isNotEmpty() && message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     items(queue, key = { it.videoId }) { record ->
@@ -695,7 +695,7 @@ private fun TikitokiApp(incomingLink: String) {
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                            if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
+                            if (message.startsWith("No se")) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     gridItems(completed, key = { it.videoId }) { record ->
