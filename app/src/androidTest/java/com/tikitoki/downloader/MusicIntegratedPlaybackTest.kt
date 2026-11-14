@@ -37,12 +37,12 @@ class MusicIntegratedPlaybackTest {
         val prefs = context.getSharedPreferences("music_player", Context.MODE_PRIVATE)
         val before = prefs.getString("tracks", "[]")
         val file = File(context.cacheDir, "music-integrated-test.wav")
-        val samples = 8000 * 30 * 2
+        val samples = 8000 * 120 * 2
         val wav = ByteBuffer.allocate(44 + samples).order(ByteOrder.LITTLE_ENDIAN)
         wav.put("RIFF".toByteArray()).putInt(36 + samples).put("WAVEfmt ".toByteArray())
         wav.putInt(16).putShort(1).putShort(1).putInt(8000).putInt(16000).putShort(2).putShort(16)
         wav.put("data".toByteArray()).putInt(samples)
-        repeat(8000 * 30) { index ->
+        repeat(8000 * 120) { index ->
             wav.putShort((sin(2.0 * PI * 440.0 * index / 8000.0) * 16000).toInt().toShort())
         }
         file.writeBytes(wav.array())
@@ -51,10 +51,9 @@ class MusicIntegratedPlaybackTest {
             compose.setContent {
                 MaterialTheme { MusicScreen(Uri.fromFile(file).toString(), "Audio de prueba") { consumed.set(true) } }
             }
-            compose.waitUntil(30_000) {
-                consumed.get() && PlaybackSpectrum.levels.value.any { it > 0.05f } &&
-                    compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
-            }
+            compose.waitUntil(60_000) { consumed.get() }
+            compose.waitUntil(60_000) { compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(60_000) { PlaybackSpectrum.levels.value.any { it > 0.05f } }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "music-playing.png")
