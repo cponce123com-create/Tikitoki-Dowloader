@@ -116,8 +116,12 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         val a = JSONArray(); tracks.forEach { a.put(JSONObject().put("uri", it.uri).put("title", it.title)) }
         prefs.edit().putString("tracks", a.toString()).putStringSet("favorites", favorites).apply()
     }
-    fun item(track: MusicTrack) = MediaItem.Builder().setUri(track.uri)
+    fun item(track: MusicTrack) = MediaItem.Builder().setMediaId(track.uri).setUri(track.uri)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(track.title).build()).build()
+    // MediaController may receive an item without its local configuration across the session boundary.
+    fun currentItemUri(player: Player): String? = player.currentMediaItem?.let { item ->
+        item.localConfiguration?.uri?.toString() ?: item.mediaId.takeIf { it.isNotEmpty() }
+    }
     fun start(index: Int) {
         val player = controller
         if (player == null) { message = "Conectando el reproductor…"; return }
@@ -153,7 +157,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 } catch (_: SecurityException) { message = "No se pudo guardar el acceso a una canción." }
             }
         }
-        controller?.let { p -> if (p.currentMediaItem?.localConfiguration?.uri?.toString() in existing) p.addMediaItems(added.map(::item)) }
+        controller?.let { p -> if (currentItemUri(p) in existing) p.addMediaItems(added.map(::item)) }
         save()
     }
     DisposableEffect(context) {
@@ -169,7 +173,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     LaunchedEffect(controller) {
         while (true) {
             controller?.let { p ->
-                val uri = p.currentMediaItem?.localConfiguration?.uri?.toString()
+                val uri = currentItemUri(p)
                 val isMusic = uri != null && tracks.any { it.uri == uri }
                 currentUri = uri.takeIf { isMusic }
                 title = if (isMusic) p.mediaMetadata.title?.toString() ?: "Canción" else "Selecciona una canción"
@@ -224,7 +228,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     val p = controller
                     when {
                         p == null -> message = "Conectando el reproductor…"
-                        p.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri -> tracks.any { it.uri == uri } } != true -> if (tracks.isNotEmpty()) start(0) else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }
+                        currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> if (tracks.isNotEmpty()) start(0) else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }
                         p.isPlaying -> p.pause()
                         else -> p.play()
                     }
