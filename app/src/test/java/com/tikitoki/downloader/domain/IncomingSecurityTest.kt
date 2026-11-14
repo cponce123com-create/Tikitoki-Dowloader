@@ -21,6 +21,9 @@ class IncomingSecurityTest {
         assertNull(IncomingLinkValidator.extractFirstHttps("texto\nhttps://youtube.com/watch?v=abc"))
         assertNull(IncomingLinkValidator.extractFirstHttps("https://usuario@youtube.com/watch?v=abc"))
         assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com:443/watch?v=abc"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 --output=/tmp/a"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 -o /tmp/a"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 -P /tmp/a"))
     }
     @Test fun acceptsHyphensInsideYoutubeIdentifiers() {
         assertNotNull(IncomingLinkValidator.validate("https://youtube.com/watch?v=ab--cdefghi"))

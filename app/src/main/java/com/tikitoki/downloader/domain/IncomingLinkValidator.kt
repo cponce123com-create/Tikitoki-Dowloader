@@ -17,8 +17,12 @@ object IncomingLinkValidator {
     fun extractFirstHttps(text: String?): MediaLink? {
         val value = text ?: return null
         if (value.length > MAX_LENGTH || value.any { Character.isISOControl(it) || it in bidi }) return null
-        val candidate = firstHttps.find(value)?.value ?: return null
-        return validate(candidate)
+        val match = firstHttps.find(value) ?: return null
+        // Shared prose is permitted, but reject separate command-line-like tokens.
+        // This check does not inspect the URL itself: IDs may legitimately contain "--".
+        val surrounding = value.substring(0, match.range.first) + " " + value.substring(match.range.last + 1)
+        if (surrounding.split(' ').any { it.startsWith("--") || it == "-o" || it == "-P" }) return null
+        return validate(match.value)
     }
 }
 
