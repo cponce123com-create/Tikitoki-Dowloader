@@ -489,7 +489,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 shape = RoundedCornerShape(18.dp),
                                 border = BorderStroke(1.dp, TechBorder)
                             ) {
-                                Icon(Icons.Outlined.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.ContentPaste, contentDescription = null, tint = TechPink, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(5.dp))
                                 Text("Pegar")
                             }
