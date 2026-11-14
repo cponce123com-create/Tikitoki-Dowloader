@@ -227,6 +227,7 @@ private fun TikitokiApp(incomingLink: String) {
     var showProgressNotice by remember { mutableStateOf(DownloadSettings.showProgress(context)) }
     var completionNotice by remember { mutableStateOf(DownloadSettings.notifyCompletion(context)) }
     var rateKiB by remember { mutableStateOf(DownloadSettings.rateKiB(context)) }
+    var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
     var networkSettingsBusy by remember { mutableStateOf(false) }
     var showClearTemp by remember { mutableStateOf(false) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
@@ -752,6 +753,7 @@ private fun TikitokiApp(incomingLink: String) {
                         Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            OutlinedButton(onClick = { context.startActivity(Intent(context, MusicActivity::class.java)) }) { Text("Mi música") }
                             if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             if (message.startsWith("No se")) Text(message, style = MaterialTheme.typography.bodySmall)
@@ -796,6 +798,7 @@ private fun TikitokiApp(incomingLink: String) {
                         
                         OutlinedButton(onClick = {
                             if (ProfileMonitor.add(context, url.trim())) {
+                                if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                 monitorRevision++
                                 message = "Perfil agregado al monitoreo."
                             } else message = "Pega un enlace válido de perfil en Buscar."
@@ -835,6 +838,13 @@ private fun TikitokiApp(incomingLink: String) {
                     5 -> {
                         Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(76.dp))
                         Text("Configuración", style = MaterialTheme.typography.titleLarge)
+                        Text("Frecuencia de monitoreo de perfiles", style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(1, 5, 12).forEach { hours ->
+                                FilterChip(selected = monitorHours == hours, onClick = { monitorHours = hours; ProfileMonitor.setInterval(context, hours) }, label = { Text("${hours} h") })
+                            }
+                        }
+                        Text("Revisión completa aproximada cada 24 horas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Baja.pe · v0.5")
                         Text("Actualización de la app", style = MaterialTheme.typography.titleMedium)
                         val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
