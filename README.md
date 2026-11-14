@@ -1,4 +1,4 @@
-# Tikitoki Downloader
+# Baja.pe
 
 Aplicación nativa Android en **Kotlin + Jetpack Compose**, inspirada en 4K Tokkit, Seal y YTDLnis. Repositorio: `cponce123com-create/Tikitoki-Dowloader` (el nombre del repositorio conserva la grafía original).
 
@@ -21,7 +21,7 @@ TikTok puede rechazar la recopilación de perfiles, incluso cuando sus videos so
 
 ## Compilación
 
-Abrir en Android Studio (JDK 17, SDK 35). Desde GitHub, pestaña **Actions > Android CI**: tras una ejecución exitosa, descargar el artifact **Tikitoki-Downloader-debug**.
+Abrir en Android Studio (JDK 17, SDK 35). Desde GitHub, pestaña **Actions > Android CI**: tras una ejecución exitosa, descargar el artifact **Baja-pe-debug**.
 
 ## Licencias
 
@@ -33,8 +33,8 @@ Pruebas manuales en Android 8-16, extracción en TikTok en tiempo real, compatib
 
 ## Privacidad y seguridad (política del proyecto)
 
-- **Sin anuncios, analítica, SDK de publicidad ni seguimiento de usuarios.** No se requiere cuenta propia ni servidor de Tikitoki para descargar.
-- El historial de descargas se guarda localmente mediante Room; los archivos se guardan en el dispositivo. No se envía el historial a un servidor de Tikitoki.
+- **Sin anuncios, analítica, SDK de publicidad ni seguimiento de usuarios.** No se requiere cuenta propia ni servidor de Baja.pe para descargar.
+- El historial de descargas se guarda localmente mediante Room; los archivos se guardan en el dispositivo. No se envía el historial a un servidor de Baja.pe.
 - La aplicación realiza conexiones necesarias a las plataformas de origen, a recursos de miniaturas y, para actualizar el extractor yt-dlp, al proveedor de actualizaciones. Esas conexiones pueden revelar información de red a terceros; **sin telemetría propia** no significa **sin tráfico de red**.
 - No se admiten cookies de sesión ni credenciales de usuario. No se ejecutan comandos de shell proporcionados por el usuario.
 - Los enlaces compartidos desde otras apps deben tratarse como datos no confiables. La validación de URL no sustituye el endurecimiento pendiente del receptor de Intents ni la validación de formatos y metadatos.
@@ -51,4 +51,4 @@ Pruebas manuales en Android 8-16, extracción en TikTok en tiempo real, compatib
 
 ## Licencias y atribuciones
 
-Tikitoki conserva su obligación de distribución compatible con **GPL-3.0**. Se integra `youtubedl-android` (wrapper Android para yt-dlp) y su módulo FFmpeg; consultar también las licencias de yt-dlp, FFmpeg y bibliotecas transitivas al redistribuir. La inspiración en Seal, YTDLnis, dvd, OmniDownloader, ClipSave y PowerTube no autoriza copiar su código, marcas o recursos sin revisar sus licencias.
+Baja.pe conserva su obligación de distribución compatible con **GPL-3.0**. Se integra `youtubedl-android` (wrapper Android para yt-dlp) y su módulo FFmpeg; consultar también las licencias de yt-dlp, FFmpeg y bibliotecas transitivas al redistribuir. La inspiración en Seal, YTDLnis, dvd, OmniDownloader, ClipSave y PowerTube no autoriza copiar su código, marcas o recursos sin revisar sus licencias.

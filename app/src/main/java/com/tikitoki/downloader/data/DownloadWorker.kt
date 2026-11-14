@@ -162,13 +162,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val channelId = "tikitoki_downloads"
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
-            NotificationChannel(channelId, "Descargas de Tikitoki", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(channelId, "Descargas de Baja.pe", NotificationManager.IMPORTANCE_LOW)
         )
         val showDetails = DownloadSettings.showProgress(applicationContext)
         val progress = activeProgress.values.toList().let { if (it.isEmpty()) null else it.average().toInt().coerceIn(0, 100) }
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Tikitoki Downloader")
+            .setContentTitle("Baja.pe")
             .setContentText(if (showDetails && progress != null) "$message · avance aproximado $progress%" else if (showDetails) message else "Descargas en curso")
             .setOngoing(true)
             .setOnlyAlertOnce(true)

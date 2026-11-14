@@ -13,6 +13,6 @@ class LaunchTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun applicationStartsAndDisplaysItsHeader() {
-        compose.onNodeWithText("Tikitoki Downloader").assertIsDisplayed()
+        compose.onNodeWithText("Baja.pe").assertIsDisplayed()
     }
 }
