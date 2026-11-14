@@ -158,16 +158,19 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     LaunchedEffect(controller) {
         while (true) {
             controller?.let { p ->
-                currentUri = p.currentMediaItem?.localConfiguration?.uri?.toString()
-                title = p.mediaMetadata.title?.toString() ?: "Selecciona una canción"
-                if (!seeking) position = p.currentPosition.coerceAtLeast(0L)
-                duration = p.duration.coerceAtLeast(0L)
-                playing = p.isPlaying; shuffle = p.shuffleModeEnabled; repeat = p.repeatMode
+                val uri = p.currentMediaItem?.localConfiguration?.uri?.toString()
+                val isMusic = uri != null && tracks.any { it.uri == uri }
+                currentUri = uri.takeIf { isMusic }
+                title = if (isMusic) p.mediaMetadata.title?.toString() ?: "Canción" else "Selecciona una canción"
+                if (!seeking) position = if (isMusic) p.currentPosition.coerceAtLeast(0L) else 0L
+                duration = if (isMusic) p.duration.coerceAtLeast(0L) else 0L
+                playing = isMusic && p.isPlaying; shuffle = p.shuffleModeEnabled; repeat = p.repeatMode
             }
             delay(500)
         }
     }
     val artwork by produceState(ArtworkInfo(null, null), currentUri) {
+        value = ArtworkInfo(null, null)
         val uri = currentUri ?: return@produceState
         value = readArtwork(context, uri)
     }
@@ -227,7 +230,10 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
             visible.forEach { track ->
                 val selected = currentUri == track.uri
-                val trackArtwork by produceState(ArtworkInfo(null, null), track.uri) { value = readArtwork(context, track.uri) }
+                val trackArtwork by produceState(ArtworkInfo(null, null), track.uri) {
+                    value = ArtworkInfo(null, null)
+                    value = readArtwork(context, track.uri)
+                }
                 Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(tracks.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
                         if (trackArtwork.bitmap != null) Image(trackArtwork.bitmap!!, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
