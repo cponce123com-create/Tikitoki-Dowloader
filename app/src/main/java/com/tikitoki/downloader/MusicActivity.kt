@@ -93,7 +93,7 @@ class MusicActivity : ComponentActivity() {
         }; root.addView(seek)
         val controls = LinearLayout(this).apply { gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL }
         controls.addView(button("⏮") { controller?.seekToPreviousMediaItem() })
-        play = button("▶") { controller?.let { if (it.isPlaying) it.pause() else it.play() } }; controls.addView(play)
+        play = button("▶") { controller?.let { p -> if (p.isPlaying) p.pause() else if (p.mediaItemCount > 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }; controls.addView(play)
         controls.addView(button("⏭") { controller?.seekToNextMediaItem() })
         root.addView(controls)
         val modes = LinearLayout(this).apply { gravity = Gravity.CENTER }
