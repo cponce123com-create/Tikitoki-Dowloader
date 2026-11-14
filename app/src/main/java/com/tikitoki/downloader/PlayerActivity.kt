@@ -3,7 +3,7 @@ package com.tikitoki.downloader
 import android.content.ComponentName
 import android.content.pm.ActivityInfo
 import android.widget.Button
-import android.view.WindowManager
+import android.view.View
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -58,7 +58,16 @@ class PlayerActivity : ComponentActivity() {
                 requestedOrientation = if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             }
         }
-        val controls = LinearLayout(this).apply { addView(speed); addView(rotate) }
+        val fullScreen = Button(this).apply {
+            text = "Pantalla completa"
+            setOnClickListener {
+                val decor = window.decorView
+                val isFull = decor.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN != 0
+                decor.systemUiVisibility = if (isFull) 0 else (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+                text = if (isFull) "Pantalla completa" else "Salir de pantalla completa"
+            }
+        }
+        val controls = LinearLayout(this).apply { addView(speed, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(rotate, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(fullScreen, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)) }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(android.graphics.Color.BLACK)
@@ -72,6 +81,7 @@ class PlayerActivity : ComponentActivity() {
                 try {
                     val controller = future.get()
                     activeController = controller
+                    speed.text = "Velocidad ${controller.playbackParameters.speed}x"
                     playerView.player = controller
                     controller.addListener(object : Player.Listener {
                         override fun onPlayerError(error: PlaybackException) {
@@ -96,7 +106,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onStop() {
         val player = activeController
         val key = currentUri
-        if (player != null && key != null) {
+        if (player != null && key != null && player.currentMediaItem?.localConfiguration?.uri?.toString() == key) {
             val remaining = if (player.duration > 0) player.duration - player.currentPosition else Long.MAX_VALUE
             val position = if (remaining < 3000) 0L else player.currentPosition.coerceAtLeast(0L)
             getSharedPreferences("playback_positions", MODE_PRIVATE).edit().putLong(key, position).apply()
