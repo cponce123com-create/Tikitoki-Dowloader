@@ -417,7 +417,7 @@ private fun TikitokiApp(incomingLink: String) {
             AlertDialog(
                 onDismissRequest = { showClearTemp = false },
                 title = { Text("Limpiar archivos temporales") },
-                text = { Text("Se borrarán solo los archivos temporales de Tikitoki. Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan.") },
+                text = { Text("Se borrarán solo los archivos temporales de Baja.pe. Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan.") },
                 confirmButton = { Button(onClick = {
                     showClearTemp = false
                     scope.launch {
@@ -432,7 +432,7 @@ private fun TikitokiApp(incomingLink: String) {
             AlertDialog(
                 onDismissRequest = { deleteCandidate = null },
                 title = { Text("Eliminar video") },
-                text = { Text("¿Eliminar este video del dispositivo y del historial de Tikitoki? Esta acción no se puede deshacer.") },
+                text = { Text("¿Eliminar este video del dispositivo y del historial de Baja.pe? Esta acción no se puede deshacer.") },
                 confirmButton = { Button(onClick = {
                     deleteCandidate = null
                     scope.launch {
@@ -453,8 +453,8 @@ private fun TikitokiApp(incomingLink: String) {
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = { SafeAreaTopBar { } },
             bottomBar = {
-                Column(Modifier.fillMaxWidth().background(Color(0xFF110D20))) {
-                NavigationBar(containerColor = Color(0xFF110D20)) {
+                Column(Modifier.fillMaxWidth().background(Color(0xFF09231B))) {
+                NavigationBar(containerColor = Color(0xFF09231B)) {
                     listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
@@ -817,9 +817,9 @@ private fun TikitokiApp(incomingLink: String) {
                         Text(message, style = MaterialTheme.typography.bodySmall)
                     }
                     5 -> {
-                        Image(painter = painterResource(R.drawable.tikitoki_logo_oficial), contentDescription = "Logo Tikitoki", modifier = Modifier.size(76.dp))
+                        Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(76.dp))
                         Text("Configuración", style = MaterialTheme.typography.titleLarge)
-                        Text("Tikitoki Downloader · v0.5")
+                        Text("Baja.pe · v0.5")
                         Text("Actualización de la app", style = MaterialTheme.typography.titleMedium)
                         val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
                         val lastResult = updateStatus.getString("last_result", "Actualización aún no ejecutada.")
@@ -909,7 +909,7 @@ private fun TikitokiApp(incomingLink: String) {
                             })
                         }
                         Text("Almacenamiento temporal", style = MaterialTheme.typography.titleMedium)
-                        Text("Limpia solo archivos temporales de Tikitoki cuando no haya descargas pendientes ni pausadas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Limpia solo archivos temporales de Baja.pe cuando no haya descargas pendientes ni pausadas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = { showClearTemp = true }) { Text("Limpiar temporales") }
                         if (message.isNotBlank()) Text(message, color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         

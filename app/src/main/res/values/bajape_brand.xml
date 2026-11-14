@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bajape_app_name" translatable="false">Baja.pe</string>
+    <color name="bajape_dark">#031914</color>
+    <color name="bajape_emerald">#10533D</color>
+    <color name="bajape_mint">#BDF9E0</color>
+    <color name="bajape_copper">#C88440</color>
+    <color name="bajape_red">#D92D20</color>
+</resources>

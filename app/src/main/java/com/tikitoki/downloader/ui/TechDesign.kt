@@ -29,23 +29,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 
-val TechPurple = Color(0xFF9736FF)
-val TechPink = Color(0xFFE34BEA)
-val TechBackground = Color(0xFF090914)
-val TechPanel = Color(0xFF191629)
-val TechBorder = Color(0xFF49315E)
-val TechMuted = Color(0xFFB4AFC9)
-val TechGradient = Brush.horizontalGradient(listOf(Color(0xFF6B21ED), TechPurple, TechPink))
+val TechPurple = Color(0xFF087456)
+val TechPink = Color(0xFFBDF9E0)
+val TechBackground = Color(0xFF031914)
+val TechPanel = Color(0xFF102B23)
+val TechBorder = Color(0xFF356453)
+val TechMuted = Color(0xFFB4CFC3)
+val TechGradient = Brush.horizontalGradient(listOf(Color(0xFF10533D), TechPurple, Color(0xFF137556)))
 
 @Composable
 fun TechHeader(onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(40.dp).background(TechGradient, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-            Image(painter = painterResource(R.drawable.tikitoki_logo_oficial), contentDescription = "Tikitoki Downloader", modifier = Modifier.size(38.dp))
-        }
+        Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(40.dp))
         Column(Modifier.weight(1f)) {
-            Text("Tikitoki Downloader", style = MaterialTheme.typography.titleLarge,
+            Text("Baja.pe", style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
             Text("TikTok · YouTube · Facebook · Instagram", color = TechMuted, fontSize = 10.sp, maxLines = 1)
         }
