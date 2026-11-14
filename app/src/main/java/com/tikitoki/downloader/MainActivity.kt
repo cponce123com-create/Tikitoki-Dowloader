@@ -374,10 +374,17 @@ private fun TikitokiApp(incomingLink: String) {
         else scope.launch {
             try {
                 val uri = Uri.parse(saved)
-                val mime = withContext(Dispatchers.IO) {
-                    if (uri.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
+                val (mime, name) = withContext(Dispatchers.IO) {
+                    if (uri.scheme == "content") {
+                        val type = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+                        val displayName = runCatching {
+                            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                        }.getOrNull()
+                        type to (displayName ?: uri.lastPathSegment)
+                    } else null to uri.lastPathSegment
                 }
-                val activity = if (PlaybackKind.isAudio(record.formatId, mime, uri.lastPathSegment))
+                val activity = if (PlaybackKind.isAudio(record.formatId, mime, name))
                     MusicActivity::class.java else PlayerActivity::class.java
                 context.startActivity(Intent(context, activity).apply {
                     data = uri
