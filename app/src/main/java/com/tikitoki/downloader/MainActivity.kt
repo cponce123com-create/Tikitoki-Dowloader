@@ -122,6 +122,7 @@ import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
+import com.tikitoki.downloader.domain.PlaybackKind
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.IncomingIntentReader
@@ -370,13 +371,21 @@ private fun TikitokiApp(incomingLink: String) {
     val openPlayback: (DownloadRecord) -> Unit = { record ->
         val saved = record.savedUri
         if (saved.isNullOrBlank()) message = "No se encontró la ubicación del archivo."
-        else try {
-            context.startActivity(Intent(context, PlayerActivity::class.java).apply {
-                data = Uri.parse(saved)
-                putExtra("title", record.title)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            })
-        } catch (_: Exception) { message = "No se pudo abrir el reproductor." }
+        else scope.launch {
+            try {
+                val uri = Uri.parse(saved)
+                val mime = withContext(Dispatchers.IO) {
+                    if (uri.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
+                }
+                val activity = if (PlaybackKind.isAudio(record.formatId, mime, uri.lastPathSegment))
+                    MusicActivity::class.java else PlayerActivity::class.java
+                context.startActivity(Intent(context, activity).apply {
+                    data = uri
+                    putExtra("title", record.title)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                })
+            } catch (_: Exception) { message = "No se pudo abrir el reproductor." }
+        }
     }
 
     MaterialTheme(colorScheme = TikitokiColors) {
@@ -1058,5 +1067,6 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
