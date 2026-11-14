@@ -25,6 +25,19 @@ object TikTokLinkParser {
     private val profileOrVideo = Regex("^/@([A-Za-z0-9._]{1,50})(?:/video/([0-9]+))?/?$")
     private val directVideo = Regex("^/video/([0-9]+)/?$")
 
+    fun canonicalProfile(raw: String): String? {
+        val result = parse(raw) as? LinkParseResult.Success ?: return null
+        if (result.link.type != TikTokLinkType.PROFILE) return null
+        val username = result.link.username ?: return null
+        return "https://www.tiktok.com/@$username"
+    }
+
+    fun sameProfile(first: String, second: String): Boolean {
+        val a = canonicalProfile(first) ?: return false
+        val b = canonicalProfile(second) ?: return false
+        return a.equals(b, ignoreCase = true)
+    }
+
     fun parse(rawInput: String): LinkParseResult {
         val raw = rawInput.trim()
         if (raw.isEmpty()) return LinkParseResult.Error("Pega un enlace de TikTok.")
@@ -82,3 +95,4 @@ object TikTokLinkParser {
         )
     }
 }
+

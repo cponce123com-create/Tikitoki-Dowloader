@@ -8,6 +8,26 @@ class IncomingSecurityTest {
         assertNotNull(IncomingLinkValidator.validate("https://www.tiktok.com/@creator/video/123456789"))
         assertNotNull(IncomingLinkValidator.validate("https://www.youtube.com/watch?v=abc123"))
     }
+    @Test fun extractsTheFirstHttpsLinkFromSharedText() {
+        assertEquals("https://www.youtube.com/watch?v=ab--cdefghi",
+            IncomingLinkValidator.extractFirstHttps("Mira esto https://www.youtube.com/watch?v=ab--cdefghi por favor")?.url)
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://evil.test/x https://youtube.com/watch?v=abc"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=abc#fragment"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=abc\u202e"))
+        assertNull(IncomingLinkValidator.extractFirstHttps(null))
+        assertNull(IncomingLinkValidator.extractFirstHttps(""))
+        assertNull(IncomingLinkValidator.extractFirstHttps("sin enlaces"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("x".repeat(4097)))
+        assertNull(IncomingLinkValidator.extractFirstHttps("texto\nhttps://youtube.com/watch?v=abc"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://usuario@youtube.com/watch?v=abc"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com:443/watch?v=abc"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 --output=/tmp/a"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 -o /tmp/a"))
+        assertNull(IncomingLinkValidator.extractFirstHttps("https://youtube.com/watch?v=1 -P /tmp/a"))
+    }
+    @Test fun acceptsHyphensInsideYoutubeIdentifiers() {
+        assertNotNull(IncomingLinkValidator.validate("https://youtube.com/watch?v=ab--cdefghi"))
+    }
     @Test fun rejectsMaliciousPayloads() {
         for (value in listOf(
             "https://www.tiktok.com/@creator/video/123\n--exec=evil",
@@ -25,3 +45,4 @@ class IncomingSecurityTest {
         assertEquals("Video sin título", MetadataSanitizer.title("\u0000"))
     }
 }
+

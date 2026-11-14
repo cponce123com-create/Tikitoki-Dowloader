@@ -12,6 +12,10 @@ object IncomingIntentReader {
                 intent.dataString
             else -> null
         }
-        return IncomingLinkValidator.validate(candidate)?.url.orEmpty()
+        return when (intent?.action) {
+            Intent.ACTION_SEND -> IncomingLinkValidator.extractFirstHttps(candidate)
+            else -> IncomingLinkValidator.validate(candidate)
+        }?.url.orEmpty()
     }
 }
+

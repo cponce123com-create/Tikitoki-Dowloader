@@ -1,11 +1,29 @@
 package com.tikitoki.downloader.domain
 
+import java.net.URI
+
 /** Names derived from remote metadata must never escape the chosen folder. */
 object DestinationNaming {
     fun account(url: String): String {
-        val parsed = TikTokLinkParser.parse(url)
-        val username = (parsed as? LinkParseResult.Success)?.link?.username
-        return username?.let { safeComponent("@$it", "Sin cuenta") } ?: "Sin cuenta"
+        val link = MediaLinkParser.parse(url) ?: return "Sin cuenta"
+        val parts = runCatching { URI(link.url).path.split('/').filter { it.isNotBlank() } }.getOrDefault(emptyList())
+        val first = parts.firstOrNull() ?: return "Sin cuenta"
+        val account = when (link.platform) {
+            MediaPlatform.TIKTOK -> (TikTokLinkParser.parse(link.url) as? LinkParseResult.Success)?.link?.username?.let { "@$it" }
+            MediaPlatform.YOUTUBE -> when {
+                first.startsWith("@") && first.length > 1 -> first
+                first in setOf("channel", "c", "user") -> parts.getOrNull(1)
+                else -> null
+            }
+            MediaPlatform.FACEBOOK -> first.takeUnless {
+                it.lowercase() in setOf("watch", "reel", "reels", "videos", "share", "video.php", "profile.php", "groups", "pages")
+            }
+            MediaPlatform.INSTAGRAM -> first.takeUnless {
+                it.lowercase() in setOf("p", "reel", "reels", "stories", "explore", "accounts", "tv")
+            }
+            else -> null
+        }
+        return account?.let { safeComponent(it, "Sin cuenta") } ?: "Sin cuenta"
     }
 
     fun filename(title: String, id: String, extension: String): String {
@@ -22,3 +40,4 @@ object DestinationNaming {
         return cleaned.take(100).trim().ifBlank { fallback }
     }
 }
+
