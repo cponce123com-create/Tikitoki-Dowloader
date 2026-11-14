@@ -106,7 +106,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         finally { file.delete() }
                     // A pause can occur during MediaStore publishing. Keep the saved file
                     // but only mark it completed when the record is still downloading.
-                    if (dao.completeIfDownloading(item.videoId, uri.toString()) == 0) {
+                    if (dao.markCompleted(item.videoId, uri.toString()) == 0) {
                         // Avoid leaving an orphaned file if the user paused the task.
                         if (uri.scheme == "content") applicationContext.contentResolver.delete(uri, null, null)
                         else if (uri.scheme == "file") uri.path?.let { File(it).delete() }
@@ -117,7 +117,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     throw e
                 } catch (e: Exception) {
                     if (isStopped) dao.pauseIfDownloading(item.videoId)
-                    else dao.failIfDownloading(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" })
+                    else dao.markFailed(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" })
                 } finally {
                     activeIds.remove(item.videoId)
                     lastDbUpdates.remove(item.videoId)

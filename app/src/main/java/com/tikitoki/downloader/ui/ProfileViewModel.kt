@@ -28,6 +28,7 @@ data class ProfileUiState(
     val error: String? = null,
     val incompletePage: Boolean = false,
     val omittedPages: Boolean = false,
+    val profileImage: String? = null,
 )
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
@@ -86,7 +87,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 if (media.collection) {
                     val page = fetchPage(media, 1)
                     if (token != generation) return@launch
-                    mutableState.value = ProfileUiState()
+                    mutableState.value = ProfileUiState(profileImage = page.profileImage)
                     processPage(page, token)
                 } else {
                     val first = EngineFallback(
@@ -149,7 +150,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 while (token == generation) {
                     val page = fetchPage(media, nextScanPage)
                     if (token != generation) return@launch
-                    val current = mutableState.value
+                    val current = mutableState.value.let {
+                        if (it.profileImage == null && page.profileImage != null) it.copy(profileImage = page.profileImage) else it
+                    }
                     val known = current.videos.mapTo(mutableSetOf()) { it.id }
                     val fresh = page.items.filter { known.add(it.id) }
                     val decision = scanPageState(page, PAGE_SIZE,

@@ -1,7 +1,7 @@
 package com.tikitoki.downloader.data
 
 /** Count the extractor's raw entries separately from entries we can display. */
-data class ScanPage(val items: List<VideoEntry>, val rawCount: Int, val incomplete: Boolean)
+data class ScanPage(val items: List<VideoEntry>, val rawCount: Int, val incomplete: Boolean, val profileImage: String? = null)
 
 internal enum class ScanPageState { CONTINUE, END, PARTIAL }
 

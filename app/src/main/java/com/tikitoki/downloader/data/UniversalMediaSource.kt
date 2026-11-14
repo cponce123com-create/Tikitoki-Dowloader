@@ -80,7 +80,9 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
                 val distinct = results.distinctBy { it.url }
                 val rawCount = entries?.length() ?: 1
                 val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || distinct.size < rawCount
-                ScanPage(distinct, rawCount, incomplete)
+                val avatar = listOf("uploader_thumbnail", "channel_thumbnail", "avatar")
+                    .firstNotNullOfOrNull { key -> root.optString(key).takeIf { it.startsWith("https://") } }
+                ScanPage(distinct, rawCount, incomplete, avatar)
             }
         }
 

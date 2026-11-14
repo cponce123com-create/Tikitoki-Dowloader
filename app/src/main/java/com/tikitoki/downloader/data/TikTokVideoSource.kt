@@ -165,7 +165,9 @@ class TikTokVideoSource(private val context: Context) {
             }
         }
         val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || results.size < entries.length()
-        return ScanPage(results, entries.length(), incomplete)
+        val avatar = listOf("uploader_thumbnail", "channel_thumbnail", "avatar")
+            .firstNotNullOfOrNull { key -> json.optString(key).takeIf { it.startsWith("https://") } }
+        return ScanPage(results, entries.length(), incomplete, avatar)
     }
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
