@@ -2,6 +2,7 @@ package com.tikitoki.downloader
 
 import android.content.ComponentName
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
@@ -72,7 +73,11 @@ class MusicActivity : ComponentActivity() {
         load()
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 20, 20, 20); setBackgroundColor(Color.rgb(0, 28, 20)) }
         fun label(size: Float) = TextView(this).apply { textSize = size; setTextColor(Color.WHITE) }
-        fun button(text: String, action: () -> Unit) = Button(this).apply { this.text = text; setOnClickListener { action() } }
+        fun button(text: String, action: () -> Unit) = Button(this).apply {
+            this.text = text; isAllCaps = false; setTextColor(Color.WHITE)
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(37, 56, 52), Color.rgb(9, 31, 26))).apply { cornerRadius = 18f; setStroke(2, Color.rgb(28, 158, 112)) }
+            setOnClickListener { action() }
+        }
         root.addView(label(26f).apply { text = "Baja.pe · Mi música" })
         artwork = ImageView(this).apply {
             setBackgroundColor(Color.rgb(0, 70, 49))
@@ -85,6 +90,8 @@ class MusicActivity : ComponentActivity() {
         time = label(14f).apply { text = "00:00 / 00:00" }; root.addView(time)
         seek = SeekBar(this).apply {
             max = 1000
+            progressTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
+            thumbTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onStartTrackingTouch(bar: SeekBar?) { seeking = true }
                 override fun onStopTrackingTouch(bar: SeekBar?) { val p = controller; if (p != null && p.duration > 0) p.seekTo(p.duration * progress / 1000); seeking = false }
@@ -93,7 +100,7 @@ class MusicActivity : ComponentActivity() {
         }; root.addView(seek)
         val controls = LinearLayout(this).apply { gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL }
         controls.addView(button("⏮") { controller?.seekToPreviousMediaItem() })
-        play = button("▶") { controller?.let { p -> if (p.isPlaying) p.pause() else if (p.mediaItemCount > 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }; controls.addView(play)
+        play = button("▶") { controller?.let { p -> if (p.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri -> tracks.any { it.uri == uri } } != true) { if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } else if (p.isPlaying) p.pause() else if (p.mediaItemCount > 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }; controls.addView(play)
         controls.addView(button("⏭") { controller?.seekToNextMediaItem() })
         root.addView(controls)
         val modes = LinearLayout(this).apply { gravity = Gravity.CENTER }
@@ -104,6 +111,8 @@ class MusicActivity : ComponentActivity() {
         root.addView(label(14f).apply { text = "Volumen" })
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         root.addView(SeekBar(this).apply {
+            progressTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
+            thumbTintList = ColorStateList.valueOf(Color.rgb(40, 231, 157))
             max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             progress = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
