@@ -34,11 +34,19 @@ internal class SpectrumAudioProcessor : BaseAudioProcessor() {
             now - lastCapture >= 80_000_000L) {
             val read = inputBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
             val start = read.position()
+            // Use the loudest channel so stereo signals with opposite phases do not cancel.
+            var chosenChannel = 0
+            var highestEnergy = -1.0
+            for (channel in 0 until channels) {
+                var energy = 0.0
+                for (frame in 0 until SpectrumAnalyzer.WINDOW) {
+                    val sample = read.getShort(start + frame * bytesPerFrame + channel * 2).toDouble()
+                    energy += sample * sample
+                }
+                if (energy > highestEnergy) { highestEnergy = energy; chosenChannel = channel }
+            }
             val samples = FloatArray(SpectrumAnalyzer.WINDOW) { frame ->
-                var sum = 0f
-                for (channel in 0 until channels)
-                    sum += read.getShort(start + frame * bytesPerFrame + channel * 2).toFloat() / 32768f
-                sum / channels
+                read.getShort(start + frame * bytesPerFrame + chosenChannel * 2).toFloat() / 32768f
             }
             PlaybackSpectrum.publish(SpectrumAnalyzer.analyze(samples))
             lastCapture = now
