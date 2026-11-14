@@ -1,6 +1,7 @@
 package com.tikitoki.downloader
 
 import android.content.Context
+import android.content.ComponentName
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.net.Uri
@@ -15,6 +16,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.audio.PlaybackSpectrum
 import org.junit.Assert.assertTrue
@@ -25,6 +28,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.TimeUnit
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -57,7 +61,14 @@ class MusicIntegratedPlaybackTest {
                 compose.waitUntil(60_000) { PlaybackSpectrum.levels.value.any { it > 0.05f } }
             } catch (error: Throwable) {
                 val pauseVisible = compose.onAllNodesWithContentDescription("Pausar").fetchSemanticsNodes().isNotEmpty()
-                throw AssertionError("Solicitud=${consumed.get()}, reproduciendo=$pauseVisible, niveles=${PlaybackSpectrum.levels.value}", error)
+                val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+                val probe = future.get(10, TimeUnit.SECONDS)
+                var details = ""
+                compose.runOnIdle {
+                    details = "estado=${probe.playbackState}, playWhenReady=${probe.playWhenReady}, isPlaying=${probe.isPlaying}, item=${probe.currentMediaItem?.mediaId}, error=${probe.playerError}"
+                }
+                MediaController.releaseFuture(future)
+                throw AssertionError("Solicitud=${consumed.get()}, reproduciendo=$pauseVisible, niveles=${PlaybackSpectrum.levels.value}, $details", error)
             }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
             val values = ContentValues().apply {
