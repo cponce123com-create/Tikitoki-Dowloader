@@ -124,6 +124,7 @@ import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.PlaybackKind
+import com.tikitoki.downloader.domain.ThumbnailUrls
 import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.IncomingLinkValidator
@@ -845,7 +846,10 @@ private fun TikitokiApp(incomingLink: String) {
                             shape = RoundedCornerShape(8.dp), color = TechPanel,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                coil.compose.SubcomposeAsyncImage(
+                                if (record.videoId in audioIds.orEmpty()) VideoThumbnail(
+                                    VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), thumbnailResolver,
+                                    Modifier.fillMaxSize(), deferLookup = true,
+                                ) else coil.compose.SubcomposeAsyncImage(
                                     model = record.savedUri?.let { Uri.parse(it) }, imageLoader = galleryImageLoader,
                                     contentDescription = "Reproducir ${record.title}",
                                     modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
@@ -1110,8 +1114,9 @@ private fun VideoThumbnail(
     modifier: Modifier = Modifier,
     deferLookup: Boolean = false,
 ) {
-    val resolved by produceState<String?>(initialValue = video.thumbnail, key1 = video.url, key2 = video.thumbnail, key3 = deferLookup) {
-        value = video.thumbnail ?: if (deferLookup) null else resolver.resolve(video)
+    val directThumbnail = video.thumbnail ?: ThumbnailUrls.youtube(video.id, video.url)
+    val resolved by produceState<String?>(initialValue = directThumbnail, key1 = video.url, key2 = directThumbnail, key3 = deferLookup) {
+        value = directThumbnail ?: if (deferLookup) null else resolver.resolve(video)
     }
     Surface(
         modifier = modifier,
@@ -1137,7 +1142,15 @@ private fun VideoThumbnail(
                             )
                         },
                         error = {
-                            Text("▶", style = MaterialTheme.typography.headlineMedium,
+                            val fallback = ThumbnailUrls.youtube(video.id, video.url)
+                            if (fallback != null && fallback != resolved) {
+                                coil.compose.SubcomposeAsyncImage(
+                                    model = fallback,
+                                    contentDescription = "Miniatura del video: ${video.title}",
+                                    modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                                    error = { Text("▶", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                )
+                            } else Text("▶", style = MaterialTheme.typography.headlineMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     )
@@ -1148,6 +1161,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

@@ -2,6 +2,7 @@ package com.tikitoki.downloader.data
 
 import android.content.Context
 import com.yausername.youtubedl_android.YoutubeDL
+import com.tikitoki.downloader.domain.ThumbnailUrls
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -21,6 +22,7 @@ class VideoThumbnailResolver(context: Context) {
 
     suspend fun resolve(video: VideoEntry): String? {
         if (!video.thumbnail.isNullOrBlank()) return video.thumbnail
+        ThumbnailUrls.youtube(video.id, video.url)?.let { return it }
         cache[video.url]?.let { return it }
         if (video.url in failed) return null
         return slots.withPermit {
@@ -39,4 +41,5 @@ class VideoThumbnailResolver(context: Context) {
         }
     }
 }
+
 

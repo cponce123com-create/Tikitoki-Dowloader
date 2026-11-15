@@ -98,7 +98,13 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             id = "${link.platform.name.lowercase()}:$id",
             url = safePage,
             title = title,
-            thumbnail = json.optString("thumbnail").takeIf { it.startsWith("https://") },
+            thumbnail = json.optString("thumbnail").takeIf { it.startsWith("https://") }
+                ?: json.optJSONArray("thumbnails")?.let { thumbnails ->
+                    (thumbnails.length() - 1 downTo 0).firstNotNullOfOrNull { index ->
+                        thumbnails.optJSONObject(index)?.optString("url")?.takeIf { it.startsWith("https://") }
+                    }
+                }
+                ?: com.tikitoki.downloader.domain.ThumbnailUrls.youtube(id, safePage),
             durationSeconds = json.optInt("duration")
         )
     }
@@ -140,4 +146,5 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         ) + options
     }
 }
+
 
