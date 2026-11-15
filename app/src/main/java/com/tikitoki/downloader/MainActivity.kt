@@ -110,6 +110,7 @@ import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.ExtractorVersion
 import com.tikitoki.downloader.data.ErrorCategory
+import com.tikitoki.downloader.data.DownloadTelemetry
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DeleteCompletedResult
@@ -123,6 +124,7 @@ import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileIdentity
 import com.tikitoki.downloader.data.FormatChoice
+import com.tikitoki.downloader.data.FormatOptions
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
@@ -247,6 +249,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var completionNotice by remember { mutableStateOf(DownloadSettings.notifyCompletion(context)) }
     var rateKiB by remember { mutableStateOf(DownloadSettings.rateKiB(context)) }
     var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
+    var monitorPages by remember { mutableStateOf(ProfileMonitor.pageLimit(context)) }
     var networkSettingsBusy by remember { mutableStateOf(false) }
     var showClearTemp by remember { mutableStateOf(false) }
     var showPlayerChoice by remember { mutableStateOf(false) }
@@ -291,6 +294,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val downloadsViewModel: DownloadsViewModel = viewModel()
     val records by downloadsViewModel.records.collectAsState()
+    val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
     val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
     val defaultFormat = remember(preferredQuality) {
@@ -441,9 +445,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
         if (video != null) {
             showQualitySheet = true
             formatsBusy = selected.size == 1
-            formats = if (selected.size == 1) listOf(defaultFormat) else listOf(
-                FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: mejor calidad disponible"),
-                FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible"))
+            formats = if (selected.size == 1) listOf(defaultFormat) else FormatOptions.batch(context)
             chosenFormat = formats.first()
             rememberFormat = false
             scope.launch {
@@ -542,7 +544,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                     Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
-                    if (selected.size > 1) Text("Se aplicará la opción elegida a todos los elementos seleccionados.", color = TechMuted)
+                    if (selected.size > 1) Text(stringResource(R.string.format_batch_note), color = TechMuted)
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
                     Column {
                         formats.forEach { option ->
@@ -900,7 +902,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                     items(queue, key = { it.videoId }) { record ->
-                        DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = {}, onCancel = {
+                        DownloadHistoryCard(record, resolver = thumbnailResolver, speed = downloadSpeeds[record.videoId], onDelete = {}, onCancel = {
                             scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
                         }, onOpen = {})
                     }
@@ -1069,11 +1071,17 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         OutlinedButton(onClick = { diagnosticPicker.launch(diagnosticFilename) }) { Text(stringResource(R.string.diagnostic_export)) }
                         Text("Frecuencia de monitoreo de perfiles", style = MaterialTheme.typography.titleMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(1, 5, 12).forEach { hours ->
-                                FilterChip(selected = monitorHours == hours, onClick = { monitorHours = hours; ProfileMonitor.setInterval(context, hours) }, label = { Text("${hours} h") })
+                            listOf(6, 12, 24).forEach { hours ->
+                                FilterChip(selected = monitorHours == hours, onClick = { monitorHours = hours; ProfileMonitor.setInterval(context, hours) }, label = { Text(stringResource(R.string.monitor_hours, hours)) })
                             }
                         }
-                        Text("Revisión completa aproximada cada 24 horas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.monitor_weekly), color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.monitor_page_limit), style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(5, 10, 25, 50).forEach { pages ->
+                                FilterChip(selected = monitorPages == pages, onClick = { monitorPages = pages; ProfileMonitor.setPageLimit(context, pages) }, label = { Text(pages.toString()) })
+                            }
+                        }
                         Text("Baja.pe · v0.5")
                         Text("Actualización de la app", style = MaterialTheme.typography.titleMedium)
                         val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
@@ -1211,7 +1219,7 @@ private fun SummaryTile(label: String, count: Int, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
+private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, TechBorder)) {
         Row(Modifier.fillMaxWidth().padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1233,6 +1241,7 @@ private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnail
                     else -> record.status
                 }
                 Text(status, color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                if (record.status == DownloadState.DOWNLOADING && speed != null) Text(stringResource(R.string.download_speed, speed), color = TechMuted, style = MaterialTheme.typography.labelSmall)
                 if (record.status == DownloadState.DOWNLOADING) {
                     if (record.progress in 1..99) LinearProgressIndicator(progress = { record.progress / 100f }, modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)
                     else LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)
@@ -1306,6 +1315,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

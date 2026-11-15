@@ -173,26 +173,13 @@ class TikTokVideoSource(private val context: Context) {
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
         val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { throw readableError(e) }
-        val available = info.formats.orEmpty()
-            .filter {
-                !it.formatId.isNullOrBlank() &&
-                    it.height > 0 && it.vcodec != "none"
-            }
-            .distinctBy { it.formatId }
-            .sortedByDescending { it.height }
-
-        listOf(FormatChoice(DEFAULT_FORMAT, "Mejor calidad disponible")) +
-            (if (info.formats.orEmpty().any { !it.acodec.isNullOrBlank() && it.acodec != "none" }) listOf(FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible")) else emptyList()) +
-            available.map { f ->
-                val id = f.formatId.orEmpty()
-                val selector = if (f.acodec == "none") "$id+bestaudio/best" else id
-                FormatChoice(selector, "${f.height}p · ${f.ext?.uppercase() ?: "Video"}")
-            }
+        FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
 
     suspend fun downloadToCache(
         video: VideoEntry,
         formatId: String,
+        onSpeed: (String) -> Unit = {},
         onProgress: (Int) -> Unit,
     ): File = withContext(Dispatchers.IO) {
         ensureReady()
@@ -205,6 +192,8 @@ class TikTokVideoSource(private val context: Context) {
         // Remove completed remnants from an earlier run; keep .part files for --continue.
         folder.listFiles()?.filter { it.isFile && it.nameWithoutExtension == safeId &&
             it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac") }?.forEach { it.delete() }
+        val mp3Bitrate = FormatOptions.mp3Bitrate(formatId)
+        val sourceAudio = formatId.takeIf { it.startsWith("bajaaudio-") }?.removePrefix("bajaaudio-")
         val request = YoutubeDLRequest(video.url)
             .addOption("--no-playlist")
             .addOption("--newline")
@@ -216,17 +205,24 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--retries", "3")
             .addOption("--retry-sleep", "fragment:exp=1:8")
             .addOption("--socket-timeout", "20")
-            .addOption("-f", formatId)
+            .addOption("-f", if (mp3Bitrate != null) "bestaudio/best" else sourceAudio ?: formatId)
             .addOption("--merge-output-format", "mp4")
             .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
 
+        if (mp3Bitrate != null) {
+            request.addOption("--extract-audio").addOption("--audio-format", "mp3")
+                .addOption("--audio-quality", "${mp3Bitrate}K")
+        }
         val rate = DownloadSettings.rateKiB(context)
         if (rate > 0) request.addOption("--limit-rate", "${rate}K")
 
         val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(
             request,
             processId(video.id),
-        ) { _, _, line -> DownloadProgressParser.percent(line)?.let(onProgress) } }
+        ) { _, _, line ->
+            DownloadProgressParser.percent(line)?.let(onProgress)
+            DownloadProgressParser.speed(line)?.let(onSpeed)
+        } }
 
         if (response.exitCode != 0) {
             throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
@@ -280,6 +276,7 @@ class TikTokVideoSource(private val context: Context) {
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
 
 
 

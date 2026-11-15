@@ -30,9 +30,14 @@ object ProfileMonitor {
     private const val FULL = "tikitoki_full_profile_monitor"
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     fun profiles(context: Context): Set<String> = prefs(context).getStringSet("urls", emptySet()).orEmpty().toSet()
-    fun interval(context: Context): Int = prefs(context).getInt("interval_hours", 5).takeIf { it in listOf(1, 5, 12) } ?: 5
+    fun interval(context: Context): Int = MonitorPolicy.interval(prefs(context).getInt("interval_hours", 6))
+    fun pageLimit(context: Context): Int = MonitorPolicy.pageLimit(prefs(context).getInt("full_page_limit", 10))
+    fun setPageLimit(context: Context, pages: Int) {
+        require(pages in 1..100)
+        prefs(context).edit().putInt("full_page_limit", pages).apply()
+    }
     fun setInterval(context: Context, hours: Int) {
-        require(hours in listOf(1, 5, 12))
+        require(hours in listOf(6, 12, 24))
         prefs(context).edit().putInt("interval_hours", hours).apply()
         schedule(context)
     }
@@ -47,7 +52,7 @@ object ProfileMonitor {
     fun remove(context: Context, url: String) {
         prefs(context).edit().putStringSet("urls", profiles(context) - url)
             .remove("ids:$url").remove("new:$url").remove("checked:$url").remove("error:$url")
-            .remove("snapshot:$url").remove("missing:$url").remove("count:$url").apply()
+            .remove("snapshot:$url").remove("missing:$url").remove("count:$url").remove("full_checked:$url").apply()
         if (profiles(context).isEmpty()) {
             WorkManager.getInstance(context).cancelUniqueWork(RECENT)
             WorkManager.getInstance(context).cancelUniqueWork(FULL)
@@ -58,14 +63,15 @@ object ProfileMonitor {
     fun newCount(context: Context, url: String): Int = prefs(context).getInt("new:$url", 0)
     fun schedule(context: Context) {
         if (profiles(context).isEmpty()) return
-        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()
         val recent = PeriodicWorkRequestBuilder<ProfileMonitorWorker>(interval(context).toLong(), TimeUnit.HOURS)
-            .setConstraints(constraints).build()
-        val full = PeriodicWorkRequestBuilder<ProfileFullMonitorWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(15, TimeUnit.MINUTES).setConstraints(constraints).build()
+            .setConstraints(constraints).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES).build()
+        val full = PeriodicWorkRequestBuilder<ProfileFullMonitorWorker>(7, TimeUnit.DAYS)
+            .setInitialDelay(15, TimeUnit.MINUTES).setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES).build()
         val manager = WorkManager.getInstance(context)
         manager.enqueueUniquePeriodicWork(RECENT, ExistingPeriodicWorkPolicy.UPDATE, recent)
-        manager.enqueueUniquePeriodicWork(FULL, ExistingPeriodicWorkPolicy.KEEP, full)
+        manager.enqueueUniquePeriodicWork(FULL, ExistingPeriodicWorkPolicy.UPDATE, full)
     }
 }
 
@@ -88,26 +94,27 @@ private object ProfileNotice {
 }
 
 private val recentLock = Mutex()
+private enum class RecentResult { SUCCESS, FAILED, RATE_LIMITED }
 
 /** Shared by both workers so the daily pass checks the newest entries first. */
-private suspend fun checkRecent(context: Context, url: String, source: TikTokVideoSource): Boolean = recentLock.withLock {
+private suspend fun checkRecent(context: Context, url: String, source: TikTokVideoSource): RecentResult = recentLock.withLock {
     val prefs = context.getSharedPreferences(ProfileMonitor.PREFS, Context.MODE_PRIVATE)
-    val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: return@withLock false
+    val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: return@withLock RecentResult.FAILED
     try {
         val page = source.inspectPageWithStatus(parsed.link, page = 1, pageSize = 10)
         if (page.incomplete || page.items.isEmpty()) throw IllegalStateException("No se pudo completar la consulta del perfil.")
-        if (url !in ProfileMonitor.profiles(context)) return@withLock false
+        if (url !in ProfileMonitor.profiles(context)) return@withLock RecentResult.FAILED
         val ids = page.items.map { it.id }.toSet()
         val old = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
         val newIds = if (old.isEmpty()) emptySet() else ids - old
         prefs.edit().putStringSet("ids:$url", old + ids).putInt("new:$url", newIds.size)
             .putLong("checked:$url", System.currentTimeMillis()).remove("error:$url").apply()
         if (newIds.isNotEmpty()) ProfileNotice.send(context, url, "@${parsed.link.username}: ${newIds.size} video(s) nuevo(s).")
-        true
+        RecentResult.SUCCESS
     } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         prefs.edit().putString("error:$url", e.message?.take(180) ?: "Error temporal de consulta").apply()
-        false
+        if (MonitorPolicy.rateLimited(e)) RecentResult.RATE_LIMITED else RecentResult.FAILED
     }
 }
 
@@ -116,7 +123,7 @@ class ProfileMonitorWorker(context: Context, params: WorkerParameters) : Corouti
         val source = TikTokVideoSource(applicationContext)
         for (url in ProfileMonitor.profiles(applicationContext)) {
             if (isStopped) return@withContext Result.success()
-            checkRecent(applicationContext, url, source)
+            if (checkRecent(applicationContext, url, source) == RecentResult.RATE_LIMITED) return@withContext Result.retry()
         }
         Result.success()
     }
@@ -130,12 +137,17 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
         for (url in ProfileMonitor.profiles(applicationContext)) {
             if (isStopped) return@withContext Result.success()
             val parsed = TikTokLinkParser.parse(url) as? LinkParseResult.Success ?: continue
-            if (!checkRecent(applicationContext, url, source)) continue
+            if (!MonitorPolicy.fullDue(System.currentTimeMillis(), prefs.getLong("full_checked:$url", 0L))) continue
+            when (checkRecent(applicationContext, url, source)) {
+                RecentResult.RATE_LIMITED -> return@withContext Result.retry()
+                RecentResult.FAILED -> continue
+                RecentResult.SUCCESS -> Unit
+            }
             try {
                 val all = mutableSetOf<String>()
                 var complete = false
                 var firstPageIds: List<String>? = null
-                for (number in 1..100) {
+                for (number in 1..ProfileMonitor.pageLimit(applicationContext)) {
                     if (isStopped) return@withContext Result.success()
                     val page = source.inspectPageWithStatus(parsed.link, number, 100)
                     if (number == 1) firstPageIds = page.items.map { it.id }
@@ -158,7 +170,7 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                 val result = ProfileSnapshot.compare(previous, missingOnce, all, complete = true)
                 val confirmed = result.possiblyUnavailable
                 val edit = prefs.edit().putStringSet("snapshot:$url", result.snapshot).putStringSet("missing:$url", result.pending)
-                    .putInt("count:$url", all.size)
+                    .putInt("count:$url", all.size).putLong("full_checked:$url", System.currentTimeMillis())
                 if (previous.isEmpty()) {
                     val known = prefs.getStringSet("ids:$url", emptySet()).orEmpty().toSet()
                     edit.putStringSet("ids:$url", known + all)
@@ -167,10 +179,14 @@ class ProfileFullMonitorWorker(context: Context, params: WorkerParameters) : Cor
                 if (confirmed.isNotEmpty()) ProfileNotice.send(applicationContext, url, "@${parsed.link.username}: ${confirmed.size} video(s) podrían no estar disponibles.")
                 }
             } catch (e: CancellationException) { throw e }
-              catch (_: Exception) { /* Never report disappearance on a failed scan. */ }
+              catch (e: Exception) {
+                  if (MonitorPolicy.rateLimited(e)) return@withContext Result.retry()
+                  // Never report disappearance on a failed scan.
+              }
         }
         Result.success()
     }
 }
+
 
 
