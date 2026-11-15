@@ -41,6 +41,7 @@
     <string name="monitor_hours">%1$d h</string>
     <string name="monitor_weekly">La revisión completa se realiza como máximo una vez por semana y requiere batería suficiente.</string>
     <string name="monitor_page_limit">Máximo de páginas por revisión completa</string>
+    <string name="download_speed">Velocidad: %1$s</string>
 </resources>
 
 

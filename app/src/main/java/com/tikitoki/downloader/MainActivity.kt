@@ -110,6 +110,7 @@ import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.ExtractorVersion
 import com.tikitoki.downloader.data.ErrorCategory
+import com.tikitoki.downloader.data.DownloadTelemetry
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DeleteCompletedResult
@@ -293,6 +294,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val downloadsViewModel: DownloadsViewModel = viewModel()
     val records by downloadsViewModel.records.collectAsState()
+    val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
     val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
     val defaultFormat = remember(preferredQuality) {
@@ -900,7 +902,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                     items(queue, key = { it.videoId }) { record ->
-                        DownloadHistoryCard(record, resolver = thumbnailResolver, onDelete = {}, onCancel = {
+                        DownloadHistoryCard(record, resolver = thumbnailResolver, speed = downloadSpeeds[record.videoId], onDelete = {}, onCancel = {
                             scope.launch { DownloadQueue.cancel(context, record.videoId); message = "Descarga cancelada." }
                         }, onOpen = {})
                     }
@@ -1217,7 +1219,7 @@ private fun SummaryTile(label: String, count: Int, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
+private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, TechBorder)) {
         Row(Modifier.fillMaxWidth().padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1239,6 +1241,7 @@ private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnail
                     else -> record.status
                 }
                 Text(status, color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                if (record.status == DownloadState.DOWNLOADING && speed != null) Text(stringResource(R.string.download_speed, speed), color = TechMuted, style = MaterialTheme.typography.labelSmall)
                 if (record.status == DownloadState.DOWNLOADING) {
                     if (record.progress in 1..99) LinearProgressIndicator(progress = { record.progress / 100f }, modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)
                     else LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)

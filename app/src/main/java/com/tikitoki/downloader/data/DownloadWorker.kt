@@ -107,7 +107,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     val file = source.downloadToCache(
                         VideoEntry(item.videoId, DownloadInputPolicy.canonicalUrl(item.videoUrl), item.title, item.thumbnail),
-                        DownloadInputPolicy.safeFormatId(item.formatId)
+                        DownloadInputPolicy.safeFormatId(item.formatId),
+                        onSpeed = { speed -> if (!isStopped) DownloadTelemetry.update(item.videoId, speed) }
                     ) { percent ->
                         if (!isStopped) {
                             activeProgress[item.videoId] = percent
@@ -131,6 +132,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         file.delete()
                         return
                     }
+                    DownloadTelemetry.remove(item.videoId)
                     val uri = try { publishVideo(applicationContext, file, item) }
                         finally { file.delete() }
                     // A pause can occur during MediaStore publishing. Keep the saved file
@@ -160,6 +162,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     activeIds.remove(item.videoId)
                     activeProgress.remove(item.videoId)
+                    DownloadTelemetry.remove(item.videoId)
                     if (activeIds.isNotEmpty() && (Build.VERSION.SDK_INT < 33 ||
                             ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                         try {
@@ -273,6 +276,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Uri.fromFile(destination)
     }
 }
+
 
 
 
