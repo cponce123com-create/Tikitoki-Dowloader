@@ -107,7 +107,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.tikitoki.downloader.data.DiagnosticReport
+import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.ErrorCategory
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
@@ -335,7 +335,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     val engineVersion = status.getString("effective_version", null) ?: unknown
                     val last = status.getLong("last_success", 0L)
                     val updated = if (last > 0) java.text.DateFormat.getDateTimeInstance().format(java.util.Date(last)) else unknown
-                    val errors = dao.failedRecords().sortedByDescending { it.updatedAt }.take(20)
+                    val errors = DiagnosticHistory.read(context)
                     buildString {
                         appendLine(context.getString(R.string.diagnostic_heading))
                         appendLine(context.getString(R.string.diagnostic_app, version))
@@ -346,8 +346,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         appendLine(context.getString(R.string.diagnostic_errors))
                         if (errors.isEmpty()) appendLine(context.getString(R.string.diagnostic_none))
                         errors.forEach { error ->
-                            val date = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(error.updatedAt))
-                            val category = when (DiagnosticReport.errorCategory(error.error)) {
+                            val date = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(error.time))
+                            val category = when (error.category) {
                                 ErrorCategory.RATE_LIMIT -> R.string.diagnostic_rate_limit
                                 ErrorCategory.TIMEOUT -> R.string.diagnostic_timeout
                                 ErrorCategory.NETWORK -> R.string.diagnostic_network
@@ -1298,6 +1298,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

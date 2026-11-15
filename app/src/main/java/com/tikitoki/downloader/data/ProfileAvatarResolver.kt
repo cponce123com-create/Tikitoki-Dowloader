@@ -3,7 +3,6 @@ package com.tikitoki.downloader.data
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.TikTokLinkType
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -34,9 +33,10 @@ class ProfileAvatarResolver {
             val bytes = connection.inputStream.use { it.readUpTo(2 * 1024 * 1024 + 1) }
             if (bytes.size > 2 * 1024 * 1024) return@withContext null
             findIdentity(bytes.toString(Charsets.UTF_8), username)
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { null }
-        finally { connection.disconnect() }
+        } catch (e: Throwable) {
+            rethrowIfFatal(e)
+            null
+        } finally { connection.disconnect() }
     }
 
     internal fun findAvatar(html: String, username: String): String? = findIdentity(html, username)?.avatar
@@ -88,4 +88,5 @@ class ProfileAvatarResolver {
              host.endsWith(".byteoversea.com"))
     }.getOrDefault(false)
 }
+
 

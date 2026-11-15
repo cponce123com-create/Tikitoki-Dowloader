@@ -20,7 +20,7 @@
     <string name="diagnostic_last_update">Última actualización correcta: %1$s</string>
     <string name="diagnostic_android">Android: %1$s (API %2$d)</string>
     <string name="diagnostic_abi">Arquitecturas: %1$s</string>
-    <string name="diagnostic_errors">Errores de descarga registrados actualmente (máximo 20):</string>
+    <string name="diagnostic_errors">Últimos errores registrados de descarga y actualización (máximo 20):</string>
     <string name="diagnostic_error_entry">%1$s · %2$s</string>
     <string name="diagnostic_none">Sin registros disponibles.</string>
     <string name="diagnostic_unknown">No disponible</string>
@@ -30,5 +30,6 @@
     <string name="diagnostic_permission">Permiso o acceso</string>
     <string name="diagnostic_other">Error de descarga</string>
 </resources>
+
 
 
