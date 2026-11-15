@@ -23,12 +23,12 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
-      - name: Install Android 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Gradle 8.10.2
+      - name: Install Android 37
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+      - name: Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '9.3.1'
       - name: Test and build APK
         run: |
           ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug verifyM1Coverage || {
@@ -63,10 +63,10 @@ jobs:
           java-version: '17'
       - name: Android SDK
         uses: android-actions/setup-android@v4
-      - name: Gradle 8.10.2
+      - name: Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '9.3.1'
       - name: Android Intent security tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -87,6 +87,7 @@ jobs:
             music-layout.png
             music-playing.png
           if-no-files-found: error
+
 
 
 

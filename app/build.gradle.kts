@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.tikitoki.downloader"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.tikitoki.downloader"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -119,5 +119,6 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
         }
     }
 }
+
 
 
