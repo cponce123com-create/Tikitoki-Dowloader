@@ -182,6 +182,7 @@ class TikTokVideoSource(private val context: Context) {
             .sortedByDescending { it.height }
 
         listOf(FormatChoice(DEFAULT_FORMAT, "Mejor calidad disponible")) +
+            (if (info.formats.orEmpty().any { !it.acodec.isNullOrBlank() && it.acodec != "none" }) listOf(FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible")) else emptyList()) +
             available.map { f ->
                 val id = f.formatId.orEmpty()
                 val selector = if (f.acodec == "none") "$id+bestaudio/best" else id
@@ -279,4 +280,5 @@ class TikTokVideoSource(private val context: Context) {
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
 

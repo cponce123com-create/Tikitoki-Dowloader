@@ -124,6 +124,7 @@ import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.PlaybackKind
+import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.IncomingIntentReader
@@ -234,6 +235,7 @@ private fun TikitokiApp(incomingLink: String) {
     var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
     var networkSettingsBusy by remember { mutableStateOf(false) }
     var showClearTemp by remember { mutableStateOf(false) }
+    var showPlayerChoice by remember { mutableStateOf(false) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
     val folderDescription by produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
         val tree = downloadFolder
@@ -293,12 +295,14 @@ private fun TikitokiApp(incomingLink: String) {
     var search by rememberSaveable { mutableStateOf("") }
     var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
     var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
+    var libraryKind by rememberSaveable { mutableStateOf("Videos") }
     var message by remember { mutableStateOf("") }
     var inspecting by remember { mutableStateOf(false) }
     var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var formatsBusy by remember { mutableStateOf(false) }
     var queueBusy by remember { mutableStateOf(false) }
     var showQualitySheet by remember { mutableStateOf(false) }
+    var rememberFormat by remember { mutableStateOf(false) }
     val videos = profileState.videos
     val selected = remember { mutableStateMapOf<String, Boolean>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
@@ -318,7 +322,7 @@ private fun TikitokiApp(incomingLink: String) {
         if (!queueBusy && selected.isNotEmpty()) {
             queueBusy = true
             val batch = videos.filter { it.id in selected }
-            val formatId = if (batch.size == 1) chosenFormat.id else defaultFormat.id
+            val formatId = chosenFormat.id
             scope.launch {
                 try {
                     val result = DownloadQueue.enqueue(context, batch, formatId)
@@ -362,11 +366,17 @@ private fun TikitokiApp(incomingLink: String) {
         val video = selected.keys.firstOrNull()?.let { id -> videos.firstOrNull { it.id == id } }
         if (video != null) {
             showQualitySheet = true
-            formatsBusy = true
+            formatsBusy = selected.size == 1
+            formats = if (selected.size == 1) listOf(defaultFormat) else listOf(
+                FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: mejor calidad disponible"),
+                FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible"))
+            chosenFormat = formats.first()
+            rememberFormat = false
             scope.launch {
                 try {
-                    formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
-                    chosenFormat = formats.first()
+                    if (selected.size == 1) formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
+                    val saved = settings.getString("default_download_format", "video")
+                    chosenFormat = formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) } ?: formats.first()
                 } catch (_: Exception) { message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez." }
                 finally { formatsBusy = false }
             }
@@ -403,8 +413,17 @@ private fun TikitokiApp(incomingLink: String) {
     }
 
     MaterialTheme(colorScheme = TikitokiColors) {
-        if (showQualitySheet && selected.size == 1) {
-            val preview = videos.firstOrNull { it.id == selected.keys.first() }
+        if (showPlayerChoice) {
+            AlertDialog(
+                onDismissRequest = { showPlayerChoice = false },
+                title = { Text("Reproductor") },
+                text = { Text("Elige qué quieres reproducir.") },
+                confirmButton = { Button(onClick = { showPlayerChoice = false; libraryKind = "Videos"; tab = 2 }) { Text("Videos") } },
+                dismissButton = { OutlinedButton(onClick = { showPlayerChoice = false; tab = 6 }) { Text("Música") } },
+            )
+        }
+        if (showQualitySheet && selected.isNotEmpty()) {
+            val preview = videos.firstOrNull { selected.size == 1 && it.id == selected.keys.first() }
             ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
                 containerColor = TechBackground) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -423,7 +442,8 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                         }
                     }
-                    Text("Calidad", style = MaterialTheme.typography.titleMedium)
+                    Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
+                    if (selected.size > 1) Text("Se aplicará la opción elegida a todos los elementos seleccionados.", color = TechMuted)
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
                     Column(Modifier.heightIn(max = 290.dp).verticalScroll(rememberScrollState())) {
                         formats.forEach { option ->
@@ -435,8 +455,16 @@ private fun TikitokiApp(incomingLink: String) {
                             }
                         }
                     }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = rememberFormat, onCheckedChange = { rememberFormat = it })
+                        Text("Usar como opción predeterminada")
+                    }
                     TechPrimaryButton("Descargar", icon = Icons.Outlined.Download, enabled = !queueBusy && !formatsBusy,
                         modifier = Modifier.fillMaxWidth(), onClick = {
+                            if (rememberFormat) {
+                                val preference = DownloadFormatPreference.fromChoice(chosenFormat.id, chosenFormat.label)
+                                settings.edit().putString("default_download_format", preference).apply()
+                            }
                             showQualitySheet = false
                             requestDownload()
                         })
@@ -540,12 +568,18 @@ private fun TikitokiApp(incomingLink: String) {
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
+                                val pasted = it.length - url.length > 1 && IncomingLinkValidator.validate(it) != null
                                 url = it
                                 profileViewModel.reset()
                                 
                                 selected.clear()
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
+                                if (pasted) {
+                                    keyboard?.hide(); focusManager.clearFocus()
+                                    profileViewModel.inspect(it, false)
+                                    message = ""
+                                }
                             },
                             placeholder = { Text("Pega un enlace") },
                             modifier = Modifier.fillMaxWidth(),
@@ -557,7 +591,7 @@ private fun TikitokiApp(incomingLink: String) {
 
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
-                                modifier = Modifier.weight(0.75f).height(44.dp),
+                                modifier = Modifier.weight(1f).height(44.dp),
                                 onClick = {
                                     focusManager.clearFocus()
                                     keyboard?.hide()
@@ -569,9 +603,10 @@ private fun TikitokiApp(incomingLink: String) {
                                         formats = listOf(defaultFormat)
                                         chosenFormat = defaultFormat
                                         message = ""
+                                        profileViewModel.inspect(pasted, false)
                                     } else message = "El portapapeles no contiene un enlace válido."
                                 },
-                                shape = RoundedCornerShape(18.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, TechBorder)
                             ) {
                                 Icon(Icons.Outlined.ContentPaste, contentDescription = null, tint = TechPink, modifier = Modifier.size(20.dp))
@@ -579,7 +614,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 Text("Pegar")
                             }
                         TechPrimaryButton(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(44.dp),
                             enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
                             onClick = {
                                 focusManager.clearFocus()
@@ -675,10 +710,7 @@ private fun TikitokiApp(incomingLink: String) {
                                     chosenFormat = defaultFormat
                                 }) { Text(if (allSelected) "Quitar selección" else "Seleccionar", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 Button(modifier = Modifier.weight(1f), enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
-                                    onClick = requestDownload) { Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Descargar ${selected.size}", maxLines = 1) }
-                            }
-                            if (selected.size == 1) {
-                                OutlinedButton(onClick = chooseQuality, enabled = !formatsBusy) { Text("⚙ Calidad") }
+                                    onClick = chooseQuality) { Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Descargar ${selected.size}", maxLines = 1) }
                             }
 
                             OutlinedTextField(
@@ -767,7 +799,22 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                 }
             } else if (tab == 2) {
-                val completed = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
+                val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
+                val audioIds by produceState<Set<String>?>(initialValue = null, key1 = allCompleted) {
+                    value = null
+                    value = withContext(Dispatchers.IO) {
+                        allCompleted.filter { record ->
+                            val uri = record.savedUri?.let(Uri::parse)
+                            val mime = if (uri?.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
+                            val name = if (uri?.scheme == "content") runCatching {
+                                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                            }.getOrNull() else uri?.lastPathSegment
+                            PlaybackKind.isAudio(record.formatId, mime, name)
+                        }.map { it.videoId }.toSet()
+                    }
+                }
+                val completed = audioIds?.let { ids -> allCompleted.filter { (it.videoId in ids) == (libraryKind == "Música") } }.orEmpty()
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
                     modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
@@ -779,8 +826,14 @@ private fun TikitokiApp(incomingLink: String) {
                         Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            OutlinedButton(onClick = { tab = 6 }) { Text("Mi música") }
-                            if (completed.isEmpty()) Text("Aún no hay videos descargados.", color = TechMuted)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("Videos", "Música").forEach { kind ->
+                                    FilterChip(selected = libraryKind == kind, onClick = { libraryKind = kind }, label = { Text(kind) })
+                                }
+                                if (libraryKind == "Música") OutlinedButton(onClick = { tab = 6 }) { Text("Reproductor") }
+                            }
+                            if (audioIds == null) Text("Organizando biblioteca…", color = TechMuted)
+                            else if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
@@ -825,7 +878,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
                             }
                         }
-                        OutlinedButton(onClick = { tab = 6 }) { Text("Mi música") }
+                        OutlinedButton(onClick = { showPlayerChoice = true }) { Text("Reproductor") }
                         Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         
                         OutlinedButton(onClick = {
@@ -975,12 +1028,20 @@ private fun TikitokiApp(incomingLink: String) {
                     }
                     else -> {
                         Text("Archivos descargados", style = MaterialTheme.typography.titleLarge)
-                        Text("Tus videos están disponibles en Descargas/TikitokiDownloader.")
+                        Text("Carpeta de descarga: $folderDescription")
                         OutlinedButton(onClick = {
-                            try { context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, "vnd.android.document/directory")
-                            }) } catch (_: Exception) { message = "Abre la carpeta Descargas desde el administrador de archivos." }
-                        }) { Text("Abrir Descargas") }
+                            try {
+                                val folder = downloadFolder?.let { tree ->
+                                    val treeUri = Uri.parse(tree)
+                                    android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri))
+                                } ?: android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download/TikitokiDownloader")
+                                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(folder, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                                })
+                            } catch (_: Exception) { message = "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos." }
+                        }) { Text("Abrir carpeta de Baja.pe") }
+                        if (message.isNotBlank()) Text(message, color = TechMuted)
                     }
                 }
             }
@@ -1087,6 +1148,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

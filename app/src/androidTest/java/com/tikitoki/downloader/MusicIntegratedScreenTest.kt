@@ -25,7 +25,8 @@ class MusicIntegratedScreenTest {
     @Test fun musicUsesAppNavigationAndFunctionalControls() {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Biblioteca").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Biblioteca").performClick()
-        compose.onNodeWithText("Mi música").performClick()
+        compose.onNodeWithText("Música").performClick()
+        compose.onNodeWithText("Reproductor").performClick()
         compose.onNodeWithText("Lista de reproducción").assertIsDisplayed()
         compose.onNodeWithContentDescription("Aleatorio").assertIsDisplayed()
         compose.onNodeWithContentDescription("Anterior").assertIsDisplayed()
