@@ -47,7 +47,7 @@ class NewPipeSource {
                 }
                 val code = connection.responseCode
                 val bytes = (if (code < 400) connection.inputStream else connection.errorStream)
-                    ?.use { it.readNBytes(4 * 1024 * 1024 + 1) } ?: byteArrayOf()
+                    ?.use { it.readUpTo(4 * 1024 * 1024 + 1) } ?: byteArrayOf()
                 require(bytes.size <= 4 * 1024 * 1024) { "Extractor response too large" }
                 return Response(code, connection.responseMessage ?: "",
                     connection.headerFields.filterKeys { it != null },
@@ -71,4 +71,5 @@ class NewPipeSource {
         )
     }
 }
+
 

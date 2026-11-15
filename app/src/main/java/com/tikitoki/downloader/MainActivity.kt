@@ -247,6 +247,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var showClearTemp by remember { mutableStateOf(false) }
     var showPlayerChoice by remember { mutableStateOf(false) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
+    // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+    @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
     val folderDescription by produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
         val tree = downloadFolder
         value = if (tree == null) "Descargas/TikitokiDownloader" else withContext(Dispatchers.IO) {
@@ -827,6 +829,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 }
             } else if (tab == 2) {
                 val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
+                // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+                @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
                 val audioIds by produceState<Set<String>?>(initialValue = null, key1 = allCompleted) {
                     value = null
                     value = withContext(Dispatchers.IO) {
@@ -876,6 +880,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 val entry = remember(record.videoId, record.thumbnail) {
                                     VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail)
                                 }
+                                // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+                                @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
                                 val remote by produceState<String?>(initialValue = record.thumbnail ?: ThumbnailUrls.youtube(entry.id, entry.url), key1 = entry.url, key2 = entry.thumbnail) {
                                     value = entry.thumbnail?.takeIf { it.startsWith("https://") } ?: ThumbnailUrls.youtube(entry.id, entry.url) ?: thumbnailResolver.resolve(entry)
                                 }
@@ -948,6 +954,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             val username = parsedProfile?.link?.username.orEmpty()
                             val activeUsername = (TikTokLinkParser.parse(url) as? LinkParseResult.Success)?.link?.username
                             val initialAvatar = profileState.profileImage.takeIf { username.isNotBlank() && username.equals(activeUsername, ignoreCase = true) }
+                            // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+                            @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
                             val identity by produceState<ProfileIdentity?>(initialValue = ProfileIdentity(null, initialAvatar), key1 = profile) {
                                 val found = avatarResolver.resolveIdentity(profile)
                                 if (found != null) value = found.copy(avatar = found.avatar ?: value?.avatar)
@@ -1169,6 +1177,8 @@ private fun VideoThumbnail(
     deferLookup: Boolean = false,
 ) {
     val directThumbnail = video.thumbnail?.takeIf { it.isNotBlank() } ?: ThumbnailUrls.youtube(video.id, video.url)
+    // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+    @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
     val resolved by produceState<String?>(initialValue = directThumbnail, key1 = video.url, key2 = directThumbnail, key3 = deferLookup) {
         value = directThumbnail ?: if (deferLookup) null else resolver.resolve(video)
     }
@@ -1215,6 +1225,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
