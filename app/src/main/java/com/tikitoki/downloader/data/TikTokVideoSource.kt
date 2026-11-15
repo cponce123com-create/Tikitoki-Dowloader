@@ -173,7 +173,7 @@ class TikTokVideoSource(private val context: Context) {
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
         val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { throw readableError(e) }
-        FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds)
+        FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
 
     suspend fun downloadToCache(
