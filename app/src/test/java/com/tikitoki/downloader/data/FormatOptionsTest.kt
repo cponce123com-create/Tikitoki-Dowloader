@@ -13,6 +13,7 @@ class FormatOptionsTest {
         assertNull(FormatOptions.mp3Bitrate("bajamp3-999"))
         assertNull(FormatOptions.mp3Bitrate("bajamp3-192;rm"))
         assertTrue(PlaybackKind.isAudio("bajamp3-128", null, null))
+        assertTrue(PlaybackKind.isAudio("bajaaudio-140", null, null))
         assertFalse(PlaybackKind.isAudio("bajamp3-999", null, null))
     }
 }

@@ -2,6 +2,7 @@ package com.tikitoki.downloader.data
 
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.PlaybackKind
 import com.tikitoki.downloader.domain.DestinationNaming
 import android.Manifest
 import android.app.NotificationChannel
@@ -210,7 +211,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val displayName = DestinationNaming.filename(item.title, item.videoId, extension)
         val mime = when (extension) {
             "mp4" -> "video/mp4"
-            "webm" -> "video/webm"
+            "webm" -> if (PlaybackKind.isAudio(item.formatId, null, null)) "audio/webm" else "video/webm"
             "mkv" -> "video/x-matroska"
             "m4a" -> "audio/mp4"
             "mp3" -> "audio/mpeg"

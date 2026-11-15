@@ -8,7 +8,7 @@ internal object PlaybackKind {
 
     fun isAudio(format: String?, mime: String?, filename: String?): Boolean {
         val selector = format.orEmpty().lowercase(Locale.ROOT).trim()
-        if (selector.startsWith("bestaudio") || selector.startsWith("worstaudio") || selector.matches(Regex("bajamp3-(128|192|256|320)"))) return true
+        if (selector.startsWith("bestaudio") || selector.startsWith("worstaudio") || selector.startsWith("bajaaudio-") || selector.matches(Regex("bajamp3-(128|192|256|320)"))) return true
         if (mime.orEmpty().lowercase(Locale.ROOT).startsWith("audio/")) return true
         val extension = filename.orEmpty().substringAfterLast('.', "").lowercase(Locale.ROOT)
         return extension in audioExtensions

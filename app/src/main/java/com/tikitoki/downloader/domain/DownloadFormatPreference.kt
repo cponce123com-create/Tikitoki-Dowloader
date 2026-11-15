@@ -4,7 +4,7 @@ package com.tikitoki.downloader.domain
 internal object DownloadFormatPreference {
     fun fromChoice(id: String, label: String): String {
         if (id.matches(Regex("bajamp3-(128|192|256|320)"))) return id
-        if (id.startsWith("bestaudio")) return "audio"
+        if (id.startsWith("bestaudio") || id.startsWith("bajaaudio-")) return "audio"
         val height = Regex("height<=([0-9]+)").find(id)?.groupValues?.get(1) ?: Regex("^(\\d+)p", RegexOption.IGNORE_CASE).find(label)?.groupValues?.get(1)
         return if (height != null) "height:$height" else "video"
     }

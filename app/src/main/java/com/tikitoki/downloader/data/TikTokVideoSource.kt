@@ -193,6 +193,7 @@ class TikTokVideoSource(private val context: Context) {
         folder.listFiles()?.filter { it.isFile && it.nameWithoutExtension == safeId &&
             it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac") }?.forEach { it.delete() }
         val mp3Bitrate = FormatOptions.mp3Bitrate(formatId)
+        val sourceAudio = formatId.takeIf { it.startsWith("bajaaudio-") }?.removePrefix("bajaaudio-")
         val request = YoutubeDLRequest(video.url)
             .addOption("--no-playlist")
             .addOption("--newline")
@@ -204,7 +205,7 @@ class TikTokVideoSource(private val context: Context) {
             .addOption("--retries", "3")
             .addOption("--retry-sleep", "fragment:exp=1:8")
             .addOption("--socket-timeout", "20")
-            .addOption("-f", if (mp3Bitrate != null) "bestaudio/best" else formatId)
+            .addOption("-f", if (mp3Bitrate != null) "bestaudio/best" else sourceAudio ?: formatId)
             .addOption("--merge-output-format", "mp4")
             .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
 

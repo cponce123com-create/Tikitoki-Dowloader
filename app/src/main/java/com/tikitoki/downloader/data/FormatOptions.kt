@@ -47,8 +47,25 @@ internal object FormatOptions {
                 val ext = f.ext?.uppercase(Locale.ROOT) ?: context.getString(R.string.format_video_type)
                 FormatChoice(safe, context.getString(R.string.format_video_option, f.height, ext, size))
             }.toList()
+        val audioOptions = formats.asSequence()
+            .filter { !it.formatId.isNullOrBlank() && !it.acodec.isNullOrBlank() && it.acodec != "none" && (it.vcodec.isNullOrBlank() || it.vcodec == "none") }
+            .distinctBy { it.formatId }
+            .sortedByDescending { it.abr }
+            .mapNotNull { f ->
+                val sourceId = f.formatId ?: return@mapNotNull null
+                val id = "bajaaudio-$sourceId"
+                if (runCatching { DownloadInputPolicy.safeFormatId(id) }.isFailure) return@mapNotNull null
+                val size = when {
+                    f.fileSize > 0 -> Formatter.formatShortFileSize(context, f.fileSize)
+                    f.fileSizeApproximate > 0 -> context.getString(R.string.format_size_approx, Formatter.formatShortFileSize(context, f.fileSizeApproximate))
+                    else -> context.getString(R.string.format_size_unknown)
+                }
+                val ext = f.ext?.uppercase(Locale.ROOT) ?: context.getString(R.string.format_audio_type)
+                val bitrate = if (f.abr > 0) context.getString(R.string.format_audio_bitrate, f.abr) else context.getString(R.string.format_audio_bitrate_unknown)
+                FormatChoice(id, context.getString(R.string.format_audio_option, ext, bitrate, size))
+            }.toList()
         return listOf(FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, context.getString(R.string.format_video_best))) +
             videoOptions + listOf(FormatChoice("bestaudio/best", context.getString(R.string.format_audio_original))) +
-            mp3Options(context, durationSeconds)
+            audioOptions + mp3Options(context, durationSeconds)
     }
 }
