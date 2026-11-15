@@ -32,8 +32,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- App Links require website-hosted assetlinks.json to become verified. -->
-            <intent-filter android:autoVerify="true">
+            <!-- Regular browsable links; no unsupported domain verification claim. -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -55,4 +55,5 @@
             tools:node="merge" />
     </application>
 </manifest>
+
 

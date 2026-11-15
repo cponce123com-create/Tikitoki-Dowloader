@@ -159,8 +159,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     activeIds.remove(item.videoId)
                     activeProgress.remove(item.videoId)
-                    if (activeIds.isNotEmpty()) runCatching {
-                        NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification)
+                    if (activeIds.isNotEmpty() && (Build.VERSION.SDK_INT < 33 ||
+                            ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
+                        try {
+                            NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification)
+                        } catch (_: SecurityException) { /* Notification permission can be revoked at any time. */ }
                     }
                     lastDbUpdates.remove(item.videoId)
                     stopMonitor?.cancel()
@@ -269,6 +272,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Uri.fromFile(destination)
     }
 }
+
 
 
 

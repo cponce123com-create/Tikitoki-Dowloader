@@ -10,4 +10,12 @@ internal object ExtractorAccess {
 
     fun <T> useEngine(block: () -> T): T = lock.read(block)
     fun <T> updateEngine(block: () -> T): T = lock.write(block)
+
+    /** Defer maintenance rather than queuing a writer ahead of new readers. */
+    fun tryUpdateEngine(block: () -> Unit): Boolean {
+        val write = lock.writeLock()
+        if (!write.tryLock()) return false
+        try { block(); return true } finally { write.unlock() }
+    }
 }
+

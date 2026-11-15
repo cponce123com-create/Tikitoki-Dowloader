@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Baja.pe</string>
+    <string name="media_invalid_link">Pega un enlace HTTPS de una plataforma compatible.</string>
+    <string name="about_open">Acerca de / Licencias / Privacidad</string>
+    <string name="about_title">Acerca de Baja.pe</string>
+    <string name="about_description">Baja.pe permite analizar y descargar contenido propio o autorizado. La compatibilidad depende del sitio y del extractor; no se garantiza el acceso a todos los enlaces.</string>
+    <string name="about_license">Licencia: GPL-3.0. El código fuente y el texto completo de la licencia están disponibles en el repositorio del proyecto.</string>
+    <string name="about_credits">Componentes: yt-dlp (The Unlicense); youtubedl-android y NewPipeExtractor (GPL-3.0); FFmpeg (LGPL o GPL, según compilación); Coil, Jetpack Compose, Media3, Room y WorkManager (Apache 2.0). Consulta NOTICE.md para más detalles.</string>
+    <string name="about_privacy">Sin analítica propia. La aplicación guarda datos localmente y se conecta a las plataformas de origen, a los servicios de miniaturas y al proveedor de actualización del extractor. Estos terceros pueden recibir tu dirección IP y los enlaces solicitados.</string>
+    <string name="about_sources">Ver código y licencia</string>
+    <string name="about_close">Cerrar</string>
 </resources>
+

@@ -1,54 +1,43 @@
 # Baja.pe
 
-Aplicación nativa Android en **Kotlin + Jetpack Compose**, inspirada en 4K Tokkit, Seal y YTDLnis. Repositorio: `cponce123com-create/Tikitoki-Dowloader` (el nombre del repositorio conserva la grafía original).
+Aplicación Android nativa en Kotlin y Jetpack Compose para analizar enlaces y guardar o reproducir contenido disponible desde plataformas compatibles. La disponibilidad de cada contenido depende de la plataforma y de sus restricciones.
 
-## Funcionalidades implementadas en código (v0.5.0; compatibilidad multiplataforma experimental)
+**Usa la aplicación solo para contenido propio o cuya descarga y uso estén autorizados.** No se promete acceso a contenido privado, protegido o restringido.
 
-- Compartir o pegar enlaces de TikTok; validar enlaces y rechazar dominios falsificados.
-- Usar **yt-dlp mediante youtubedl-android** para consultar videos individuales y probar la enumeración de perfiles públicos.
-- Obtener formatos realmente disponibles por video y permitir seleccionar uno; descarga por lotes con la mejor calidad disponible.
-- Miniaturas cuando el extractor las proporcione; búsqueda en la lista y selección múltiple.
-- **Room** como base de datos local de historial, estados y ubicación de archivos descargados.
-- **WorkManager** para una cola persistente, ejecutada de forma serial, con servicio en primer plano y aviso de descarga.
-- Pausa, reanudación y reintentos; estados de error y progreso por video.
-- Detección de IDs duplicados para no repetir descargas completadas o pendientes.
-- Archivos visibles en `Descargas/TikitokiDownloader/`, publicados con MediaStore en Android 10+.
-- GitHub Actions compila el APK debug y ejecuta pruebas del reconocedor de enlaces.
+## Plataformas
 
-## Limitaciones
+El analizador acepta enlaces HTTPS de TikTok, YouTube, Facebook, Instagram, XVideos, Vimeo, Dailymotion, SoundCloud y Twitch. El soporte real depende del extractor y de cada enlace; aceptar un dominio no garantiza que un contenido o una lista pueda descargarse. Los demás dominios siguen rechazándose; no se admite acceso genérico a redes privadas o direcciones arbitrarias.
 
-TikTok puede rechazar la recopilación de perfiles, incluso cuando sus videos son públicos. No se garantiza poder descargar todos los videos, la resolución máxima ni versiones sin marca de agua. No hay APKs hackeados, robo de cookies ni elusión de restricciones de autenticación. Se requieren pruebas en un dispositivo Android real con material propio o autorizado. Las opciones manuales de calidad se ofrecen por video; la cola aplica calidad automática al lote.
+## Funciones
 
-## Compilación
+- Recepción, validación y análisis de enlaces; selección individual o múltiple y elección de formatos disponibles.
+- Cola persistente y adaptativa en paralelo mediante Room y WorkManager, con límites configurables según la red, pausa, reanudación y reintentos.
+- Biblioteca local de audio y video, reproducción con Media3 y acceso a los archivos descargados.
+- Miniaturas, seguimiento opcional de perfiles públicos y actualización del extractor yt-dlp.
 
-Abrir en Android Studio (JDK 17, SDK 35). Desde GitHub, pestaña **Actions > Android CI**: tras una ejecución exitosa, descargar el artifact **Baja-pe-debug**.
+La concurrencia efectiva depende de la configuración, la red, la plataforma y el estado de la cola. El análisis, los formatos y el progreso pueden variar según el origen. La compatibilidad con plataformas y perfiles es experimental y requiere pruebas con contenido autorizado.
 
-## Licencias
+## Compilación y comprobaciones
 
-El motor [youtubedl-android](https://github.com/yausername/youtubedl-android) usa GPL-3.0, con requisitos de divulgación de código fuente al redistribuir aplicaciones que lo incorporan. Evaluar obligaciones legales antes de publicar.
+Requisitos: JDK 17, Android SDK con plataforma 35 y herramientas de compilación correspondientes, y conexión a los repositorios configurados. En Linux o macOS:
 
-## Próximas validaciones
+```sh
+./gradlew testDebugUnitTest lintDebug assembleDebug
+```
 
-Pruebas manuales en Android 8-16, extracción en TikTok en tiempo real, compatibilidad con perfiles grandes, medios sin marca cuando sean proporcionados por el origen y tratamiento de restricciones de plataforma.
+En Windows usa `gradlew.bat` con las mismas tareas. El wrapper descarga Gradle 8.10.2 y verifica la suma SHA-256 de su distribución. El APK de depuración queda en `app/build/outputs/apk/debug/`. CI también ejecuta pruebas instrumentadas; consulta sus resultados antes de considerar validado un cambio. Un APK debug no es una versión de producción firmada.
 
-## Privacidad y seguridad (política del proyecto)
+## Distribución
 
-- **Sin anuncios, analítica, SDK de publicidad ni seguimiento de usuarios.** No se requiere cuenta propia ni servidor de Baja.pe para descargar.
-- El historial de descargas se guarda localmente mediante Room; los archivos se guardan en el dispositivo. No se envía el historial a un servidor de Baja.pe.
-- La aplicación realiza conexiones necesarias a las plataformas de origen, a recursos de miniaturas y, para actualizar el extractor yt-dlp, al proveedor de actualizaciones. Esas conexiones pueden revelar información de red a terceros; **sin telemetría propia** no significa **sin tráfico de red**.
-- No se admiten cookies de sesión ni credenciales de usuario. No se ejecutan comandos de shell proporcionados por el usuario.
-- Los enlaces compartidos desde otras apps deben tratarse como datos no confiables. La validación de URL no sustituye el endurecimiento pendiente del receptor de Intents ni la validación de formatos y metadatos.
-- Solo deben descargarse contenidos propios o autorizados. No se prometen descargas de contenido privado, protegido o restringido.
-- Antes de cada lanzamiento, revisar permisos, dependencias, SDKs, destinos de red y declaraciones de privacidad para verificar que esta política continúa cumpliéndose.
+El objetivo del proyecto es distribuir versiones mediante GitHub Releases y, si cumplen los requisitos y son aceptadas por sus respectivos mantenedores, F-Droid e IzzyOnDroid. No se prevé distribuir por Google Play. La disponibilidad en esos catálogos no está garantizada ni implica que la integración o la publicación ya estén completadas.
 
-## Política de actualización del motor
+Antes de publicar se debe preparar una compilación reproducible y firmada, verificar las licencias de todas las dependencias y facilitar el código fuente correspondiente conforme a las licencias aplicables. Consulta [NOTICE.md](NOTICE.md) y [LICENSE](LICENSE).
 
-- La integración Android declarada en `app/build.gradle.kts` utiliza `io.github.junkfood02.youtubedl-android:library:0.18.1` y `ffmpeg:0.18.1` (GPL-3.0). La versión del wrapper **no demuestra** qué versión exacta de yt-dlp está ejecutándose en cada dispositivo.
-- `TikTokVideoSource.ensureReady()` intenta actualizar yt-dlp desde el canal `STABLE`, con un intervalo de intento de 24 horas registrado en preferencias. Los fallos no detienen la aplicación; actualmente se registra el intento incluso si falla.
-- La actualización del extractor es distinta de la actualización de la biblioteca Android y de FFmpeg; estas últimas requieren actualizar dependencias y generar otro APK.
-- Política recomendada antes de producción: registrar versión efectiva y fecha del último éxito; verificar procedencia/integridad del paquete; no sustituir un motor funcional si falla la actualización; permitir diagnóstico y recuperación; probar cambios en CI y dispositivos físicos antes de distribuir.
-- No se habilitarán argumentos arbitrarios de yt-dlp, archivos de configuración externos ni ejecutables descargados desde enlaces no verificados.
+## Privacidad y seguridad
 
-## Licencias y atribuciones
+La app guarda historial, configuración y archivos localmente y se conecta a las plataformas de origen, sus servicios de miniaturas y proveedores de actualización del extractor. Consulta [PRIVACY.md](PRIVACY.md) y [SECURITY.md](SECURITY.md). Se requieren pruebas reales de red, permisos y comportamiento en dispositivos antes de publicar.
 
-Baja.pe conserva su obligación de distribución compatible con **GPL-3.0**. Se integra `youtubedl-android` (wrapper Android para yt-dlp) y su módulo FFmpeg; consultar también las licencias de yt-dlp, FFmpeg y bibliotecas transitivas al redistribuir. La inspiración en Seal, YTDLnis, dvd, OmniDownloader, ClipSave y PowerTube no autoriza copiar su código, marcas o recursos sin revisar sus licencias.
+## Licencia
+
+El proyecto se distribuye bajo GPL-3.0; el texto completo está en [LICENSE](LICENSE). Los componentes de terceros conservan sus respectivas licencias; véase [NOTICE.md](NOTICE.md).
+

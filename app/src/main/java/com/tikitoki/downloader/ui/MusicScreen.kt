@@ -184,6 +184,8 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             delay(500)
         }
     }
+    // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+    @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
     val artwork by produceState(ArtworkInfo(null, null), currentUri) {
         value = ArtworkInfo(null, null)
         val uri = currentUri ?: return@produceState
@@ -261,6 +263,8 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
             visible.forEach { track ->
                 val selected = currentUri == track.uri
+                // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
+                @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
                 val trackArtwork by produceState(ArtworkInfo(null, null), track.uri) {
                     value = ArtworkInfo(null, null)
                     value = readArtwork(context, track.uri)
@@ -303,4 +307,5 @@ private fun DeckButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
         Icon(icon, contentDescription = label, tint = if (active) Mint else Color.White, modifier = Modifier.size(26.dp))
     }
 }
+
 

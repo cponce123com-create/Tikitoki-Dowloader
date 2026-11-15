@@ -30,7 +30,11 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Test and build APK
-        run: gradle --no-daemon testDebugUnitTest verifyM1Coverage assembleDebug
+        run: |
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug verifyM1Coverage || {
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null || true
+            exit 1
+          }
       - name: Upload M1 coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,7 +76,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 900
           script: |
-            gradle --no-daemon connectedDebugAndroidTest || { adb logcat -d -s ExoPlayerImplInternal:E; exit 1; }
+            ./gradlew --no-daemon connectedDebugAndroidTest || { adb logcat -d -s ExoPlayerImplInternal:E; exit 1; }
             adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
             adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload music layout
@@ -83,5 +87,6 @@ jobs:
             music-layout.png
             music-playing.png
           if-no-files-found: error
+
 
 
