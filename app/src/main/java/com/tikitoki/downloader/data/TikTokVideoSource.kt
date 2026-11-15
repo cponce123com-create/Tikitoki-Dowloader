@@ -226,7 +226,7 @@ class TikTokVideoSource(private val context: Context) {
         val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(
             request,
             processId(video.id),
-        ) { progress, _, _ -> onProgress(progress.toInt().coerceIn(0, 100)) } }
+        ) { _, _, line -> DownloadProgressParser.percent(line)?.let(onProgress) } }
 
         if (response.exitCode != 0) {
             throw readableError(IllegalStateException(response.err.ifBlank { "El extractor rechazó la descarga." }))
@@ -280,6 +280,7 @@ class TikTokVideoSource(private val context: Context) {
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
 
 
 
