@@ -167,6 +167,7 @@ import kotlinx.coroutines.Dispatchers
 
 class MainActivity : ComponentActivity() {
     private var sharedLink by mutableStateOf("")
+    private var shareRevision by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -196,7 +197,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                TikitokiApp(sharedLink)
+                TikitokiApp(sharedLink, shareRevision)
             }
         }
     }
@@ -205,6 +206,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         sharedLink = receivedText(intent)
+        shareRevision++
     }
 
     private fun receivedText(intent: Intent?): String = IncomingIntentReader.read(intent)
@@ -222,7 +224,7 @@ private val TikitokiColors = darkColorScheme(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun TikitokiApp(incomingLink: String) {
+private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     val context = LocalContext.current
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
@@ -309,14 +311,21 @@ private fun TikitokiApp(incomingLink: String) {
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
     var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
 
-    LaunchedEffect(incomingLink) {
-        if (incomingLink.isNotBlank() && url != incomingLink) {
+    var analysisRevision by remember { mutableStateOf(0) }
+    LaunchedEffect(incomingLink, shareRevision) {
+        if (incomingLink.isNotBlank()) {
             url = incomingLink
             profileViewModel.reset()
             selected.clear()
             tab = 0
-            message = "Enlace compartido recibido. Pulsa Analizar."
+            message = ""
+            analysisRevision++
         }
+    }
+    LaunchedEffect(url, analysisRevision) {
+        val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
+        delay(500)
+        profileViewModel.inspect(link, false)
     }
 
     val addToQueue: () -> Unit = {
@@ -530,6 +539,7 @@ private fun TikitokiApp(incomingLink: String) {
             topBar = { SafeAreaTopBar { } },
             bottomBar = {
                 Column(Modifier.fillMaxWidth().background(Color(0xFF09231B))) {
+                MiniPlayer(musicScreenOpen = tab == 6, onMusic = { tab = 6 })
                 NavigationBar(containerColor = Color(0xFF09231B)) {
                     listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3, 4)[index]
@@ -569,18 +579,13 @@ private fun TikitokiApp(incomingLink: String) {
                         OutlinedTextField(
                             value = url,
                             onValueChange = {
-                                val pasted = it.length - url.length > 1 && IncomingLinkValidator.validate(it) != null
-                                url = it
+                                val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
+                                url = extracted?.url ?: it
                                 profileViewModel.reset()
-                                
                                 selected.clear()
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
-                                if (pasted) {
-                                    keyboard?.hide(); focusManager.clearFocus()
-                                    profileViewModel.inspect(it, false)
-                                    message = ""
-                                }
+                                message = ""
                             },
                             placeholder = { Text("Pega un enlace") },
                             modifier = Modifier.fillMaxWidth(),
@@ -597,14 +602,15 @@ private fun TikitokiApp(incomingLink: String) {
                                     focusManager.clearFocus()
                                     keyboard?.hide()
                                     val pasted = clipboard.getText()?.text.orEmpty()
-                                    if (IncomingLinkValidator.validate(pasted) != null) {
-                                        url = pasted
+                                    val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)
+                                    if (link != null) {
+                                        url = link.url
                                         profileViewModel.reset()
                                         selected.clear()
                                         formats = listOf(defaultFormat)
                                         chosenFormat = defaultFormat
                                         message = ""
-                                        profileViewModel.inspect(pasted, false)
+                                        analysisRevision++
                                     } else message = "El portapapeles no contiene un enlace válido."
                                 },
                                 shape = RoundedCornerShape(12.dp),
@@ -1161,6 +1167,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
