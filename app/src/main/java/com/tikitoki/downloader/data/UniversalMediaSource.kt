@@ -104,7 +104,10 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         val rawTitle = json.optString("title").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
         val title = MetadataSanitizer.title(rawTitle ?: "Video $id")
         return VideoEntry(
-            id = "${link.platform.name.lowercase()}:$id",
+            id = if (link.platform == MediaPlatform.DIRECT_MEDIA &&
+                !java.net.URI(link.url).host.orEmpty().let { it == "xvideos.com" || it.endsWith(".xvideos.com") })
+                "${link.platform.name.lowercase()}:${java.net.URI(link.url).host}:$id"
+            else "${link.platform.name.lowercase()}:$id",
             url = safePage,
             title = title,
             thumbnail = thumbnailFromInfo(json) ?: com.tikitoki.downloader.domain.ThumbnailUrls.youtube(id, safePage),
@@ -149,6 +152,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         ) + options
     }
 }
+
 
 
 

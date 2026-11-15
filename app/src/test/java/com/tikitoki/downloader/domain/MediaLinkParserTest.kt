@@ -22,6 +22,21 @@ class MediaLinkParserTest {
         assertNull(IncomingLinkValidator.validate("http://www.xvideos.com/video.123/a"))
     }
 
+    @Test fun supportsAdditionalSitesWithoutImpostorDomains() {
+        listOf("https://vimeo.com/123", "https://www.dailymotion.com/video/abc", "https://dai.ly/abc", "https://soundcloud.com/artist/track", "https://www.twitch.tv/videos/123").forEach {
+            assertEquals(it, MediaPlatform.DIRECT_MEDIA, MediaLinkParser.parse(it)?.platform)
+        }
+        listOf("https://vimeo.com.evil.test/123", "https://fakesoundcloud.com/a", "https://127.0.0.1/a", "https://localhost/a").forEach {
+            assertNull(it, MediaLinkParser.parse(it))
+        }
+    }
+
+    @Test fun additionalSitesCannotRedirectMetadataToAnotherService() {
+        val source = "https://vimeo.com/123"
+        assertEquals(source, DownloadInputPolicy.extractorPage(MediaPlatform.DIRECT_MEDIA, "123", source, source, false))
+        assertNull(DownloadInputPolicy.extractorPage(MediaPlatform.DIRECT_MEDIA, "123", "https://soundcloud.com/artist/track", source, false))
+    }
+
     @Test fun rejectsUnsafeHostsAndSchemes() {
         assertNull(MediaLinkParser.parse("http://youtube.com/watch?v=123"))
         assertNull(MediaLinkParser.parse("https://youtube.com.evil.example/watch?v=123"))
@@ -91,3 +106,4 @@ class MediaLinkParserTest {
         assertFalse(MediaLinkParser.parse("https://www.youtube.com/watch?v=123")!!.collection)
     }
 }
+

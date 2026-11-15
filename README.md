@@ -4,6 +4,10 @@ Aplicación Android nativa en Kotlin y Jetpack Compose para analizar enlaces y g
 
 **Usa la aplicación solo para contenido propio o cuya descarga y uso estén autorizados.** No se promete acceso a contenido privado, protegido o restringido.
 
+## Plataformas
+
+El analizador acepta enlaces HTTPS de TikTok, YouTube, Facebook, Instagram, XVideos, Vimeo, Dailymotion, SoundCloud y Twitch. El soporte real depende del extractor y de cada enlace; aceptar un dominio no garantiza que un contenido o una lista pueda descargarse. Los demás dominios siguen rechazándose; no se admite acceso genérico a redes privadas o direcciones arbitrarias.
+
 ## Funciones
 
 - Recepción, validación y análisis de enlaces; selección individual o múltiple y elección de formatos disponibles.
@@ -36,3 +40,4 @@ La app guarda historial, configuración y archivos localmente y se conecta a las
 ## Licencia
 
 El proyecto se distribuye bajo GPL-3.0; el texto completo está en [LICENSE](LICENSE). Los componentes de terceros conservan sus respectivas licencias; véase [NOTICE.md](NOTICE.md).
+
