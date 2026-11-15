@@ -248,6 +248,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var completionNotice by remember { mutableStateOf(DownloadSettings.notifyCompletion(context)) }
     var rateKiB by remember { mutableStateOf(DownloadSettings.rateKiB(context)) }
     var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
+    var monitorPages by remember { mutableStateOf(ProfileMonitor.pageLimit(context)) }
     var networkSettingsBusy by remember { mutableStateOf(false) }
     var showClearTemp by remember { mutableStateOf(false) }
     var showPlayerChoice by remember { mutableStateOf(false) }
@@ -1068,11 +1069,17 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         OutlinedButton(onClick = { diagnosticPicker.launch(diagnosticFilename) }) { Text(stringResource(R.string.diagnostic_export)) }
                         Text("Frecuencia de monitoreo de perfiles", style = MaterialTheme.typography.titleMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(1, 5, 12).forEach { hours ->
-                                FilterChip(selected = monitorHours == hours, onClick = { monitorHours = hours; ProfileMonitor.setInterval(context, hours) }, label = { Text("${hours} h") })
+                            listOf(6, 12, 24).forEach { hours ->
+                                FilterChip(selected = monitorHours == hours, onClick = { monitorHours = hours; ProfileMonitor.setInterval(context, hours) }, label = { Text(stringResource(R.string.monitor_hours, hours)) })
                             }
                         }
-                        Text("Revisión completa aproximada cada 24 horas.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.monitor_weekly), color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.monitor_page_limit), style = MaterialTheme.typography.titleMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(5, 10, 25, 50).forEach { pages ->
+                                FilterChip(selected = monitorPages == pages, onClick = { monitorPages = pages; ProfileMonitor.setPageLimit(context, pages) }, label = { Text(pages.toString()) })
+                            }
+                        }
                         Text("Baja.pe · v0.5")
                         Text("Actualización de la app", style = MaterialTheme.typography.titleMedium)
                         val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }

@@ -38,6 +38,9 @@
     <string name="format_size_approx">aprox. %1$s</string>
     <string name="format_size_unknown">tamaño no disponible</string>
     <string name="format_batch_note">La calidad es un máximo solicitado para cada elemento. Si no está disponible, ese elemento puede fallar. Las opciones no garantizan disponibilidad en toda la lista.</string>
+    <string name="monitor_hours">%1$d h</string>
+    <string name="monitor_weekly">La revisión completa se realiza como máximo una vez por semana y requiere batería suficiente.</string>
+    <string name="monitor_page_limit">Máximo de páginas por revisión completa</string>
 </resources>
 
 
