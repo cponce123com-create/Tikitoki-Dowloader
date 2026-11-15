@@ -145,6 +145,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     throw e
                 } catch (e: Exception) {
                     if (!isStopped) {
+                        DiagnosticHistory.record(applicationContext, e.message)
                         val batches = dao.pendingBatchIds(item.videoId)
                         if (dao.markFailed(item.videoId, MetadataSanitizer.error(e.message).ifBlank { "Error al descargar" }) > 0)
                             runCatching { CompletionNotifier.notifyFinished(applicationContext, batches) }
@@ -272,6 +273,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Uri.fromFile(destination)
     }
 }
+
 
 
 

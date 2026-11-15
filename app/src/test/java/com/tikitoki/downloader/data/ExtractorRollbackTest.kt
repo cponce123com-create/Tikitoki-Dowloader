@@ -16,6 +16,22 @@ class ExtractorRollbackTest {
             assertEquals("previous", binary.readText())
         } finally { dir.deleteRecursively() }
     }
+    @Test fun interruptedUpdateIsRecoveredOnNextStartup() {
+        val dir = Files.createTempDirectory("rollback-test").toFile()
+        try {
+            val binary = dir.resolve("engine").apply { mkdirs() }.resolve("yt-dlp")
+            binary.writeText("previous")
+            try { ExtractorRollback.run(binary) { binary.writeText("partial"); throw SimulatedProcessDeath() } }
+            catch (_: SimulatedProcessDeath) { }
+            var restored = false
+            assertEquals(true, ExtractorRollback.recover(binary) { restored = true })
+            assertEquals(true, restored)
+            assertEquals("previous", binary.readText())
+            assertEquals(false, ExtractorRollback.recover(binary))
+        } finally { dir.deleteRecursively() }
+    }
+    private class SimulatedProcessDeath : Error()
+
     @Test fun keepsNewBinaryWhenUpdateSucceeds() {
         val dir = Files.createTempDirectory("rollback-test").toFile()
         try {
@@ -26,3 +42,4 @@ class ExtractorRollbackTest {
         } finally { dir.deleteRecursively() }
     }
 }
+

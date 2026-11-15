@@ -17,7 +17,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import java.io.File
 
 /** Updates the Python extractor off the scan/download critical path. */
 class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -31,20 +30,13 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
             val acquired = ExtractorAccess.tryUpdateEngine {
                 val engine = YoutubeDL.getInstance()
                 engine.init(applicationContext)
-                val binary = File(applicationContext.noBackupFilesDir, "${YoutubeDL.baseName}/${YoutubeDL.ytdlpDirName}/${YoutubeDL.ytdlpBin}")
-                val enginePrefs = applicationContext.getSharedPreferences("youtubedl-android", Context.MODE_PRIVATE)
-                val previousTag = enginePrefs.getString("dlpVersion", null)
-                val previousName = enginePrefs.getString("dlpVersionName", null)
-                try {
-                    ExtractorRollback.run(binary) {
-                        updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
-                        val response = engine.execute(YoutubeDLRequest(emptyList()).addOption("--version"))
-                        effectiveVersion = response.out.trim().takeIf { it.matches(Regex("[0-9A-Za-z._-]{1,80}")) }
-                            ?: throw IllegalStateException("Cannot verify extractor version")
-                    }
-                } catch (e: Exception) {
-                    enginePrefs.edit().putString("dlpVersion", previousTag).putString("dlpVersionName", previousName).commit()
-                    throw e
+                val binary = ExtractorRecovery.binary(applicationContext)
+                ExtractorRecovery.snapshot(applicationContext)
+                ExtractorRollback.run(binary, restoreMetadata = { ExtractorRecovery.restoreMetadata(applicationContext) }) {
+                    updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                    val response = engine.execute(YoutubeDLRequest(emptyList()).addOption("--version"))
+                    effectiveVersion = response.out.trim().takeIf { it.matches(Regex("[0-9A-Za-z._-]{1,80}")) }
+                        ?: throw IllegalStateException("Cannot verify extractor version")
                 }
             }
             if (!acquired) return@withContext Result.retry()
@@ -56,6 +48,8 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            if (e is RestoreFailedException) ExtractorAccess.setRecoveryReady(false)
+            DiagnosticHistory.record(applicationContext, e.message)
             applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
                 .edit().putString("last_result", "Falló: ${e.message.orEmpty().take(120)}").apply()
             Result.retry()
@@ -83,6 +77,7 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
         }
     }
 }
+
 
 
 
