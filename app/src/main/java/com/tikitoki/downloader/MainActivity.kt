@@ -568,7 +568,9 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 batchGeneration++; batchCheckJob?.cancel(); batchChecking = false
                             } else {
                                 val items = videos.filter { it.id in selected }
-                                val presets = formats.toList()
+                                var presets = formats.toList()
+                                val checkedItems = mutableListOf<List<FormatChoice>>()
+                                val knownHeights = mutableSetOf<Int>()
                                 batchChecked = 0; batchFailed = 0; batchTotal = items.size; batchCounts = emptyMap()
                                 batchChecking = true
                                 val generation = ++batchGeneration
@@ -578,8 +580,17 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                             try {
                                                 val found = if (item.id.contains(":")) universalSource.formats(item) else source.formats(item)
                                                 if (found.isEmpty()) { batchFailed++; continue }
-                                                batchCounts = batchCounts.toMutableMap().apply {
-                                                    presets.forEach { preset -> if (FormatAvailability.matches(preset.id, found)) this[preset.id] = (this[preset.id] ?: 0) + 1 }
+                                                checkedItems.add(found)
+                                                val discovered = found.mapNotNull { it.height }.filter { it in 1..16384 }
+                                                val heightsChanged = knownHeights.addAll(discovered)
+                                                if (heightsChanged) {
+                                                    presets = FormatOptions.batch(context, knownHeights)
+                                                    formats = presets
+                                                    batchCounts = presets.associate { preset -> preset.id to checkedItems.count { FormatAvailability.matches(preset.id, it) } }
+                                                } else {
+                                                    batchCounts = batchCounts.toMutableMap().apply {
+                                                        presets.forEach { preset -> if (FormatAvailability.matches(preset.id, found)) this[preset.id] = (this[preset.id] ?: 0) + 1 }
+                                                    }
                                                 }
                                                 batchChecked++
                                             } catch (e: kotlinx.coroutines.CancellationException) { throw e }

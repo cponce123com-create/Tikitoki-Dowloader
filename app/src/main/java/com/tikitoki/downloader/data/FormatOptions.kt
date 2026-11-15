@@ -20,8 +20,8 @@ internal object FormatOptions {
         FormatChoice("bajamp3-$rate", context.getString(R.string.format_mp3, rate, size), isAudio = true)
     }
 
-    fun batch(context: Context): List<FormatChoice> {
-        val heights = listOf(240, 360, 480, 720, 1080, 1440, 2160)
+    fun batch(context: Context, extraHeights: Set<Int> = emptySet()): List<FormatChoice> {
+        val heights = (listOf(240, 360, 480, 720, 1080, 1440, 2160) + extraHeights.filter { it in 1..16384 }).distinct().sorted()
         return listOf(FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, context.getString(R.string.format_video_best))) +
             heights.map { height -> FormatChoice("bestvideo[height<=$height]+bestaudio/best[height<=$height]", context.getString(R.string.format_video_upto, height)) } +
             listOf(FormatChoice("bestaudio/best", context.getString(R.string.format_audio_original), isAudio = true)) + mp3Options(context, 0)
