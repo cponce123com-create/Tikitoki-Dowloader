@@ -952,7 +952,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             }
                         }
                         if (monitored.isEmpty()) Text("Todavía no sigues perfiles.")
-                        Text(message, style = MaterialTheme.typography.bodySmall)
+                        if (message.contains("perfil", ignoreCase = true)) Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
                     }
                     5 -> {
                         Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(76.dp))
