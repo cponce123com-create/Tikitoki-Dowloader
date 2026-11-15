@@ -13,6 +13,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+internal fun thumbnailFromInfo(json: JSONObject): String? =
+    json.optString("thumbnail").takeIf { it.startsWith("https://") }
+        ?: json.optJSONArray("thumbnails")?.let { thumbnails ->
+            (thumbnails.length() - 1 downTo 0).firstNotNullOfOrNull { index ->
+                thumbnails.optJSONObject(index)?.optString("url")?.takeIf { it.startsWith("https://") }
+            }
+        }
+
 /**
  * Platform adapters share the yt-dlp engine. Site-specific authentication and
  * DRM bypass are intentionally not attempted.
@@ -98,13 +106,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             id = "${link.platform.name.lowercase()}:$id",
             url = safePage,
             title = title,
-            thumbnail = json.optString("thumbnail").takeIf { it.startsWith("https://") }
-                ?: json.optJSONArray("thumbnails")?.let { thumbnails ->
-                    (thumbnails.length() - 1 downTo 0).firstNotNullOfOrNull { index ->
-                        thumbnails.optJSONObject(index)?.optString("url")?.takeIf { it.startsWith("https://") }
-                    }
-                }
-                ?: com.tikitoki.downloader.domain.ThumbnailUrls.youtube(id, safePage),
+            thumbnail = thumbnailFromInfo(json) ?: com.tikitoki.downloader.domain.ThumbnailUrls.youtube(id, safePage),
             durationSeconds = json.optInt("duration")
         )
     }
