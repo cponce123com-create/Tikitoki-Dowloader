@@ -1114,7 +1114,7 @@ private fun VideoThumbnail(
     modifier: Modifier = Modifier,
     deferLookup: Boolean = false,
 ) {
-    val directThumbnail = video.thumbnail ?: ThumbnailUrls.youtube(video.id, video.url)
+    val directThumbnail = video.thumbnail?.takeIf { it.isNotBlank() } ?: ThumbnailUrls.youtube(video.id, video.url)
     val resolved by produceState<String?>(initialValue = directThumbnail, key1 = video.url, key2 = directThumbnail, key3 = deferLookup) {
         value = directThumbnail ?: if (deferLookup) null else resolver.resolve(video)
     }
