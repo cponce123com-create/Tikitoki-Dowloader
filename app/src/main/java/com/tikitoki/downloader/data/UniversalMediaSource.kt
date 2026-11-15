@@ -136,7 +136,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ready()
         val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
-        FormatOptions.individual(app, info.formats.orEmpty(), video.durationSeconds)
+        FormatOptions.individual(app, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
 }
 
