@@ -790,7 +790,8 @@ private fun TikitokiApp(incomingLink: String) {
                 }
             } else if (tab == 2) {
                 val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
-                val audioIds by produceState(initialValue = emptySet<String>(), key1 = allCompleted) {
+                val audioIds by produceState<Set<String>?>(initialValue = null, key1 = allCompleted) {
+                    value = null
                     value = withContext(Dispatchers.IO) {
                         allCompleted.filter { record ->
                             val uri = record.savedUri?.let(Uri::parse)
@@ -803,7 +804,7 @@ private fun TikitokiApp(incomingLink: String) {
                         }.map { it.videoId }.toSet()
                     }
                 }
-                val completed = allCompleted.filter { (it.videoId in audioIds) == (libraryKind == "Música") }
+                val completed = audioIds?.let { ids -> allCompleted.filter { (it.videoId in ids) == (libraryKind == "Música") } }.orEmpty()
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
                     modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
@@ -821,7 +822,8 @@ private fun TikitokiApp(incomingLink: String) {
                                 }
                                 if (libraryKind == "Música") OutlinedButton(onClick = { tab = 6 }) { Text("Reproductor") }
                             }
-                            if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
+                            if (audioIds == null) Text("Organizando biblioteca…", color = TechMuted)
+                            else if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
