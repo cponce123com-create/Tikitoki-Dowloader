@@ -1,6 +1,7 @@
 package com.tikitoki.downloader.ui
 
 import android.app.Application
+import com.tikitoki.downloader.R
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tikitoki.downloader.data.*
@@ -69,7 +70,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun inspect(url: String, forceRefresh: Boolean = false) {
         val media = MediaLinkParser.parse(url)
         if (media == null) {
-            mutableState.value = ProfileUiState(error = "Usa un enlace HTTPS de TikTok, YouTube, Facebook o Instagram.")
+            mutableState.value = ProfileUiState(error = getApplication<Application>().getString(R.string.media_invalid_link))
             return
         }
         val parsed = TikTokLinkParser.parse(url)
@@ -220,3 +221,4 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         mutableState.value = ProfileUiState()
     }
 }
+

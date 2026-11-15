@@ -28,7 +28,15 @@ object DownloadInputPolicy {
             else -> return null
         }
         val parsed = IncomingLinkValidator.validate(candidate) ?: return null
-        return parsed.url.takeIf { parsed.platform == platform }
+        if (parsed.platform != platform) return null
+        // DIRECT_MEDIA contains several distinct services; metadata must not
+        // redirect the queue to a different service merely because both share an enum.
+        if (platform == MediaPlatform.DIRECT_MEDIA) {
+            val sourceHost = runCatching { java.net.URI(sourceUrl).host?.lowercase()?.removePrefix("www.") }.getOrNull()
+            val targetHost = runCatching { java.net.URI(parsed.url).host?.lowercase()?.removePrefix("www.") }.getOrNull()
+            if (sourceHost.isNullOrBlank() || sourceHost != targetHost) return null
+        }
+        return parsed.url
     }
 
     fun safeFormatId(value: String): String {
@@ -45,3 +53,4 @@ object DownloadInputPolicy {
         return value
     }
 }
+
