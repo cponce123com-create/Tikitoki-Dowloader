@@ -136,22 +136,10 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ready()
         val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
-        val options = info.formats.orEmpty()
-            .filter { !it.formatId.isNullOrBlank() && it.height > 0 && it.vcodec != "none" }
-            .distinctBy { it.formatId }
-            .sortedByDescending { it.height }
-             .mapNotNull { f ->
-                val selector = if (f.acodec == "none") "${f.formatId}+bestaudio/best" else f.formatId.orEmpty()
-                val safeSelector = runCatching { DownloadInputPolicy.safeFormatId(selector) }.getOrNull()
-                    ?: return@mapNotNull null
-                FormatChoice(safeSelector, "${f.height}p · ${f.ext ?: "video"}")
-            }
-        listOf(
-            FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: máxima calidad"),
-            FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible")
-        ) + options
+        FormatOptions.individual(app, info.formats.orEmpty(), video.durationSeconds)
     }
 }
+
 
 
 

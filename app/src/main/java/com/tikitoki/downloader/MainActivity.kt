@@ -123,6 +123,7 @@ import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileIdentity
 import com.tikitoki.downloader.data.FormatChoice
+import com.tikitoki.downloader.data.FormatOptions
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
@@ -441,9 +442,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
         if (video != null) {
             showQualitySheet = true
             formatsBusy = selected.size == 1
-            formats = if (selected.size == 1) listOf(defaultFormat) else listOf(
-                FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, "Video: mejor calidad disponible"),
-                FormatChoice("bestaudio/best", "Solo audio: mejor calidad disponible"))
+            formats = if (selected.size == 1) listOf(defaultFormat) else FormatOptions.batch(context)
             chosenFormat = formats.first()
             rememberFormat = false
             scope.launch {
@@ -542,7 +541,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                     Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
-                    if (selected.size > 1) Text("Se aplicará la opción elegida a todos los elementos seleccionados.", color = TechMuted)
+                    if (selected.size > 1) Text(stringResource(R.string.format_batch_note), color = TechMuted)
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
                     Column {
                         formats.forEach { option ->
@@ -1306,6 +1305,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
