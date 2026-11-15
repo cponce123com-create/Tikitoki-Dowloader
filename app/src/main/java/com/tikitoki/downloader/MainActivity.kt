@@ -565,7 +565,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 selected.clear()
                                 formats = listOf(defaultFormat)
                                 chosenFormat = defaultFormat
-                                if (pasted && !profileState.loading && !profileState.loadingMore) {
+                                if (pasted) {
                                     keyboard?.hide(); focusManager.clearFocus()
                                     profileViewModel.inspect(it, false)
                                     message = ""
