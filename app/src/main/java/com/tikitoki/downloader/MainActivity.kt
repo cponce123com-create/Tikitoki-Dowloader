@@ -125,6 +125,7 @@ import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileIdentity
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.FormatOptions
+import com.tikitoki.downloader.data.FormatAvailability
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
@@ -324,6 +325,14 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var formatsBusy by remember { mutableStateOf(false) }
     var queueBusy by remember { mutableStateOf(false) }
     var showQualitySheet by remember { mutableStateOf(false) }
+    var formatError by remember { mutableStateOf(false) }
+    var batchCheckJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var batchGeneration by remember { mutableStateOf(0) }
+    var batchChecking by remember { mutableStateOf(false) }
+    var batchChecked by remember { mutableStateOf(0) }
+    var batchFailed by remember { mutableStateOf(0) }
+    var batchTotal by remember { mutableStateOf(0) }
+    var batchCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var rememberFormat by remember { mutableStateOf(false) }
     val videos = profileState.videos
     val selected = remember { mutableStateMapOf<String, Boolean>() }
@@ -443,6 +452,9 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
         keyboard?.hide()
         val video = selected.keys.firstOrNull()?.let { id -> videos.firstOrNull { it.id == id } }
         if (video != null) {
+            batchGeneration++; batchCheckJob?.cancel()
+            batchChecking = false; batchChecked = 0; batchFailed = 0; batchTotal = 0; batchCounts = emptyMap()
+            formatError = false
             showQualitySheet = true
             formatsBusy = selected.size == 1
             formats = if (selected.size == 1) listOf(defaultFormat) else FormatOptions.batch(context)
@@ -450,13 +462,18 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
             rememberFormat = false
             scope.launch {
                 try {
-                    if (selected.size == 1) formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
+                    if (selected.size == 1) {
+                        val found = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
+                        if (found.isEmpty()) throw IllegalStateException("No formats")
+                        formats = found
+                    }
                     val saved = settings.getString("default_download_format", "video")
                     chosenFormat = formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) } ?: formats.first()
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) {
                     runCatching { DiagnosticHistory.record(context, e.message) }
                     message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez."
+                    formatError = true
                 } finally { formatsBusy = false }
             }
         }
@@ -523,7 +540,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
         }
         if (showQualitySheet && selected.isNotEmpty()) {
             val preview = videos.firstOrNull { selected.size == 1 && it.id == selected.keys.first() }
-            ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
+            ModalBottomSheet(onDismissRequest = { batchGeneration++; batchCheckJob?.cancel(); batchChecking = false; showQualitySheet = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TechBackground) {
                 Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(horizontal = 20.dp, vertical = 8.dp),
@@ -544,15 +561,48 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                     Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
-                    if (selected.size > 1) Text(stringResource(R.string.format_batch_note), color = TechMuted)
+                    if (selected.size > 1) {
+                        Text(stringResource(R.string.format_batch_note), color = TechMuted)
+                        OutlinedButton(onClick = {
+                            if (batchChecking) {
+                                batchGeneration++; batchCheckJob?.cancel(); batchChecking = false
+                            } else {
+                                val items = videos.filter { it.id in selected }
+                                val presets = formats.toList()
+                                batchChecked = 0; batchFailed = 0; batchTotal = items.size; batchCounts = emptyMap()
+                                batchChecking = true
+                                val generation = ++batchGeneration
+                                batchCheckJob = scope.launch {
+                                    try {
+                                        for (item in items) {
+                                            try {
+                                                val found = if (item.id.contains(":")) universalSource.formats(item) else source.formats(item)
+                                                if (found.isEmpty()) { batchFailed++; continue }
+                                                batchCounts = batchCounts.toMutableMap().apply {
+                                                    presets.forEach { preset -> if (FormatAvailability.matches(preset.id, found)) this[preset.id] = (this[preset.id] ?: 0) + 1 }
+                                                }
+                                                batchChecked++
+                                            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                                            catch (_: Exception) { batchFailed++ }
+                                        }
+                                    } finally { if (generation == batchGeneration) batchChecking = false }
+                                }
+                            }
+                        }) { Text(stringResource(if (batchChecking) R.string.format_check_cancel else R.string.format_check_batch)) }
+                        if (batchTotal > 0) Text(stringResource(R.string.format_check_status, batchChecked + batchFailed, batchTotal, batchFailed + (batchTotal - batchChecked - batchFailed)), color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                    }
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
+                    if (formatError) Text(stringResource(R.string.format_check_failed), color = MaterialTheme.colorScheme.error)
                     Column {
                         formats.forEach { option ->
                             Row(Modifier.fillMaxWidth().clickable { chosenFormat = option }
                                 .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = chosenFormat.id == option.id,
                                     onClick = { chosenFormat = option })
-                                Text(option.label, modifier = Modifier.weight(1f))
+                                Column(Modifier.weight(1f)) {
+                                    Text(option.label)
+                                    if (selected.size > 1 && batchChecked > 0) Text(stringResource(R.string.format_check_matches, batchCounts[option.id] ?: 0, batchChecked), color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                                }
                             }
                         }
                     }
@@ -561,8 +611,9 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         Checkbox(checked = rememberFormat, onCheckedChange = { rememberFormat = it })
                         Text("Usar como opción predeterminada")
                     }
-                    TechPrimaryButton("Descargar", icon = Icons.Outlined.Download, enabled = !queueBusy && !formatsBusy,
+                    TechPrimaryButton("Descargar", icon = Icons.Outlined.Download, enabled = !queueBusy && !formatsBusy && !formatError,
                         modifier = Modifier.fillMaxWidth(), onClick = {
+                            batchGeneration++; batchCheckJob?.cancel(); batchChecking = false
                             if (rememberFormat) {
                                 val preference = DownloadFormatPreference.fromChoice(chosenFormat.id, chosenFormat.label)
                                 settings.edit().putString("default_download_format", preference).apply()
@@ -1315,6 +1366,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
