@@ -30,6 +30,21 @@ class ExtractorRollbackTest {
             assertEquals(false, ExtractorRollback.recover(binary))
         } finally { dir.deleteRecursively() }
     }
+    @Test fun retainsBackupWhenMetadataRestoreFailsAndRetries() {
+        val dir = Files.createTempDirectory("rollback-test").toFile()
+        try {
+            val binary = dir.resolve("engine").apply { mkdirs() }.resolve("yt-dlp")
+            binary.writeText("previous")
+            try { ExtractorRollback.run(binary) { binary.writeText("partial"); throw SimulatedProcessDeath() } }
+            catch (_: SimulatedProcessDeath) { }
+            try { ExtractorRollback.recover(binary) { throw IllegalStateException("metadata") }; fail() }
+            catch (_: IllegalStateException) { }
+            binary.writeText("changed after failed recovery")
+            assertEquals(true, ExtractorRollback.recover(binary))
+            assertEquals("previous", binary.readText())
+        } finally { dir.deleteRecursively() }
+    }
+
     private class SimulatedProcessDeath : Error()
 
     @Test fun keepsNewBinaryWhenUpdateSucceeds() {
