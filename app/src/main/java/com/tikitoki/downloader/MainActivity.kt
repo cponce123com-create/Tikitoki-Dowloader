@@ -135,6 +135,7 @@ import com.tikitoki.downloader.domain.IncomingIntentReader
 import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
+import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.TechHeader
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.SafeAreaTopBar
@@ -656,11 +657,10 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
 
                         // Force refresh remains available from the analysis action on repeat requests.
-                        if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
-                        if (profileState.countingTotal && videos.isNotEmpty()) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = TechPurple)
-                            Text("Detectando publicaciones… ${videos.size} cargadas. Puedes seguir explorando.", color = TechMuted, fontSize = 12.sp)
+                        if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
+                            AnalysisAnimation(found = videos.size, scanning = profileState.countingTotal || profileState.loadingMore)
                         }
+                        if (queueBusy) CircularProgressIndicator()
                         profileState.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
