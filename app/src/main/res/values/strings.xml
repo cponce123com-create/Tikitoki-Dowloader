@@ -16,11 +16,11 @@
     <string name="diagnostic_error">No se pudo guardar o compartir el diagnóstico.</string>
     <string name="diagnostic_heading">Diagnóstico de Baja.pe</string>
     <string name="diagnostic_app">Versión de la aplicación: %1$s</string>
-    <string name="diagnostic_engine">Versión registrada de yt-dlp: %1$s</string>
+    <string name="diagnostic_engine">Versión efectiva de yt-dlp: %1$s</string>
     <string name="diagnostic_last_update">Última actualización correcta: %1$s</string>
     <string name="diagnostic_android">Android: %1$s (API %2$d)</string>
     <string name="diagnostic_abi">Arquitecturas: %1$s</string>
-    <string name="diagnostic_errors">Últimos errores registrados de descarga y actualización (máximo 20):</string>
+    <string name="diagnostic_errors">Últimos errores registrados (máximo 20):</string>
     <string name="diagnostic_error_entry">%1$s · %2$s</string>
     <string name="diagnostic_none">Sin registros disponibles.</string>
     <string name="diagnostic_unknown">No disponible</string>
@@ -28,8 +28,9 @@
     <string name="diagnostic_timeout">Tiempo de espera agotado</string>
     <string name="diagnostic_network">Conexión de red</string>
     <string name="diagnostic_permission">Permiso o acceso</string>
-    <string name="diagnostic_other">Error de descarga</string>
+    <string name="diagnostic_other">Error de operación</string>
 </resources>
+
 
 
 

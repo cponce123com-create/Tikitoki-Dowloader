@@ -108,6 +108,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tikitoki.downloader.data.DiagnosticHistory
+import com.tikitoki.downloader.data.ExtractorVersion
 import com.tikitoki.downloader.data.ErrorCategory
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
@@ -332,7 +333,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     val status = context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE)
                     val unknown = context.getString(R.string.diagnostic_unknown)
                     val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: unknown
-                    val engineVersion = status.getString("effective_version", null) ?: unknown
+                    val engineVersion = ExtractorVersion.read(context) ?: unknown
                     val last = status.getLong("last_success", 0L)
                     val updated = if (last > 0) java.text.DateFormat.getDateTimeInstance().format(java.util.Date(last)) else unknown
                     val errors = DiagnosticHistory.read(context)
@@ -450,8 +451,11 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     if (selected.size == 1) formats = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
                     val saved = settings.getString("default_download_format", "video")
                     chosenFormat = formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) } ?: formats.first()
-                } catch (_: Exception) { message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez." }
-                finally { formatsBusy = false }
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) {
+                    runCatching { DiagnosticHistory.record(context, e.message) }
+                    message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez."
+                } finally { formatsBusy = false }
             }
         }
     }
@@ -481,7 +485,11 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     putExtra("title", record.title)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 })
-            } catch (_: Exception) { message = "No se pudo abrir el reproductor." }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                runCatching { DiagnosticHistory.record(context, e.message) }
+                message = "No se pudo abrir el reproductor."
+            }
         }
     }
 
@@ -1298,6 +1306,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
