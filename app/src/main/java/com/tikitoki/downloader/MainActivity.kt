@@ -107,6 +107,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tikitoki.downloader.data.DiagnosticReport
+import com.tikitoki.downloader.data.ErrorCategory
 import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DeleteCompletedResult
@@ -322,6 +324,55 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     val selected = remember { mutableStateMapOf<String, Boolean>() }
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
     var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
+
+    val diagnosticPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { destination ->
+        if (destination != null) scope.launch {
+            try {
+                val text = withContext(Dispatchers.IO) {
+                    val status = context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE)
+                    val unknown = context.getString(R.string.diagnostic_unknown)
+                    val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: unknown
+                    val engineVersion = status.getString("effective_version", null) ?: unknown
+                    val last = status.getLong("last_success", 0L)
+                    val updated = if (last > 0) java.text.DateFormat.getDateTimeInstance().format(java.util.Date(last)) else unknown
+                    val errors = dao.failedRecords().sortedByDescending { it.updatedAt }.take(20)
+                    buildString {
+                        appendLine(context.getString(R.string.diagnostic_heading))
+                        appendLine(context.getString(R.string.diagnostic_app, version))
+                        appendLine(context.getString(R.string.diagnostic_engine, engineVersion))
+                        appendLine(context.getString(R.string.diagnostic_last_update, updated))
+                        appendLine(context.getString(R.string.diagnostic_android, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))
+                        appendLine(context.getString(R.string.diagnostic_abi, Build.SUPPORTED_ABIS.joinToString(", ")))
+                        appendLine(context.getString(R.string.diagnostic_errors))
+                        if (errors.isEmpty()) appendLine(context.getString(R.string.diagnostic_none))
+                        errors.forEach { error ->
+                            val date = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(error.updatedAt))
+                            val category = when (DiagnosticReport.errorCategory(error.error)) {
+                                ErrorCategory.RATE_LIMIT -> R.string.diagnostic_rate_limit
+                                ErrorCategory.TIMEOUT -> R.string.diagnostic_timeout
+                                ErrorCategory.NETWORK -> R.string.diagnostic_network
+                                ErrorCategory.PERMISSION -> R.string.diagnostic_permission
+                                ErrorCategory.OTHER -> R.string.diagnostic_other
+                            }
+                            appendLine(context.getString(R.string.diagnostic_error_entry, date, context.getString(category)))
+                        }
+                    }
+                }
+                withContext(Dispatchers.IO) {
+                    val stream = context.contentResolver.openOutputStream(destination) ?: error("output unavailable")
+                    stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+                }
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, destination)
+                    clipData = android.content.ClipData.newRawUri("diagnóstico", destination)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, context.getString(R.string.diagnostic_share)))
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { message = context.getString(R.string.diagnostic_error) }
+        }
+    }
 
     var analysisRevision by remember { mutableStateOf(0) }
     LaunchedEffect(incomingLink, shareRevision) {
@@ -1006,6 +1057,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(76.dp))
                         Text("Configuración", style = MaterialTheme.typography.titleLarge)
                         OutlinedButton(onClick = { showAbout = true }) { Text(stringResource(R.string.about_open)) }
+                        val diagnosticFilename = stringResource(R.string.diagnostic_filename)
+                        OutlinedButton(onClick = { diagnosticPicker.launch(diagnosticFilename) }) { Text(stringResource(R.string.diagnostic_export)) }
                         Text("Frecuencia de monitoreo de perfiles", style = MaterialTheme.typography.titleMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf(1, 5, 12).forEach { hours ->
@@ -1245,6 +1298,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

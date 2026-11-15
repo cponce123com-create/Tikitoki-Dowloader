@@ -10,5 +10,25 @@
     <string name="about_privacy">Sin analítica propia. La aplicación guarda datos localmente y se conecta a las plataformas de origen, a los servicios de miniaturas y al proveedor de actualización del extractor. Estos terceros pueden recibir tu dirección IP y los enlaces solicitados.</string>
     <string name="about_sources">Ver código y licencia</string>
     <string name="about_close">Cerrar</string>
+    <string name="diagnostic_export">Exportar diagnóstico</string>
+    <string name="diagnostic_filename">bajape-diagnostico.txt</string>
+    <string name="diagnostic_share">Compartir diagnóstico</string>
+    <string name="diagnostic_error">No se pudo guardar o compartir el diagnóstico.</string>
+    <string name="diagnostic_heading">Diagnóstico de Baja.pe</string>
+    <string name="diagnostic_app">Versión de la aplicación: %1$s</string>
+    <string name="diagnostic_engine">Versión registrada de yt-dlp: %1$s</string>
+    <string name="diagnostic_last_update">Última actualización correcta: %1$s</string>
+    <string name="diagnostic_android">Android: %1$s (API %2$d)</string>
+    <string name="diagnostic_abi">Arquitecturas: %1$s</string>
+    <string name="diagnostic_errors">Errores de descarga registrados actualmente (máximo 20):</string>
+    <string name="diagnostic_error_entry">%1$s · %2$s</string>
+    <string name="diagnostic_none">Sin registros disponibles.</string>
+    <string name="diagnostic_unknown">No disponible</string>
+    <string name="diagnostic_rate_limit">Límite de solicitudes</string>
+    <string name="diagnostic_timeout">Tiempo de espera agotado</string>
+    <string name="diagnostic_network">Conexión de red</string>
+    <string name="diagnostic_permission">Permiso o acceso</string>
+    <string name="diagnostic_other">Error de descarga</string>
 </resources>
+
 
