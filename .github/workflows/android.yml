@@ -30,7 +30,11 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Test and build APK
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug verifyM1Coverage
+        run: |
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug verifyM1Coverage || {
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null || true
+            exit 1
+          }
       - name: Upload M1 coverage report
         if: always()
         uses: actions/upload-artifact@v4
