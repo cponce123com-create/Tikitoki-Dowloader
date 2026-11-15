@@ -24,11 +24,12 @@ internal object FormatOptions {
         val heights = (listOf(240, 360, 480, 720, 1080, 1440, 2160) + extraHeights.filter { it in 1..16384 }).distinct().sorted()
         return listOf(FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, context.getString(R.string.format_video_best))) +
             heights.map { height -> FormatChoice("bestvideo[height<=$height]+bestaudio/best[height<=$height]", context.getString(R.string.format_video_upto, height)) } +
-            listOf(FormatChoice("bestaudio/best", context.getString(R.string.format_audio_original), isAudio = true)) + mp3Options(context, 0)
+            listOf(FormatChoice("bestaudio", context.getString(R.string.format_audio_original), isAudio = true)) + mp3Options(context, 0)
     }
 
     fun individual(context: Context, formats: List<VideoFormat>, durationSeconds: Int): List<FormatChoice> {
         val hasAudio = formats.any { !it.acodec.isNullOrBlank() && it.acodec != "none" }
+        val hasAudioOnly = formats.any { !it.formatId.isNullOrBlank() && !it.acodec.isNullOrBlank() && it.acodec != "none" && it.vcodec == "none" }
         val videoOptions = formats.asSequence()
             .filter { !it.formatId.isNullOrBlank() && it.height > 0 && !it.vcodec.isNullOrBlank() && it.vcodec != "none" }
             .distinctBy { it.formatId }
@@ -36,7 +37,7 @@ internal object FormatOptions {
             .mapNotNull { f ->
                 val id = f.formatId ?: return@mapNotNull null
                 val videoOnly = f.acodec.isNullOrBlank() || f.acodec == "none"
-                if (videoOnly && !hasAudio) return@mapNotNull null
+                if (videoOnly && !hasAudioOnly) return@mapNotNull null
                 val selector = if (videoOnly) "$id+bestaudio" else id
                 val safe = runCatching { DownloadInputPolicy.safeFormatId(selector) }.getOrNull() ?: return@mapNotNull null
                 // A video-only stream needs a separate audio track, so video bytes alone are not the final size.
@@ -67,7 +68,8 @@ internal object FormatOptions {
                 FormatChoice(id, context.getString(R.string.format_audio_option, ext, bitrate, size), isAudio = true)
             }.toList()
         val bestVideo = if (videoOptions.isNotEmpty()) listOf(FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, context.getString(R.string.format_video_best))) else emptyList()
-        val audio = if (hasAudio) listOf(FormatChoice("bestaudio/best", context.getString(R.string.format_audio_original), isAudio = true)) + audioOptions + mp3Options(context, durationSeconds) else emptyList()
+        val originalAudio = if (hasAudioOnly) listOf(FormatChoice("bestaudio", context.getString(R.string.format_audio_original), isAudio = true)) + audioOptions else emptyList()
+        val audio = originalAudio + if (hasAudio) mp3Options(context, durationSeconds) else emptyList()
         return bestVideo + videoOptions + audio
     }
 }
