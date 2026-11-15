@@ -54,7 +54,15 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            setForeground(notification("Preparando descargas"))
+            // Android may reject starting a dataSync foreground service while its
+            // time quota is exhausted. Keep the queue intact and let WorkManager
+            // retry with the request's exponential backoff instead of failing it.
+            try {
+                setForeground(notification("Preparando descargas"))
+            } catch (e: IllegalStateException) {
+                DiagnosticHistory.record(applicationContext, e.message)
+                return@withContext Result.retry()
+            }
             ActiveDownloadProcesses.workerLock.withLock {
                 // A cancelled worker may still be stopping yt-dlp; never overlap replacements.
                 while (activeIds.isNotEmpty() && !isStopped) delay(250)
