@@ -124,6 +124,9 @@ import com.tikitoki.downloader.domain.VideoPagination
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.PlaybackKind
+import com.tikitoki.downloader.domain.DownloadIdentity
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.rememberModalBottomSheetState
 import com.tikitoki.downloader.domain.ThumbnailUrls
 import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.MediaLinkParser
@@ -132,6 +135,7 @@ import com.tikitoki.downloader.domain.IncomingIntentReader
 import com.tikitoki.downloader.data.UniversalMediaSource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
+import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.TechHeader
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.SafeAreaTopBar
@@ -435,9 +439,11 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
         if (showQualitySheet && selected.isNotEmpty()) {
             val preview = videos.firstOrNull { selected.size == 1 && it.id == selected.keys.first() }
             ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TechBackground) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Opciones de descarga", style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold, color = Color.White)
                     if (preview != null) {
@@ -455,7 +461,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
                     if (selected.size > 1) Text("Se aplicará la opción elegida a todos los elementos seleccionados.", color = TechMuted)
                     if (formatsBusy) CircularProgressIndicator(color = TechPurple)
-                    Column(Modifier.heightIn(max = 290.dp).verticalScroll(rememberScrollState())) {
+                    Column {
                         formats.forEach { option ->
                             Row(Modifier.fillMaxWidth().clickable { chosenFormat = option }
                                 .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -464,6 +470,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 Text(option.label, modifier = Modifier.weight(1f))
                             }
                         }
+                    }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = rememberFormat, onCheckedChange = { rememberFormat = it })
@@ -558,7 +565,12 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 }
             }
         ) { insets ->
-            val downloadedIds = remember(records) { records.asSequence().filter { it.status == DownloadState.COMPLETED }.map { it.videoId }.toSet() }
+            val completedKinds = remember(records) { records.filter { it.status == DownloadState.COMPLETED }
+                .groupBy { DownloadIdentity.sourceId(it.videoId) } }
+            val downloadedIds = remember(completedKinds) { completedKinds.filterValues { items ->
+                items.any { PlaybackKind.isAudio(it.formatId, null, it.savedUri) } &&
+                    items.any { !PlaybackKind.isAudio(it.formatId, null, it.savedUri) }
+            }.keys }
             val visibleVideos = remember(videos, search, onlyUndownloaded, downloadedIds) { videos.filter {
                 (search.isBlank() || it.title.contains(search, ignoreCase = true) || it.id.contains(search)) &&
                     (!onlyUndownloaded || it.id !in downloadedIds)
@@ -645,11 +657,10 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
 
                         // Force refresh remains available from the analysis action on repeat requests.
-                        if (profileState.loading || profileState.loadingMore || formatsBusy || queueBusy) CircularProgressIndicator()
-                        if (profileState.countingTotal && videos.isNotEmpty()) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = TechPurple)
-                            Text("Detectando publicaciones… ${videos.size} cargadas. Puedes seguir explorando.", color = TechMuted, fontSize = 12.sp)
+                        if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
+                            AnalysisAnimation(found = videos.size, scanning = profileState.countingTotal || profileState.loadingMore)
                         }
+                        if (queueBusy) CircularProgressIndicator()
                         profileState.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
@@ -767,7 +778,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                     }
                                     Column(Modifier.weight(1f)) {
                                         Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                        Text(if (video.id in downloadedIds) "✓ Descargado" else "Disponible", color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                                        Text(if (video.id in downloadedIds) "✓ Audio y video" else if (video.id in completedKinds) "✓ Una versión guardada" else "Disponible", color = TechMuted, style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
@@ -823,16 +834,17 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 }
                 val completed = audioIds?.let { ids -> allCompleted.filter { (it.videoId in ids) == (libraryKind == "Música") } }.orEmpty()
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    columns = GridCells.Adaptive(minSize = 105.dp),
                     modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("Videos", "Música").forEach { kind ->
                                     FilterChip(selected = libraryKind == kind, onClick = { libraryKind = kind }, label = { Text(kind) })
@@ -847,21 +859,25 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     }
                     gridItems(completed, key = { it.videoId }) { record ->
                         Surface(
-                            modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).combinedClickable(
+                            modifier = Modifier.fillMaxWidth().aspectRatio(0.78f).combinedClickable(
                                 onClick = { openPlayback(record) }, onLongClick = { deleteCandidate = record }),
                             shape = RoundedCornerShape(8.dp), color = TechPanel,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 if (record.videoId in audioIds.orEmpty()) VideoThumbnail(
-                                    VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), thumbnailResolver,
+                                    VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), thumbnailResolver,
                                     Modifier.fillMaxSize(), deferLookup = true,
                                 ) else coil.compose.SubcomposeAsyncImage(
                                     model = record.savedUri?.let { Uri.parse(it) }, imageLoader = galleryImageLoader,
                                     contentDescription = "Reproducir ${record.title}",
                                     modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-                                    error = { VideoThumbnail(VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), thumbnailResolver, Modifier.fillMaxSize(), deferLookup = true) },
+                                    error = { VideoThumbnail(VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), thumbnailResolver, Modifier.fillMaxSize(), deferLookup = true) },
                                     loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
                                 )
+                                Text(record.title, modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .9f))))
+                                    .padding(start = 7.dp, end = 7.dp, top = 18.dp, bottom = 7.dp),
+                                    color = Color.White, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
@@ -881,6 +897,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
                         val failedCount = records.count { it.status == DownloadState.FAILED }
+                        Text("Herramientas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Reproducción y seguimiento en un solo lugar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                         if (failedCount > 0) {
                             Text("Descargas con errores: $failedCount", style = MaterialTheme.typography.titleMedium)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -888,7 +906,13 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
                             }
                         }
-                        OutlinedButton(onClick = { showPlayerChoice = true }) { Text("Reproductor") }
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder), shape = RoundedCornerShape(18.dp)) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Reproductor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text("Abre tu música o biblioteca de videos.", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                                OutlinedButton(onClick = { showPlayerChoice = true }) { Text("Abrir reproductor") }
+                            }
+                        }
                         Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         
                         OutlinedButton(onClick = {
@@ -928,7 +952,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             }
                         }
                         if (monitored.isEmpty()) Text("Todavía no sigues perfiles.")
-                        Text(message, style = MaterialTheme.typography.bodySmall)
+                        if (message.contains("perfil", ignoreCase = true)) Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
                     }
                     5 -> {
                         Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(76.dp))
@@ -1037,8 +1061,13 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         Text("Uso de contenido autorizado · GPL-3.0")
                     }
                     else -> {
-                        Text("Archivos descargados", style = MaterialTheme.typography.titleLarge)
-                        Text("Carpeta de descarga: $folderDescription")
+                        Text("Archivos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Administra el contenido guardado en tu dispositivo", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(8.dp))
+                        Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder), shape = RoundedCornerShape(18.dp)) {
+                          Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Carpeta de descarga", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(folderDescription, color = TechMuted)
                         OutlinedButton(onClick = {
                             try {
                                 val folder = downloadFolder?.let { tree ->
@@ -1051,7 +1080,10 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 })
                             } catch (_: Exception) { message = "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos." }
                         }) { Text("Abrir carpeta de Baja.pe") }
-                        if (message.isNotBlank()) Text(message, color = TechMuted)
+                          }
+                        }
+                        Text("${records.count { it.status == DownloadState.COMPLETED }} archivos guardados", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        if (message.startsWith("No se pudo abrir")) Text(message, color = TechMuted)
                     }
                 }
             }
@@ -1068,7 +1100,7 @@ private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnail
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 VideoThumbnail(
-                    VideoEntry(record.videoId, record.videoUrl, record.title, record.thumbnail), resolver,
+                    VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), resolver,
                     Modifier.width(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 72.dp else 106.dp)
                         .aspectRatio(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 9f / 16f else 16f / 9f),
                 )

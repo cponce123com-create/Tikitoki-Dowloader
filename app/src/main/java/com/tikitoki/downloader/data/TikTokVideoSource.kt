@@ -273,12 +273,13 @@ class TikTokVideoSource(private val context: Context) {
         YoutubeDL.getInstance().destroyProcessById(processId(videoId))
     }
 
-    private fun processId(id: String) = "tikitoki_${id.take(35)}"
+    private fun processId(id: String) = "tikitoki_${java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).take(12).joinToString("") { "%02x".format(it.toInt() and 0xff) }}"
 
     companion object {
         const val DEFAULT_FORMAT =
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
 
 

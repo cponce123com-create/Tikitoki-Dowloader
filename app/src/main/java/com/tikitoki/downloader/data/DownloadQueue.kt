@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.DownloadIdentity
+import com.tikitoki.downloader.domain.PlaybackKind
 import androidx.room.withTransaction
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,17 +42,21 @@ object DownloadQueue {
             video.copy(url = DownloadInputPolicy.canonicalUrl(video.url), title = MetadataSanitizer.title(video.title))
         }
         val summary = db.withTransaction {
-            val existing = safeVideos.map { it.id }.chunked(400)
-                .flatMap { dao.findMany(it) }.associateBy { it.videoId }
+            val audio = PlaybackKind.isAudio(safeFormat, null, null)
+            val keys = safeVideos.flatMap { listOf(it.id, DownloadIdentity.key(it.id, audio)) }
+            val existing = keys.chunked(400).flatMap { dao.findMany(it) }.associateBy { it.videoId }
             var duplicates = 0
             val records = safeVideos.mapNotNull { video ->
-                val previous = existing[video.id]
-                if (previous?.status in listOf(DownloadState.COMPLETED, DownloadState.QUEUED,
-                        DownloadState.DOWNLOADING, DownloadState.PAUSED)) {
+                val key = DownloadIdentity.key(video.id, audio)
+                val legacy = existing[video.id]?.takeIf { PlaybackKind.isAudio(it.formatId, null, it.savedUri) == audio }
+                val previous = existing[key] ?: legacy
+                val activeStatuses = listOf(DownloadState.COMPLETED, DownloadState.QUEUED,
+                    DownloadState.DOWNLOADING, DownloadState.PAUSED)
+                if (listOfNotNull(existing[key], legacy).any { it.status in activeStatuses }) {
                     duplicates++
                     null
                 } else DownloadRecord(
-                    videoId = video.id, videoUrl = video.url, title = video.title,
+                    videoId = key, videoUrl = video.url, title = video.title,
                     thumbnail = video.thumbnail, formatId = safeFormat,
                     createdAt = previous?.createdAt ?: System.currentTimeMillis(),
                 )
@@ -155,5 +161,6 @@ object DownloadQueue {
         }
     }
 }
+
 
 
