@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.ExistingWorkPolicy
 import androidx.work.workDataOf
 import com.yausername.youtubedl_android.YoutubeDL
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -23,15 +24,19 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
             // Never replace the extractor while a download queue is active.
             if (DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount() > 0)
                 return@withContext Result.retry()
-            val updated = ExtractorAccess.updateEngine {
+            var updated: YoutubeDL.UpdateStatus? = null
+            val acquired = ExtractorAccess.tryUpdateEngine {
                 val engine = YoutubeDL.getInstance()
                 engine.init(applicationContext)
-                engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
             }
+            if (!acquired) return@withContext Result.retry()
             val prefs = applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
             prefs.edit().putLong("last_success", System.currentTimeMillis())
                 .putString("last_result", "Actualización ejecutada: $updated").apply()
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             applicationContext.getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
                 .edit().putString("last_result", "Falló: ${e.message.orEmpty().take(120)}").apply()
@@ -60,4 +65,5 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
         }
     }
 }
+
 
