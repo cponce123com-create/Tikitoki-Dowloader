@@ -1,0 +1,26 @@
+package com.tikitoki.downloader
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class DownloadNavigationTest {
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun downloadActionsHaveEqualWidthAndLibrarySeparatesMedia() {
+        val paste = compose.onNodeWithText("Pegar").fetchSemanticsNode().boundsInRoot.width
+        val analyze = compose.onNodeWithText("Analizar").fetchSemanticsNode().boundsInRoot.width
+        assertEquals(paste, analyze, 2f)
+        compose.onNodeWithText("Biblioteca").performClick()
+        compose.onNodeWithText("Videos").assertIsDisplayed()
+        compose.onNodeWithText("Música").performClick()
+        compose.onNodeWithText("Reproductor").assertIsDisplayed()
+    }
+}
