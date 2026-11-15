@@ -9,6 +9,10 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
@@ -37,9 +41,16 @@ class PlayerActivity : ComponentActivity() {
             setBackgroundColor(android.graphics.Color.BLACK)
             useController = true
         }
+        val mint = Color.rgb(67, 230, 161)
+        fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+        fun panel(colors: IntArray, border: Int, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors).apply {
+            cornerRadius = dp(radius).toFloat(); setStroke(dp(1), border)
+        }
         val label = TextView(this).apply {
-            text = title; textSize = 18f; setTextColor(android.graphics.Color.WHITE)
-            setPadding(24, 28, 24, 20)
+            text = title; textSize = 16f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
+            maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dp(16), dp(15), dp(16), dp(15))
+            background = panel(intArrayOf(Color.rgb(15, 54, 39), Color.rgb(5, 27, 19)), Color.rgb(42, 115, 78), 12)
         }
         val speed = Button(this).apply {
             text = "Velocidad 1x"
@@ -68,11 +79,26 @@ class PlayerActivity : ComponentActivity() {
                 text = if (isFull) "Pantalla completa" else "Salir de pantalla completa"
             }
         }
-        val controls = LinearLayout(this).apply { addView(speed, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(rotate, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(fullScreen, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)) }
+        listOf(speed, rotate, fullScreen).forEach { button ->
+            button.isAllCaps = false; button.textSize = 12f; button.setTextColor(mint)
+            button.gravity = Gravity.CENTER
+            button.background = panel(intArrayOf(Color.rgb(75, 91, 81), Color.rgb(32, 49, 40), Color.rgb(13, 28, 20)), Color.rgb(93, 132, 109), 10)
+            button.setPadding(dp(3), dp(4), dp(3), dp(4))
+        }
+        val controls = LinearLayout(this).apply {
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = panel(intArrayOf(Color.rgb(49, 65, 56), Color.rgb(16, 29, 22)), Color.rgb(81, 115, 93), 14)
+            listOf(speed, rotate, fullScreen).forEach { button ->
+                addView(button, LinearLayout.LayoutParams(0, dp(52), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+            }
+        }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(android.graphics.Color.BLACK)
-            addView(label); addView(playerView); addView(controls)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setBackgroundColor(Color.rgb(3, 21, 15))
+            addView(label, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            addView(playerView)
+            addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         })
         val token = SessionToken(this, ComponentName(this, PlaybackService::class.java))
         val future = MediaController.Builder(this, token).buildAsync()
@@ -89,9 +115,9 @@ class PlayerActivity : ComponentActivity() {
                             Toast.makeText(this@PlayerActivity, "No se pudo reproducir el archivo.", Toast.LENGTH_LONG).show()
                         }
                     })
-                    if (controller.currentMediaItem?.localConfiguration?.uri != uri) {
+                    if (controller.currentMediaItem?.mediaId != "video:$uri") {
                         val metadata = MediaMetadata.Builder().setTitle(title).build()
-                        controller.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(metadata).build())
+                        controller.setMediaItem(MediaItem.Builder().setMediaId("video:$uri").setUri(uri).setMediaMetadata(metadata).build())
                         controller.prepare()
                         val position = getSharedPreferences("playback_positions", MODE_PRIVATE).getLong(uri.toString(), 0L)
                         if (position > 0) controller.seekTo(position)
@@ -107,7 +133,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onStop() {
         val player = activeController
         val key = currentUri
-        if (player != null && key != null && player.currentMediaItem?.localConfiguration?.uri?.toString() == key) {
+        if (player != null && key != null && player.currentMediaItem?.mediaId == "video:$key") {
             val remaining = if (player.duration > 0) player.duration - player.currentPosition else Long.MAX_VALUE
             val position = if (remaining < 3000) 0L else player.currentPosition.coerceAtLeast(0L)
             getSharedPreferences("playback_positions", MODE_PRIVATE).edit().putLong(key, position).apply()
@@ -123,4 +149,5 @@ class PlayerActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
 
