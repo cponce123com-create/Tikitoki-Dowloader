@@ -235,6 +235,7 @@ private fun TikitokiApp(incomingLink: String) {
     var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
     var networkSettingsBusy by remember { mutableStateOf(false) }
     var showClearTemp by remember { mutableStateOf(false) }
+    var showPlayerChoice by remember { mutableStateOf(false) }
     var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
     val folderDescription by produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
         val tree = downloadFolder
@@ -412,6 +413,15 @@ private fun TikitokiApp(incomingLink: String) {
     }
 
     MaterialTheme(colorScheme = TikitokiColors) {
+        if (showPlayerChoice) {
+            AlertDialog(
+                onDismissRequest = { showPlayerChoice = false },
+                title = { Text("Reproductor") },
+                text = { Text("Elige qué quieres reproducir.") },
+                confirmButton = { Button(onClick = { showPlayerChoice = false; libraryKind = "Videos"; tab = 2 }) { Text("Videos") } },
+                dismissButton = { OutlinedButton(onClick = { showPlayerChoice = false; tab = 6 }) { Text("Música") } },
+            )
+        }
         if (showQualitySheet && selected.isNotEmpty()) {
             val preview = videos.firstOrNull { selected.size == 1 && it.id == selected.keys.first() }
             ModalBottomSheet(onDismissRequest = { showQualitySheet = false },
@@ -868,7 +878,7 @@ private fun TikitokiApp(incomingLink: String) {
                                 OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
                             }
                         }
-                        OutlinedButton(onClick = { tab = 6 }) { Text("Reproductor") }
+                        OutlinedButton(onClick = { showPlayerChoice = true }) { Text("Reproductor") }
                         Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
                         
                         OutlinedButton(onClick = {

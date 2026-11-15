@@ -27,4 +27,12 @@ class DownloadNavigationTest {
         compose.onNodeWithText("Música").performClick()
         compose.onNodeWithText("Reproductor").assertIsDisplayed()
     }
+
+    @Test fun toolsPlayerOffersVideoAndMusic() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Herramientas").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Herramientas").performClick()
+        compose.onNodeWithText("Reproductor").performClick()
+        compose.onNodeWithText("Videos").assertIsDisplayed()
+        compose.onNodeWithText("Música").assertIsDisplayed()
+    }
 }
