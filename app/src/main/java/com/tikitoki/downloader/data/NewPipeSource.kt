@@ -61,15 +61,21 @@ class NewPipeSource {
     suspend fun inspectVideo(url: String): VideoEntry = withContext(Dispatchers.IO) {
         val safe = DownloadInputPolicy.canonicalUrl(url)
         synchronized(NewPipeSource::class.java) { NewPipe.init(http) }
-        val info = StreamInfo.getInfo(safe)
-        require(info.id.isNotBlank()) { "NewPipe did not return a video ID" }
-        VideoEntry(
-            id = "newpipe:${info.id}",
-            url = safe,
-            title = MetadataSanitizer.title(info.name),
-            durationSeconds = info.duration.toInt().coerceAtLeast(0)
-        )
+        try {
+            val info = StreamInfo.getInfo(safe)
+            require(info.id.isNotBlank()) { "NewPipe did not return a video ID" }
+            VideoEntry(
+                id = "newpipe:${info.id}",
+                url = safe,
+                title = MetadataSanitizer.title(info.name),
+                durationSeconds = info.duration.toInt().coerceAtLeast(0)
+            )
+        } catch (e: Throwable) {
+            rethrowIfFatal(e)
+            throw IllegalStateException("Extractor unavailable", e)
+        }
     }
 }
+
 
 
