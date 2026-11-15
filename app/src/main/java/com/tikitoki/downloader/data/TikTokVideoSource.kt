@@ -21,7 +21,7 @@ data class VideoEntry(
     val durationSeconds: Int = 0,
 )
 
-data class FormatChoice(val id: String, val label: String)
+data class FormatChoice(val id: String, val label: String, val height: Int? = null, val isAudio: Boolean = false)
 
 /**
  * Calls the bundled yt-dlp extractor. No generated/fake results: all entries must
@@ -276,6 +276,7 @@ class TikTokVideoSource(private val context: Context) {
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
     }
 }
+
 
 
 

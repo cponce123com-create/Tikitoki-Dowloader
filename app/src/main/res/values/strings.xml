@@ -46,7 +46,13 @@
     <string name="format_audio_bitrate">%1$d kbps</string>
     <string name="format_audio_bitrate_unknown">tasa no disponible</string>
     <string name="format_audio_option">Audio %1$s · %2$s · %3$s</string>
+    <string name="format_check_batch">Comprobar disponibilidad de la lista</string>
+    <string name="format_check_cancel">Detener comprobación</string>
+    <string name="format_check_status">Comprobados: %1$d de %2$d · sin comprobar: %3$d</string>
+    <string name="format_check_matches">Disponible en %1$d de %2$d comprobados</string>
+    <string name="format_check_failed">No se pudo consultar ningún formato. Vuelve a intentar.</string>
 </resources>
+
 
 
 
