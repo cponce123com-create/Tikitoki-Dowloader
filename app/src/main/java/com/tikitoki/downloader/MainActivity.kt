@@ -14,6 +14,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.IconButton
+import coil.request.videoFrameMillis
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.VideoLibrary
@@ -493,12 +496,14 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text("Descargas terminadas") },
-                text = { Column {
-                    Text("Videos del grupo: ${batch.total}")
-                    Text("Descargados: ${batch.completed}")
-                    Text("Con errores: ${batch.failed}")
-                    Text("Cancelados: ${batch.cancelled}")
-                    if (batch.duplicates > 0) Text("Duplicados omitidos: ${batch.duplicates}")
+                text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SummaryTile("Total", batch.total, Modifier.weight(1f))
+                        SummaryTile("Éxitos", batch.completed, Modifier.weight(1f))
+                        SummaryTile("Errores", batch.failed, Modifier.weight(1f))
+                    }
+                    if (batch.cancelled > 0) Text("Cancelados: ${batch.cancelled}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                    if (batch.duplicates > 0) Text("Duplicados omitidos: ${batch.duplicates}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                 } },
                 confirmButton = { Button(onClick = { scope.launch { dao.acknowledgeBatch(batch.batchId) } }) { Text("Aceptar") } }
             )
@@ -726,7 +731,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                     if (!allSelected) videos.forEach { selected[it.id] = true }
                                     formats = listOf(defaultFormat)
                                     chosenFormat = defaultFormat
-                                }) { Text(if (allSelected) "Quitar selección" else "Seleccionar", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                }) { Text(if (allSelected) "Quitar selección" else "Seleccionar todo", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 Button(modifier = Modifier.weight(1f), enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
                                     onClick = chooseQuality) { Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Descargar ${selected.size}", maxLines = 1) }
                             }
@@ -801,7 +806,11 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             Text("Cola de descargas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             if (queue.isEmpty()) Text("No hay descargas en curso.", color = TechMuted)
                             else {
-                                Text("${queue.count { it.status == DownloadState.DOWNLOADING }} descargando · ${queue.count { it.status == DownloadState.QUEUED }} en espera · $paused pausadas", color = TechMuted)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    SummaryTile("Activas", queue.count { it.status == DownloadState.DOWNLOADING }, Modifier.weight(1f))
+                                    SummaryTile("En espera", queue.count { it.status == DownloadState.QUEUED }, Modifier.weight(1f))
+                                    SummaryTile("Pausadas", paused, Modifier.weight(1f))
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(enabled = active > 0, onClick = { scope.launch { DownloadQueue.pause(context); message = "Cola pausada." } }) { Text("Pausar") }
                                     Button(enabled = paused > 0, onClick = { scope.launch { DownloadQueue.resume(context); message = "Cola reanudada." } }) { Text("Continuar") }
@@ -864,16 +873,28 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             shape = RoundedCornerShape(8.dp), color = TechPanel,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                if (record.videoId in audioIds.orEmpty()) VideoThumbnail(
-                                    VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), thumbnailResolver,
-                                    Modifier.fillMaxSize(), deferLookup = true,
-                                ) else coil.compose.SubcomposeAsyncImage(
-                                    model = record.savedUri?.let { Uri.parse(it) }, imageLoader = galleryImageLoader,
-                                    contentDescription = "Reproducir ${record.title}",
-                                    modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-                                    error = { VideoThumbnail(VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), thumbnailResolver, Modifier.fillMaxSize(), deferLookup = true) },
+                                val entry = remember(record.videoId, record.thumbnail) {
+                                    VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail)
+                                }
+                                val remote by produceState<String?>(initialValue = record.thumbnail ?: ThumbnailUrls.youtube(entry.id, entry.url), key1 = entry.url, key2 = entry.thumbnail) {
+                                    value = entry.thumbnail?.takeIf { it.startsWith("https://") } ?: ThumbnailUrls.youtube(entry.id, entry.url) ?: thumbnailResolver.resolve(entry)
+                                }
+                                @Composable fun LocalVideoFrame() {
+                                    if (record.videoId !in audioIds.orEmpty()) coil.compose.SubcomposeAsyncImage(
+                                        model = coil.request.ImageRequest.Builder(LocalContext.current).data(record.savedUri?.let(Uri::parse)).videoFrameMillis(1000).build(),
+                                        imageLoader = galleryImageLoader, contentDescription = "Miniatura de ${record.title}",
+                                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                                        error = { Text("▶", color = TechMuted) },
+                                        loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
+                                    ) else Text("♫", color = TechMuted, style = MaterialTheme.typography.headlineMedium)
+                                }
+                                if (!remote.isNullOrBlank()) coil.compose.SubcomposeAsyncImage(
+                                    model = coil.request.ImageRequest.Builder(LocalContext.current).data(remote)
+                                        .apply { if (entry.url.contains("tiktok.com")) addHeader("Referer", "https://www.tiktok.com/") }.build(),
+                                    contentDescription = "Miniatura de ${record.title}", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                                    error = { LocalVideoFrame() },
                                     loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
-                                )
+                                ) else LocalVideoFrame()
                                 Text(record.title, modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
                                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .9f))))
                                     .padding(start = 7.dp, end = 7.dp, top = 18.dp, bottom = 7.dp),
@@ -1092,54 +1113,49 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
 }
 
 @Composable
+private fun SummaryTile(label: String, count: Int, modifier: Modifier = Modifier) {
+    Column(modifier.background(TechPanel, RoundedCornerShape(12.dp)).padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(count.toString(), fontWeight = FontWeight.Bold, color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text(label, color = TechMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    }
+}
+
+@Composable
 private fun DownloadHistoryCard(record: DownloadRecord, resolver: VideoThumbnailResolver, onDelete: () -> Unit, onCancel: () -> Unit = {}, onOpen: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, TechBorder)) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                VideoThumbnail(
-                    VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), resolver,
-                    Modifier.width(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 72.dp else 106.dp)
-                        .aspectRatio(if (MediaLinkParser.parse(record.videoUrl)?.platform == MediaPlatform.TIKTOK) 9f / 16f else 16f / 9f),
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(record.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        when (record.status) {
-                            DownloadState.QUEUED -> "En cola"
-                            DownloadState.DOWNLOADING -> "Descargando ${record.progress}%"
-                            DownloadState.PAUSED -> "Pausado"
-                            DownloadState.COMPLETED -> "Completado"
-                            DownloadState.FAILED -> "Error"
-                            DownloadState.CANCELLED -> "Cancelada"
-                            else -> record.status
-                        },
-                        color = MaterialTheme.colorScheme.secondary,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+    Card(modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, TechBorder)) {
+        Row(Modifier.fillMaxWidth().padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+            VideoThumbnail(VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail), resolver,
+                Modifier.width(86.dp).aspectRatio(16f / 9f))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(record.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val status = when (record.status) {
+                    DownloadState.QUEUED -> "En espera"
+                    DownloadState.DOWNLOADING -> when {
+                        record.progress <= 0 -> "Preparando descarga…"
+                        record.progress >= 100 -> "Procesando archivo…"
+                        else -> "Descargando ${record.progress}%"
+                    }
+                    DownloadState.PAUSED -> "Pausada"
+                    DownloadState.COMPLETED -> "Completada"
+                    DownloadState.FAILED -> "Error"
+                    DownloadState.CANCELLED -> "Cancelada"
+                    else -> record.status
                 }
-            }
-            if (record.status == DownloadState.DOWNLOADING) {
-                Text("Progreso: ${record.progress}%", color = TechMuted)
-                LinearProgressIndicator(
-                    progress = { record.progress / 100f },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Text(status, color = TechMuted, style = MaterialTheme.typography.labelSmall)
+                if (record.status == DownloadState.DOWNLOADING) {
+                    if (record.progress in 1..99) LinearProgressIndicator(progress = { record.progress / 100f }, modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)
+                    else LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(5.dp), color = TechPurple)
+                }
+                if (!record.error.isNullOrBlank()) Text("No se pudo completar. Revisa la conexión.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                if (record.status == DownloadState.COMPLETED && record.savedUri != null) Row {
+                    OutlinedButton(onClick = onOpen) { Text("Ver") }
+                    OutlinedButton(onClick = onDelete) { Text("Eliminar") }
+                }
             }
             if (record.status in listOf(DownloadState.QUEUED, DownloadState.DOWNLOADING, DownloadState.PAUSED)) {
-                OutlinedButton(onClick = onCancel) { Text("Cancelar descarga") }
-            }
-            if (!record.error.isNullOrBlank()) {
-                Text("No se pudo completar. Revisa la conexión y vuelve a intentarlo.", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
-            if (record.status == DownloadState.COMPLETED && record.savedUri != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onOpen) { Text("▶ Ver") }
-                    OutlinedButton(onClick = onDelete) { Text("🗑 Eliminar") }
-                }
+                IconButton(onClick = onCancel, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Close, contentDescription = "Cancelar descarga de ${record.title}", tint = TechMuted) }
             }
         }
     }
@@ -1199,6 +1215,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 

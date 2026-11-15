@@ -29,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -111,9 +112,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         if (!isStopped) {
                             activeProgress[item.videoId] = percent
                             val timestamp = System.currentTimeMillis()
-                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) > 1000 || percent == 100) {
+                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= 400 || percent == 100) {
                                 lastDbUpdates[item.videoId] = timestamp
-                                progressScope.launch { dao.setProgress(item.videoId, percent) }
+                                // Persist in callback order so a delayed write cannot move the bar backwards.
+                                runBlocking { dao.setProgress(item.videoId, percent) }
                             }
                             val last = lastNotification.get()
                             if (timestamp - last >= 1000 && lastNotification.compareAndSet(last, timestamp)) {
@@ -267,5 +269,6 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return Uri.fromFile(destination)
     }
 }
+
 
 

@@ -95,13 +95,14 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         }
 
     private fun parseEntry(json: JSONObject, link: MediaLink): VideoEntry? {
-        val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val id = json.optString("id").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) } ?: return null
         val original = json.optString("webpage_url").takeIf { it.isNotBlank() }
             ?: json.optString("url").takeIf { it.startsWith("https://") }
         val safePage = DownloadInputPolicy.extractorPage(
             link.platform, id, original, link.url, link.collection
         ) ?: return null
-        val title = MetadataSanitizer.title(json.optString("title").ifBlank { "Video $id" })
+        val rawTitle = json.optString("title").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        val title = MetadataSanitizer.title(rawTitle ?: "Video $id")
         return VideoEntry(
             id = "${link.platform.name.lowercase()}:$id",
             url = safePage,
@@ -148,5 +149,6 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         ) + options
     }
 }
+
 
 
