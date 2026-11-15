@@ -113,8 +113,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     if (token == generation) mutableState.value = ProfileUiState(videos = first.distinctBy { it.id }, totalVideos = first.size)
                 }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
+            catch (e: Exception) {
                 if (token == generation) {
+                    runCatching { DiagnosticHistory.record(getApplication(), e.message) }
                     mutableState.value = ProfileUiState(hasMore = media.collection, nextPage = 1,
                         error = "No se pudo analizar el enlace. Comprueba que sea público y vuelve a intentarlo.")
                 }
@@ -186,9 +187,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     mutableState.value = current.copy(videos = combined, nextPage = nextScanPage, hasMore = true, incompletePage = false)
                 }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
-                if (token == generation) mutableState.value = mutableState.value.copy(countingTotal = false,
-                    hasMore = true, error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar.")
+            catch (e: Exception) {
+                if (token == generation) {
+                    runCatching { DiagnosticHistory.record(getApplication(), e.message) }
+                    mutableState.value = mutableState.value.copy(countingTotal = false,
+                        hasMore = true, error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar.")
+                }
             }
         }
     }
@@ -221,4 +225,5 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         mutableState.value = ProfileUiState()
     }
 }
+
 
