@@ -127,21 +127,23 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
- 
 // M1 coverage gate: pure URL and Intent-boundary validation logic.
 // Android Intent behavior is also covered by androidTest on an emulator.
 tasks.register<JacocoReport>("m1CoverageReport") {
     dependsOn("testDebugUnitTest")
-    val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/debug")
-    classDirectories.setFrom(fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")) {
-        include("**/domain/IncomingLinkValidator*")
-        include("**/domain/MediaLinkParser*")
-    })
+    classDirectories.setFrom(
+        fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")) {
+            include("**/domain/IncomingLinkValidator*")
+            include("**/domain/MediaLinkParser*")
+        },
+    )
     sourceDirectories.setFrom(files("src/main/java", project(":core:security").file("src/main/kotlin")))
-    executionData.setFrom(fileTree(layout.buildDirectory) {
-        include("jacoco/testDebugUnitTest.exec")
-        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-    })
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include("jacoco/testDebugUnitTest.exec")
+            include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+    )
     reports {
         xml.required.set(true)
         html.required.set(true)
@@ -151,10 +153,12 @@ tasks.register<JacocoReport>("m1CoverageReport") {
 tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
     dependsOn("m1CoverageReport")
     classDirectories.setFrom(tasks.named<JacocoReport>("m1CoverageReport").map { it.classDirectories })
-    executionData.setFrom(fileTree(layout.buildDirectory) {
-        include("jacoco/testDebugUnitTest.exec")
-        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-    })
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include("jacoco/testDebugUnitTest.exec")
+            include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+    )
     violationRules {
         rule {
             limit {
@@ -166,20 +170,22 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
     }
 }
 
-
-
-
 /** Coverage of compiled application classes; reports only, with no threshold. */
 tasks.register<JacocoReport>("globalCoverageReport") {
     dependsOn("testDebugUnitTest")
-    classDirectories.setFrom(fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
-        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
-    }, fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")))
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+            exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
+        },
+        fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")),
+    )
     sourceDirectories.setFrom(files("src/main/java", project(":core:security").file("src/main/kotlin")))
-    executionData.setFrom(fileTree(layout.buildDirectory) {
-        include("jacoco/testDebugUnitTest.exec")
-        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-    })
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include("jacoco/testDebugUnitTest.exec")
+            include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+    )
     reports {
         xml.required.set(true)
         html.required.set(true)
