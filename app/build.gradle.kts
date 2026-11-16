@@ -1,8 +1,11 @@
+import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("org.jlleitschuh.gradle.ktlint")
     jacoco
 }
 
@@ -18,15 +21,39 @@ android {
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk {
-            abiFilters.add("arm64-v8a")
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("x86_64")
-        }
     }
 
+    val releaseSecrets = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+        .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
+    val hasSigning = releaseSecrets.values.all { it != null }
+    if (!hasSigning && releaseSecrets.values.any { it != null }) {
+        throw GradleException("Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.")
+    }
+    signingConfigs {
+        if (hasSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseSecrets.getValue("KEYSTORE_PATH")))
+                storePassword = releaseSecrets.getValue("KEYSTORE_PASSWORD")
+                keyAlias = releaseSecrets.getValue("KEY_ALIAS")
+                keyPassword = releaseSecrets.getValue("KEY_PASSWORD")
+            }
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigning) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
@@ -36,7 +63,24 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+ktlint {
+    version.set("1.5.0")
+    baseline.set(file("ktlint-baseline.xml"))
+}
+
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters.find { it.filterType == ABI }?.identifier
+            if (abi == null || abi == "x86_64") output.enabled.set(false)
+        }
+    }
 }
 
 dependencies {
@@ -76,6 +120,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.room:room-testing:2.7.2")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
@@ -122,3 +167,20 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
 
 
 
+
+/** Coverage of compiled application classes; reports only, with no threshold. */
+tasks.register<JacocoReport>("globalCoverageReport") {
+    dependsOn("testDebugUnitTest")
+    classDirectories.setFrom(fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
+    })
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include("jacoco/testDebugUnitTest.exec")
+        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+    })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}

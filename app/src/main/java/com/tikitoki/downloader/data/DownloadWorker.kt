@@ -30,7 +30,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -85,8 +85,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     withContext(NonCancellable) { dao.requeueInterrupted() }
                 }
             }
-        } catch (_: CancellationException) {
-            Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } finally {
             progressScope.cancel()
         }
@@ -95,6 +95,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private suspend fun downloadOne(item: DownloadRecord) {
                 activeIds.add(item.videoId)
                 var stopMonitor: Job? = null
+                val progressUpdates = Channel<Int>(Channel.CONFLATED)
+                val progressWriter = progressScope.launch {
+                    for (progress in progressUpdates) {
+                        try { dao.setProgress(item.videoId, progress) }
+                        catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { DiagnosticHistory.record(applicationContext, e.message) }
+                    }
+                }
                 try {
                     activeProgress[item.videoId] = 0
                     setForeground(notification("Descargando ${activeIds.size} videos"))
@@ -124,8 +132,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                             val timestamp = System.currentTimeMillis()
                             if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= 400 || percent == 100) {
                                 lastDbUpdates[item.videoId] = timestamp
-                                // Persist in callback order so a delayed write cannot move the bar backwards.
-                                runBlocking { dao.setProgress(item.videoId, percent) }
+                                // A single consumer persists progress without blocking the extractor callback.
+                                progressUpdates.trySend(percent)
                             }
                             val last = lastNotification.get()
                             if (timestamp - last >= 1000 && lastNotification.compareAndSet(last, timestamp)) {
@@ -163,6 +171,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                 } finally {
                     withContext(NonCancellable) {
+                        progressUpdates.close()
+                        progressWriter.join()
                         val status = runCatching { dao.find(item.videoId)?.status }.getOrNull()
                         // A stopped DOWNLOADING task is requeued by doWork's finally block.
                         val resumable = retainVideoTemporaryFiles(status, isStopped)

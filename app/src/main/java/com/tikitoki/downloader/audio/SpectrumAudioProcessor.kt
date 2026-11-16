@@ -53,8 +53,8 @@ internal class SpectrumAudioProcessor : BaseAudioProcessor() {
                 // Use the loudest channel so opposite stereo phases do not cancel.
                 val loudest = channelWindows.maxByOrNull { samples ->
                     samples.sumOf { sample -> (sample * sample).toDouble() }
-                }!!
-                PlaybackSpectrum.publish(SpectrumAnalyzer.analyze(loudest))
+                }
+                loudest?.let { PlaybackSpectrum.publish(SpectrumAnalyzer.analyze(it)) }
                 capturedFrames = 0
                 lastCapture = now
             }

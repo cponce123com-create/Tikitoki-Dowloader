@@ -166,7 +166,7 @@ interface DownloadDao {
     suspend fun clearFailed()
 }
 
-@Database(entities = [DownloadRecord::class, DownloadBatch::class, DownloadBatchItem::class], version = 2, exportSchema = false)
+@Database(entities = [DownloadRecord::class, DownloadBatch::class, DownloadBatchItem::class], version = 2, exportSchema = true)
 abstract class DownloadDatabase : RoomDatabase() {
     abstract fun downloads(): DownloadDao
 

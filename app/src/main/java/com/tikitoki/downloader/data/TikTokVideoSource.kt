@@ -73,7 +73,7 @@ class TikTokVideoSource(private val context: Context) {
                     durationSeconds = item.optInt("duration"),
                 )
             }
-        } catch (_: Exception) { null }
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); null }
     }
 
     private fun saveProfile(url: String, videos: List<VideoEntry>) {
@@ -92,7 +92,7 @@ class TikTokVideoSource(private val context: Context) {
     }
 
     private fun fetchSingle(url: String): VideoEntry {
-        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(url) } } catch (e: Exception) { throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(url) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
         val id = info.id?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("El extractor no devolvió un ID de video.")
         return VideoEntry(
@@ -129,13 +129,13 @@ class TikTokVideoSource(private val context: Context) {
             request.addOption("--playlist-start", start)
             request.addOption("--playlist-end", end)
         }
-        val response = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } } catch (e: Exception) { throw readableError(e) }
+        val response = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "tikitoki_scan") } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
         if (response.exitCode != 0 && response.out.isBlank()) {
             throw readableError(IllegalStateException(response.err))
         }
         val json = try {
             JSONObject(response.out.trim())
-        } catch (_: Exception) {
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message);
             throw IllegalStateException("TikTok no devolvió un catálogo válido de publicaciones.")
         }
         val entries = json.optJSONArray("entries")
@@ -172,7 +172,7 @@ class TikTokVideoSource(private val context: Context) {
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
-        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
         FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
 

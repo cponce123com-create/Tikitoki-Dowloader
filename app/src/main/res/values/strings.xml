@@ -51,6 +51,9 @@
     <string name="format_check_status">Comprobados: %1$d de %2$d · sin comprobar: %3$d</string>
     <string name="format_check_matches">Disponible en %1$d de %2$d comprobados</string>
     <string name="format_check_failed">No se pudo consultar ningún formato. Vuelve a intentar.</string>
+    <string name="first_run_title">Antes de empezar</string>
+    <string name="first_run_body">Usa Baja.pe solo con contenido propio o para el que tengas autorización. Respeta los términos de cada plataforma. La aplicación admite sitios con contenido para mayores de 18 años.</string>
+    <string name="first_run_accept">Entendido</string>
 </resources>
 
 

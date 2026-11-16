@@ -13,3 +13,7 @@ Incluye la versión o commit, dispositivo y versión de Android, pasos mínimos 
 ## Para mantenedores
 
 Revisar permisos y enlaces entrantes, integridad y origen de dependencias y actualizaciones del extractor, límites de datos, almacenamiento y licencias antes de cada publicación. No incluir claves de firma, tokens ni secretos en el repositorio o en los registros de CI.
+
+## Actualizaciones de yt-dlp
+
+La aplicación no realiza una verificación criptográfica independiente del binario de yt-dlp actualizado; depende del canal de actualización de youtubedl-android y de su transporte. La comprobación de versión y la prueba de humo sin red pueden detectar algunos motores inservibles y activar el rollback, pero no autentican el origen ni garantizan que el motor sea seguro. La restauración también debe comprobarse en dispositivos reales.
