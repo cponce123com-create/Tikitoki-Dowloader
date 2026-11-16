@@ -28,7 +28,8 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
-        <activity android:name=".MainActivity" android:exported="true" android:theme="@style/Theme.Tikitoki.Splash">
+        <activity android:name=".MainActivity" android:exported="true" android:theme="@style/Theme.Tikitoki.Splash"
+            android:screenOrientation="portrait" tools:ignore="LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
