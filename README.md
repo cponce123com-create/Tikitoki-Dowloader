@@ -19,13 +19,13 @@ La concurrencia efectiva depende de la configuración, la red, la plataforma y e
 
 ## Compilación y comprobaciones
 
-Requisitos: JDK 17, Android SDK con plataforma 35 y herramientas de compilación correspondientes, y conexión a los repositorios configurados. En Linux o macOS:
+Requisitos: JDK 17, Android SDK con plataforma 37 y herramientas de compilación correspondientes, y conexión a los repositorios configurados. En Linux o macOS:
 
 ```sh
 ./gradlew testDebugUnitTest lintDebug assembleDebug
 ```
 
-En Windows usa `gradlew.bat` con las mismas tareas. El wrapper descarga Gradle 8.10.2 y verifica la suma SHA-256 de su distribución. El APK de depuración queda en `app/build/outputs/apk/debug/`. CI también ejecuta pruebas instrumentadas; consulta sus resultados antes de considerar validado un cambio. Un APK debug no es una versión de producción firmada.
+En Windows usa `gradlew.bat` con las mismas tareas. El wrapper descarga Gradle 9.3.1 y verifica la suma SHA-256 de su distribución. El APK de depuración queda en `app/build/outputs/apk/debug/`. CI también ejecuta pruebas instrumentadas; consulta sus resultados antes de considerar validado un cambio. Un APK debug no es una versión de producción firmada.
 
 ## Distribución
 
@@ -40,4 +40,5 @@ La app guarda historial, configuración y archivos localmente y se conecta a las
 ## Licencia
 
 El proyecto se distribuye bajo GPL-3.0; el texto completo está en [LICENSE](LICENSE). Los componentes de terceros conservan sus respectivas licencias; véase [NOTICE.md](NOTICE.md).
+
 

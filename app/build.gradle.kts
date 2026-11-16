@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.tikitoki.downloader"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.tikitoki.downloader"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -64,9 +64,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-video:2.7.0")
 
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
 
     // GPL-3.0: consult redistribution obligations before publishing.
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
@@ -119,5 +119,6 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
         }
     }
 }
+
 
 
