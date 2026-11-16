@@ -127,7 +127,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
-
 // M1 coverage gate: pure URL and Intent-boundary validation logic.
 // Android Intent behavior is also covered by androidTest on an emulator.
 tasks.register<JacocoReport>("m1CoverageReport") {
