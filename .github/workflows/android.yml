@@ -87,10 +87,18 @@ jobs:
           gradle-version: '9.3.1'
       - name: Enable KVM acceleration
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -r /dev/kvm && test -w /dev/kvm
+          if [ -c /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            if test -r /dev/kvm && test -w /dev/kvm; then
+              echo "KVM disponible."
+            else
+              echo "::warning::KVM no accesible; el emulador usará software."
+            fi
+          else
+            echo "::warning::KVM no disponible; el emulador usará software."
+          fi
       - name: Android Intent security tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
