@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Tikitoki Downloader"
-include(":app")
+include(":app", ":core:security")

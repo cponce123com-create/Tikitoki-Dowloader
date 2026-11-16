@@ -84,6 +84,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":core:security"))
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.27.1")
     implementation("androidx.core:core-ktx:1.15.0")
@@ -132,11 +133,11 @@ dependencies {
 tasks.register<JacocoReport>("m1CoverageReport") {
     dependsOn("testDebugUnitTest")
     val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/debug")
-    classDirectories.setFrom(fileTree(kotlinClasses) {
+    classDirectories.setFrom(fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")) {
         include("**/domain/IncomingLinkValidator*")
         include("**/domain/MediaLinkParser*")
     })
-    sourceDirectories.setFrom(files("src/main/java"))
+    sourceDirectories.setFrom(files("src/main/java", project(":core:security").file("src/main/kotlin")))
     executionData.setFrom(fileTree(layout.buildDirectory) {
         include("jacoco/testDebugUnitTest.exec")
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
@@ -173,8 +174,8 @@ tasks.register<JacocoReport>("globalCoverageReport") {
     dependsOn("testDebugUnitTest")
     classDirectories.setFrom(fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
         exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
-    })
-    sourceDirectories.setFrom(files("src/main/java"))
+    }, fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")))
+    sourceDirectories.setFrom(files("src/main/java", project(":core:security").file("src/main/kotlin")))
     executionData.setFrom(fileTree(layout.buildDirectory) {
         include("jacoco/testDebugUnitTest.exec")
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
