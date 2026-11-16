@@ -430,7 +430,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
                     if (result.added > 0 || result.duplicates > 0) batch.forEach { selected.remove(it.id) }
                     if (selected.isEmpty()) tab = 1
-                } catch (e: Exception) {
+                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                     message = "No se pudo crear la cola. Inténtalo otra vez."
                 } finally {
                     queueBusy = false
@@ -484,7 +484,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     val saved = settings.getString("default_download_format", "video")
                     chosenFormat = formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) } ?: formats.first()
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (e: Exception) {
+                catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                     runCatching { DiagnosticHistory.record(context, e.message) }
                     message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez."
                     formatError = true
@@ -519,7 +519,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 })
             } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) {
+            catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 runCatching { DiagnosticHistory.record(context, e.message) }
                 message = "No se pudo abrir el reproductor."
             }
@@ -695,7 +695,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 DeleteCompletedResult.FILE_MISSING -> "El archivo ya no existía. Se eliminó del historial."
                                 DeleteCompletedResult.FAILED -> "No se pudo eliminar el archivo. El registro se conserva."
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                             message = "No se pudo eliminar el archivo. Comprueba que siga disponible."
                         }
                     }
