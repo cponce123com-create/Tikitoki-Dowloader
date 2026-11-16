@@ -31,7 +31,7 @@ jobs:
           gradle-version: '9.3.1'
       - name: Test and build APK
         run: |
-          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease verifyM1Coverage globalCoverageReport || {
+          ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug assembleDebug assembleRelease verifyM1Coverage globalCoverageReport || {
             cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null || true
             exit 1
           }
