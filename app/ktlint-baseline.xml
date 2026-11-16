@@ -6,24 +6,6 @@
         <error line="30" column="31" source="standard:argument-list-wrapping" />
         <error line="30" column="141" source="standard:max-line-length" />
         <error line="30" column="146" source="standard:argument-list-wrapping" />
-        <error line="129" column="1" source="standard:no-consecutive-blank-lines" />
-        <error line="129" column="1" source="standard:no-trailing-spaces" />
-        <error line="135" column="30" source="standard:multiline-expression-wrapping" />
-        <error line="135" column="30" source="standard:wrapping" />
-        <error line="138" column="5" source="standard:wrapping" />
-        <error line="140" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="140" column="27" source="standard:wrapping" />
-        <error line="143" column="5" source="standard:wrapping" />
-        <error line="153" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="153" column="27" source="standard:wrapping" />
-        <error line="156" column="5" source="standard:wrapping" />
-        <error line="168" column="1" source="standard:no-consecutive-blank-lines" />
-        <error line="174" column="30" source="standard:multiline-expression-wrapping" />
-        <error line="174" column="30" source="standard:wrapping" />
-        <error line="176" column="5" source="standard:wrapping" />
-        <error line="178" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="178" column="27" source="standard:wrapping" />
-        <error line="181" column="5" source="standard:wrapping" />
     </file>
     <file name="src/androidTest/java/com/tikitoki/downloader/DownloadNavigationTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
