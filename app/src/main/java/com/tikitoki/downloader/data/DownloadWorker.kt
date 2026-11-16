@@ -85,8 +85,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     withContext(NonCancellable) { dao.requeueInterrupted() }
                 }
             }
-        } catch (_: CancellationException) {
-            Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } finally {
             progressScope.cancel()
         }
