@@ -1,3 +1,5 @@
+import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -18,15 +20,39 @@ android {
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk {
-            abiFilters.add("arm64-v8a")
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("x86_64")
-        }
     }
 
+    val releaseSecrets = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+        .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
+    val hasSigning = releaseSecrets.values.all { it != null }
+    if (!hasSigning && releaseSecrets.values.any { it != null }) {
+        throw GradleException("Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.")
+    }
+    signingConfigs {
+        if (hasSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseSecrets.getValue("KEYSTORE_PATH")))
+                storePassword = releaseSecrets.getValue("KEYSTORE_PASSWORD")
+                keyAlias = releaseSecrets.getValue("KEY_ALIAS")
+                keyPassword = releaseSecrets.getValue("KEY_PASSWORD")
+            }
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigning) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
@@ -37,6 +63,15 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters.find { it.filterType == ABI }?.identifier
+            if (abi == null || abi == "x86_64") output.enabled.set(false)
+        }
+    }
 }
 
 dependencies {
