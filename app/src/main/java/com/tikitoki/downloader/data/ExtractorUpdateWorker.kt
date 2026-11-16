@@ -18,6 +18,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
+/** Validates an offline extractor listing without relying on network content. */
+internal fun extractorSmokePassed(exitCode: Int, output: String): Boolean =
+    exitCode == 0 && output.lineSequence().any { it.trim().equals("youtube", ignoreCase = true) }
+
 /** Updates the Python extractor off the scan/download critical path. */
 class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -37,6 +41,8 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
                     val response = engine.execute(YoutubeDLRequest(emptyList()).addOption("--version"))
                     effectiveVersion = ExtractorVersion.parse(response.out)
                         ?: throw IllegalStateException("Cannot verify extractor version")
+                    val smoke = engine.execute(YoutubeDLRequest(emptyList()).addOption("--list-extractors"))
+                    check(extractorSmokePassed(smoke.exitCode, smoke.out)) { "Extractor smoke test failed" }
                 }
             }
             if (!acquired) return@withContext Result.retry()
@@ -62,7 +68,7 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
                 "tikitoki_extractor_update_now", ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<ExtractorUpdateWorker>()
-                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build())
                     .build()
             )
         }

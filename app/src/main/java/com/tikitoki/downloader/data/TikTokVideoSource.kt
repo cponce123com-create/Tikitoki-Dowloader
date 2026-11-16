@@ -73,7 +73,7 @@ class TikTokVideoSource(private val context: Context) {
                     durationSeconds = item.optInt("duration"),
                 )
             }
-        } catch (_: Exception) { null }
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); null }
     }
 
     private fun saveProfile(url: String, videos: List<VideoEntry>) {
@@ -135,7 +135,7 @@ class TikTokVideoSource(private val context: Context) {
         }
         val json = try {
             JSONObject(response.out.trim())
-        } catch (_: Exception) {
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message);
             throw IllegalStateException("TikTok no devolvió un catálogo válido de publicaciones.")
         }
         val entries = json.optJSONArray("entries")

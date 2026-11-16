@@ -1,5 +1,6 @@
 package com.tikitoki.downloader.ui
 
+import com.tikitoki.downloader.data.DiagnosticHistory
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -126,7 +127,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         val player = controller
         if (player == null) { message = "Conectando el reproductor…"; return }
         try { player.setMediaItems(tracks.map(::item), index, 0L); player.prepare(); player.play(); message = "" }
-        catch (_: Exception) { message = "No se pudo abrir el audio. Comprueba que el archivo esté disponible." }
+        catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo abrir el audio. Comprueba que el archivo esté disponible." }
     }
     LaunchedEffect(requestedUri, controller) {
         val uri = requestedUri ?: return@LaunchedEffect
@@ -166,7 +167,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         future.addListener({ if (!disposed) {
             try { controller = future.get().also { p -> p.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) { message = "No se pudo reproducir el audio. Comprueba que el archivo siga disponible." }
-            }) } } catch (_: Exception) { message = "No se pudo conectar el reproductor." }
+            }) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo conectar el reproductor." }
         } }, ContextCompat.getMainExecutor(context))
         onDispose { disposed = true; controller = null; MediaController.releaseFuture(future) }
     }
@@ -198,8 +199,8 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         Column(Modifier.fillMaxWidth().background(Metal, shape).border(1.dp, Color(0xFF798D83), shape).padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth().background(Color(0xFF041C13), RoundedCornerShape(12.dp)).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-                    if (artwork.bitmap != null) Image(artwork.bitmap!!, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    else Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint, modifier = Modifier.size(34.dp))
+                    artwork.bitmap?.let { Image(it, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                        ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint, modifier = Modifier.size(34.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -271,8 +272,8 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 }
                 Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(tracks.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
-                        if (trackArtwork.bitmap != null) Image(trackArtwork.bitmap!!, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        else Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
+                        trackArtwork.bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                            ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {

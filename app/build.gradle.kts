@@ -62,8 +62,11 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
     packaging { jniLibs { useLegacyPackaging = true } }
 }
+
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
@@ -111,6 +114,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.room:room-testing:2.7.2")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

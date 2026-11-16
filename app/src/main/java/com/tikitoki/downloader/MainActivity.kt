@@ -241,6 +241,20 @@ private val TikitokiColors = darkColorScheme(
 private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     val context = LocalContext.current
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
+    var showFirstRunNotice by remember { mutableStateOf(!settings.getBoolean("first_run_notice_accepted", false)) }
+    if (showFirstRunNotice) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text(stringResource(R.string.first_run_title)) },
+            text = { Text(stringResource(R.string.first_run_body)) },
+            confirmButton = {
+                Button(onClick = {
+                    settings.edit().putBoolean("first_run_notice_accepted", true).apply()
+                    showFirstRunNotice = false
+                }) { Text(stringResource(R.string.first_run_accept)) }
+            }
+        )
+    }
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
     var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
     var wifiParallel by remember { mutableStateOf(DownloadSettings.wifiLimit(context)) }
@@ -275,7 +289,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 settings.edit().putString("download_tree", uri.toString()).apply()
                 downloadFolder = uri.toString()
-            } catch (_: Exception) { settings.edit().remove("download_tree").apply() }
+            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); settings.edit().remove("download_tree").apply() }
         }
     }
 
@@ -384,7 +398,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 }
                 context.startActivity(Intent.createChooser(send, context.getString(R.string.diagnostic_share)))
             } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (_: Exception) { message = context.getString(R.string.diagnostic_error) }
+            catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = context.getString(R.string.diagnostic_error) }
         }
     }
 
@@ -594,7 +608,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                                 }
                                                 batchChecked++
                                             } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                                            catch (_: Exception) { batchFailed++ }
+                                            catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); batchFailed++ }
                                         }
                                     } finally { if (generation == batchGeneration) batchChecking = false }
                                 }
@@ -661,7 +675,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     showClearTemp = false
                     scope.launch {
                         try { val deleted = DownloadQueue.clearTemporary(context); message = "Archivos temporales eliminados: $deleted." }
-                        catch (_: Exception) { message = "No se puede limpiar mientras haya descargas en curso, pendientes o pausadas." }
+                        catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se puede limpiar mientras haya descargas en curso, pendientes o pausadas." }
                     }
                 }) { Text("Limpiar") } },
                 dismissButton = { OutlinedButton(onClick = { showClearTemp = false }) { Text("Cancelar") } }
@@ -1205,7 +1219,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                         val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
                                         allowMetered = allowed
                                         message = if (pending) "Cola pausada para cambiar la red. Pulsa Continuar en Descargas." else "Preferencia de red actualizada."
-                                    } catch (_: Exception) { message = "No se pudo cambiar la preferencia de red." }
+                                    } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo cambiar la preferencia de red." }
                                     finally { networkSettingsBusy = false }
                                 }
                             })
@@ -1258,7 +1272,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                     setDataAndType(folder, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                                 })
-                            } catch (_: Exception) { message = "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos." }
+                            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos." }
                         }) { Text("Abrir carpeta de Baja.pe") }
                           }
                         }

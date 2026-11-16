@@ -18,3 +18,7 @@
 
 # Android proporciona org.json; conserva nombres usados al procesar metadatos.
 -keep class org.json.** { *; }
+
+# Rhino incluye una conversión opcional de JavaBeans no disponible en Android.
+# Debe verificarse en dispositivo que los extractores usados no requieran esa ruta.
+-dontwarn java.beans.**

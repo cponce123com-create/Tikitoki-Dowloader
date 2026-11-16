@@ -42,6 +42,13 @@ jobs:
           name: M1-URL-security-coverage
           path: app/build/reports/jacoco/m1CoverageReport/
           if-no-files-found: warn
+      - name: Upload Room schemas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schema-v2
+          path: app/schemas/
+          if-no-files-found: warn
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -91,3 +98,38 @@ jobs:
 
 
 
+
+  historical-room-schema:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: efff10ccbd046b3b85dcdbc82a979012e3644ca3
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Exportar esquema real de Room 1
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          database = Path("app/src/main/java/com/tikitoki/downloader/data/DownloadDatabase.kt")
+          source = database.read_text()
+          assert "version = 1, exportSchema = false" in source
+          database.write_text(source.replace("version = 1, exportSchema = false", "version = 1, exportSchema = true"))
+          build = Path("app/build.gradle.kts")
+          build.write_text(build.read_text() + '\n' + 'ksp { arg("room.schemaLocation", "$projectDir/schemas") }' + '\n')
+          PY
+          gradle --no-daemon :app:kspDebugKotlin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: room-schema-v1
+          path: app/schemas/
+          if-no-files-found: error
