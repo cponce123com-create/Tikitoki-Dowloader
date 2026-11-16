@@ -132,7 +132,7 @@ jobs:
           path: build/reports/cyclonedx/
           if-no-files-found: error
 
-  generate-ktlint-baseline:
+  ktlint:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -146,12 +146,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - run: ./gradlew --no-daemon :app:ktlintGenerateBaseline
+      - name: Verificar estilo con línea base
+        run: ./gradlew --no-daemon :app:ktlintCheck
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: ktlint-baseline
-          path: app/ktlint-baseline.xml
-          if-no-files-found: error
+          name: ktlint-report
+          path: app/build/reports/ktlint/
+          if-no-files-found: warn
 
   verify-signed-release:
     runs-on: ubuntu-latest
