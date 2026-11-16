@@ -1049,7 +1049,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                     value = entry.thumbnail?.takeIf { it.startsWith("https://") } ?: ThumbnailUrls.youtube(entry.id, entry.url) ?: thumbnailResolver.resolve(entry)
                                 }
                                 @Composable fun LocalVideoFrame() {
-                                    if (record.videoId !in audioIds.orEmpty()) coil.compose.SubcomposeAsyncImage(
+                                    if (!(audioKinds[libraryKey(record)] ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri))) coil.compose.SubcomposeAsyncImage(
                                         model = coil.request.ImageRequest.Builder(LocalContext.current).data(record.savedUri?.let(Uri::parse)).videoFrameMillis(1000).build(),
                                         imageLoader = galleryImageLoader, contentDescription = "Miniatura de ${record.title}",
                                         modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
