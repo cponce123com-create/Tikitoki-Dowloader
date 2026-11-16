@@ -23,10 +23,12 @@ class VideoThumbnailResolverTest {
         assertEquals("https://i.ytimg.com/vi/ab--cdefghi/hqdefault.jpg", resolver.resolve(video))
     }
 
-    @Test fun rejectsUntrustedVideoUrlBeforeQueryingExtractor() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val resolver = VideoThumbnailResolver(context)
-        val video = VideoEntry("test", "https://untrusted.example/video", "Video", null)
-        assertNull(resolver.resolve(video))
+    @Test fun rejectsUntrustedVideoUrlBeforeQueryingExtractor() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val resolver = VideoThumbnailResolver(context)
+            val video = VideoEntry("test", "https://untrusted.example/video", "Video", null)
+            assertNull(resolver.resolve(video))
+        }
     }
 }
