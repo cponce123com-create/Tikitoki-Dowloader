@@ -309,7 +309,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
     var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-    BackHandler(enabled = tab == 6) { tab = 2 }
+    BackHandler(enabled = tab == 6 || tab == 7) { tab = if (tab == 7) 0 else 2 }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
@@ -735,6 +735,9 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             TechHeader(onSettings = { tab = 5 })
+                        OutlinedButton(onClick = { tab = 7 }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Explorar colecciones")
+                        }
 
                         TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
                         OutlinedTextField(
@@ -934,6 +937,8 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         }
                     }
                 }
+            } else if (tab == 7) {
+                CollectionsPrototype(Modifier.padding(insets).consumeWindowInsets(insets), onBack = { tab = 0 })
             } else if (tab == 1) {
                 val queue = records.filter { LibraryVisibility.inQueue(it.status) }
                     .sortedBy { if (it.status == DownloadState.DOWNLOADING) 0 else if (it.status == DownloadState.QUEUED) 1 else 2 }
@@ -1392,3 +1397,61 @@ private fun VideoThumbnail(
 
 
 
+
+
+private data class CollectionSection(val name: String, val collections: List<String>)
+
+@Composable
+private fun CollectionsPrototype(modifier: Modifier = Modifier, onBack: () -> Unit) {
+    val sections = remember {
+        listOf(
+            CollectionSection("Música", listOf("Rock en español", "Salsa", "Cumbia", "Baladas")),
+            CollectionSection("Cristiana", listOf("Devocionales de la mañana", "Alabanzas", "Reflexiones bíblicas")),
+            CollectionSection("Reflexiones y mensajes", listOf("Motivación", "Amor", "Amistad", "Bienestar")),
+            CollectionSection("Noticias", listOf("Perú", "Internacionales", "Tecnología"))
+        )
+    }
+    var section by rememberSaveable { mutableStateOf<String?>(null) }
+    var collection by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(enabled = section != null) {
+        if (collection != null) collection = null else section = null
+    }
+    LazyColumn(
+        modifier = modifier.fillMaxSize().background(TechBackground),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            OutlinedButton(onClick = {
+                if (collection != null) collection = null
+                else if (section != null) section = null
+                else onBack()
+            }) { Text("Volver") }
+        }
+        item {
+            Text(collection ?: section ?: "Colecciones", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Vista preliminar", color = TechMuted)
+        }
+        if (section == null) {
+            items(sections) { entry ->
+                Card(onClick = { section = entry.name }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(entry.name, style = MaterialTheme.typography.titleMedium)
+                        Text(entry.collections.joinToString(" · "), color = TechMuted)
+                    }
+                }
+            }
+        } else if (collection == null) {
+            val entries = sections.firstOrNull { it.name == section }?.collections.orEmpty()
+            items(entries) { entry ->
+                Card(onClick = { collection = entry }, modifier = Modifier.fillMaxWidth()) {
+                    Text(entry, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        } else {
+            item {
+                Text("El catálogo y la búsqueda automática aún no están conectados. Aquí aparecerán los contenidos disponibles.", color = TechMuted)
+            }
+        }
+    }
+}
