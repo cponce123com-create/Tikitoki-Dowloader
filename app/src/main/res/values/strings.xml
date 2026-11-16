@@ -54,6 +54,11 @@
     <string name="first_run_title">Antes de empezar</string>
     <string name="first_run_body">Usa Baja.pe solo con contenido propio o para el que tengas autorización. Respeta los términos de cada plataforma. La aplicación admite sitios con contenido para mayores de 18 años.</string>
     <string name="first_run_accept">Entendido</string>
+    <string name="home_profile_photo">Foto del perfil</string>
+    <string name="home_videos_found">%1$d videos detectados</string>
+    <string name="home_detected">Detectados</string>
+    <string name="home_loaded">Cargados</string>
+    <string name="home_selected">Seleccionados</string>
 </resources>
 
 

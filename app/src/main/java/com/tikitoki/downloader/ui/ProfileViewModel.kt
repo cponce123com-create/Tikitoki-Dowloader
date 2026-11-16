@@ -67,6 +67,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         throw last ?: IllegalStateException("No se pudo recuperar la página")
     }
 
+    fun isCurrentLink(url: String): Boolean {
+        val current = activeLink ?: return false
+        return MediaLinkParser.parse(url)?.url == current.url
+    }
+
     fun inspect(url: String, forceRefresh: Boolean = false) {
         val media = MediaLinkParser.parse(url)
         if (media == null) {

@@ -404,7 +404,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
 
     var analysisRevision by remember { mutableStateOf(0) }
     LaunchedEffect(incomingLink, shareRevision) {
-        if (incomingLink.isNotBlank()) {
+        if (incomingLink.isNotBlank() && (shareRevision > 0 || !profileViewModel.isCurrentLink(incomingLink))) {
             url = incomingLink
             profileViewModel.reset()
             selected.clear()
@@ -416,7 +416,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     LaunchedEffect(url, analysisRevision) {
         val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
         delay(500)
-        profileViewModel.inspect(link, false)
+        if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, false)
     }
 
     val addToQueue: () -> Unit = {
@@ -764,7 +764,9 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             },
                             placeholder = { Text("Pega un enlace") },
                             modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
+                            minLines = 1,
+                            maxLines = 3,
+                            textStyle = MaterialTheme.typography.bodySmall,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); keyboard?.hide() }),
                             shape = RoundedCornerShape(12.dp),
@@ -839,45 +841,44 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
 
 
                         if (videos.isNotEmpty()) {
-                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+                            val allSelected = videos.all { it.id in selected }
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                                 colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel),
                                 border = BorderStroke(1.dp, TechBorder)) {
-                                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(26.dp)).background(TechGradient),
-                                        contentAlignment = Alignment.Center) {
-                                        if (profileState.profileImage != null) {
-                                            coil.compose.SubcomposeAsyncImage(
-                                                model = coil.request.ImageRequest.Builder(LocalContext.current)
-                                                    .data(profileState.profileImage).addHeader("Referer", "https://www.tiktok.com/").build(),
-                                                contentDescription = "Foto del perfil", modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop,
-                                                error = { Text("@", fontSize = 26.sp, color = Color.White) },
-                                                loading = { Text("@", fontSize = 26.sp, color = Color.White) },
-                                            )
-                                        } else Text("@", fontSize = 26.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(TechGradient),
+                                            contentAlignment = Alignment.Center) {
+                                            if (profileState.profileImage != null) {
+                                                coil.compose.SubcomposeAsyncImage(
+                                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                        .data(profileState.profileImage).addHeader("Referer", "https://www.tiktok.com/").build(),
+                                                    contentDescription = stringResource(R.string.home_profile_photo), modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop,
+                                                    error = { Text("@", fontSize = 18.sp, color = Color.White) },
+                                                    loading = { Text("@", fontSize = 18.sp, color = Color.White) },
+                                                )
+                                            } else Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                        }
+                                        Column(Modifier.weight(1f)) {
+                                            Text(url.substringAfter("tiktok.com/").substringBefore("?").substringBefore("/video/").take(35)
+                                                .ifBlank { selectedPlatform ?: "Perfil" }, fontWeight = FontWeight.Bold,
+                                                color = Color.White, maxLines = 1, fontSize = 13.sp)
+                                            Text(stringResource(R.string.home_videos_found, videos.size), color = TechMuted, fontSize = 11.sp)
+                                        }
+                                        IconButton(onClick = { profileViewModel.resumeScan() },
+                                            enabled = !profileState.countingTotal && profileState.hasMore) {
+                                            Text("↻", fontSize = 20.sp)
+                                        }
                                     }
-                                    Column(Modifier.weight(1f)) {
-                                        Text(url.substringAfter("tiktok.com/").substringBefore("?").substringBefore("/video/").take(35)
-                                            .ifBlank { selectedPlatform ?: "Perfil" }, fontWeight = FontWeight.Bold,
-                                            color = Color.White, maxLines = 1)
-                                        Text("${videos.size} videos detectados", color = TechMuted, fontSize = 12.sp)
-                                    }
-                                    OutlinedButton(onClick = { profileViewModel.resumeScan() },
-                                        enabled = !profileState.countingTotal && profileState.hasMore) { Text("↻") }
-                                }
-                            }
-                            val allSelected = videos.isNotEmpty() && videos.all { it.id in selected }
-                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel), border = BorderStroke(1.dp, TechBorder)) {
-                                Row(Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    listOf(
-                                        "Detectados" to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
-                                        "Cargados" to videos.size.toString(),
-                                        "Seleccionados" to selected.size.toString()
-                                    ).forEach { (label, value) ->
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(label, fontSize = 11.sp, color = TechMuted)
-                                            Text(value, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
+                                    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                        listOf(
+                                            stringResource(R.string.home_detected) to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
+                                            stringResource(R.string.home_loaded) to videos.size.toString(),
+                                            stringResource(R.string.home_selected) to selected.size.toString()
+                                        ).forEach { (label, value) ->
+                                            Text("$label: $value", fontSize = 11.sp, color = TechMuted)
                                         }
                                     }
                                 }
@@ -985,12 +986,14 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 }
             } else if (tab == 2) {
                 val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
-                // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
-                @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
-                val audioIds by produceState<Set<String>?>(initialValue = null, key1 = allCompleted) {
-                    value = null
-                    value = withContext(Dispatchers.IO) {
-                        allCompleted.filter { record ->
+                // Show known downloads immediately; resolve older records one at a time in the background.
+                val audioKinds = remember { mutableStateMapOf<String, Boolean>() }
+                fun libraryKey(record: DownloadRecord) = "${record.videoId}|${record.savedUri}|${record.formatId}"
+                LaunchedEffect(allCompleted) {
+                    for (record in allCompleted) {
+                        val key = libraryKey(record)
+                        if (audioKinds.containsKey(key)) continue
+                        val audio = withContext(Dispatchers.IO) {
                             val uri = record.savedUri?.let(Uri::parse)
                             val mime = if (uri?.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
                             val name = if (uri?.scheme == "content") runCatching {
@@ -998,10 +1001,15 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                     ?.use { if (it.moveToFirst()) it.getString(0) else null }
                             }.getOrNull() else uri?.lastPathSegment
                             PlaybackKind.isAudio(record.formatId, mime, name)
-                        }.map { it.videoId }.toSet()
+                        }
+                        audioKinds[key] = audio
                     }
                 }
-                val completed = audioIds?.let { ids -> allCompleted.filter { (it.videoId in ids) == (libraryKind == "Música") } }.orEmpty()
+                val completed = allCompleted.filter { record ->
+                    val audio = audioKinds[libraryKey(record)]
+                        ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri)
+                    audio == (libraryKind == "Música")
+                }
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 105.dp),
                     modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
@@ -1020,8 +1028,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 }
                                 if (libraryKind == "Música") OutlinedButton(onClick = { tab = 6 }) { Text("Reproductor") }
                             }
-                            if (audioIds == null) Text("Organizando biblioteca…", color = TechMuted)
-                            else if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
+                            if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
                             else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                             if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
                         }
