@@ -1,6 +1,7 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import android.net.ConnectivityManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.Constraints
@@ -26,6 +27,9 @@ internal fun extractorSmokePassed(exitCode: Int, output: String): Boolean =
 class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
+            // Existing scheduled work may still have the old CONNECTED constraint.
+            val network = applicationContext.getSystemService(ConnectivityManager::class.java)
+            if (network == null || network.isActiveNetworkMetered) return@withContext Result.retry()
             // Never replace the extractor while a download queue is active.
             if (DownloadDatabase.get(applicationContext).downloads().pendingRecoveryCount() > 0)
                 return@withContext Result.retry()
