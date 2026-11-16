@@ -309,7 +309,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
     var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-    BackHandler(enabled = tab == 6 || tab == 7) { tab = if (tab == 7) 0 else 2 }
+    BackHandler(enabled = tab == 6 || tab == 7) { tab = 2 }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
@@ -700,7 +700,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
                         val target = listOf(0, 1, 2, 3, 4)[index]
                         NavigationBarItem(
-                            selected = tab == target || (tab == 6 && target == 3),
+                            selected = tab == target || (tab == 6 && target == 3) || (tab == 7 && target == 2),
                             onClick = { focusManager.clearFocus(); keyboard?.hide(); tab = target },
                             icon = { Icon(listOf(Icons.Outlined.Home, Icons.Outlined.Download, Icons.Outlined.VideoLibrary, Icons.Outlined.Build, Icons.Outlined.Folder)[index], contentDescription = name) },
                             label = { Text(name, maxLines = 1, fontSize = if (name == "Herramientas" || name == "Biblioteca") 10.sp else 12.sp) },
@@ -735,9 +735,6 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             TechHeader(onSettings = { tab = 5 })
-                        OutlinedButton(onClick = { tab = 7 }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Explorar colecciones")
-                        }
 
                         TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
                         OutlinedTextField(
@@ -938,7 +935,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     }
                 }
             } else if (tab == 7) {
-                CollectionsPrototype(Modifier.padding(insets).consumeWindowInsets(insets), onBack = { tab = 0 })
+                CollectionsPrototype(Modifier.padding(insets).consumeWindowInsets(insets), onBack = { tab = 2 })
             } else if (tab == 1) {
                 val queue = records.filter { LibraryVisibility.inQueue(it.status) }
                     .sortedBy { if (it.status == DownloadState.DOWNLOADING) 0 else if (it.status == DownloadState.QUEUED) 1 else 2 }
@@ -1005,6 +1002,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                            OutlinedButton(onClick = { tab = 7 }, modifier = Modifier.fillMaxWidth()) { Text("Explorar colecciones") }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("Videos", "Música").forEach { kind ->
                                     FilterChip(selected = libraryKind == kind, onClick = { libraryKind = kind }, label = { Text(kind) })
