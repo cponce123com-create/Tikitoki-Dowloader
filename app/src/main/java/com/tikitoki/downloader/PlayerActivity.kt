@@ -15,6 +15,9 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -92,14 +95,25 @@ class PlayerActivity : ComponentActivity() {
                 addView(button, LinearLayout.LayoutParams(0, dp(52), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
             }
         }
-        setContentView(LinearLayout(this).apply {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
             setBackgroundColor(Color.rgb(3, 21, 15))
             addView(label, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
             addView(playerView)
             addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        })
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(dp(10) + safeArea.left, dp(8) + safeArea.top,
+                dp(10) + safeArea.right, dp(8) + safeArea.bottom)
+            insets
+        }
+        setContentView(root)
+        ViewCompat.requestApplyInsets(root)
         val token = SessionToken(this, ComponentName(this, PlaybackService::class.java))
         val future = MediaController.Builder(this, token).buildAsync()
         controllerFuture = future
