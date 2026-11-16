@@ -26,10 +26,28 @@ class LibraryDisplayTest {
         compose.acceptFirstRunNoticeIfShown()
         runBlocking {
             val dao = DownloadDatabase.get(compose.activity).downloads()
-            dao.upsert(DownloadRecord(videoId, "https://example.com/video", "Video de prueba", null,
-                "bestvideo+bestaudio", DownloadState.COMPLETED, savedUri = "file:///tmp/test-video.mp4"))
-            dao.upsert(DownloadRecord(audioId, "https://example.com/audio", "Audio de prueba", null,
-                "bajamp3-128", DownloadState.COMPLETED, savedUri = "file:///tmp/test-audio.mp3"))
+            dao.upsert(
+                DownloadRecord(
+                    videoId = videoId,
+                    videoUrl = "https://example.com/video",
+                    title = "Video de prueba",
+                    thumbnail = null,
+                    formatId = "bestvideo+bestaudio",
+                    status = DownloadState.COMPLETED,
+                    savedUri = "file:///tmp/test-video.mp4",
+                ),
+            )
+            dao.upsert(
+                DownloadRecord(
+                    videoId = audioId,
+                    videoUrl = "https://example.com/audio",
+                    title = "Audio de prueba",
+                    thumbnail = null,
+                    formatId = "bajamp3-128",
+                    status = DownloadState.COMPLETED,
+                    savedUri = "file:///tmp/test-audio.mp3",
+                ),
+            )
         }
     }
 
