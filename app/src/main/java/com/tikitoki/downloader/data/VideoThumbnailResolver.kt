@@ -30,9 +30,10 @@ class VideoThumbnailResolver(context: Context) {
             if (video.url in failed) return@withPermit null
             withContext(Dispatchers.IO) {
                 val result = runCatching {
+                    val safeUrl = com.tikitoki.downloader.domain.DownloadInputPolicy.canonicalUrl(video.url)
                     ExtractorAccess.useEngine {
                         YoutubeDL.getInstance().init(appContext)
-                        YoutubeDL.getInstance().getInfo(video.url).thumbnail
+                        YoutubeDL.getInstance().getInfo(safeUrl).thumbnail
                     }
                 }.getOrNull()?.takeIf { it.startsWith("https://") }
                 if (result == null) failed.add(video.url) else cache[video.url] = result

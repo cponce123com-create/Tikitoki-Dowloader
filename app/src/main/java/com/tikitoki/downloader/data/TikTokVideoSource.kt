@@ -92,7 +92,7 @@ class TikTokVideoSource(private val context: Context) {
     }
 
     private fun fetchSingle(url: String): VideoEntry {
-        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(url) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(com.tikitoki.downloader.domain.DownloadInputPolicy.canonicalUrl(url)) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
         val id = info.id?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("El extractor no devolvió un ID de video.")
         return VideoEntry(
@@ -119,7 +119,7 @@ class TikTokVideoSource(private val context: Context) {
     private fun inspectProfile(link: TikTokLink): List<VideoEntry> = inspectProfileWithStatus(link).items
 
     private fun inspectProfileWithStatus(link: TikTokLink, start: Int? = null, end: Int? = null): ScanPage {
-        val request = YoutubeDLRequest(link.url)
+        val request = YoutubeDLRequest(com.tikitoki.downloader.domain.DownloadInputPolicy.canonicalUrl(link.url))
             .addOption("--flat-playlist")
             .addOption("--dump-single-json")
             .addOption("--ignore-errors")
@@ -172,7 +172,7 @@ class TikTokVideoSource(private val context: Context) {
 
     suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
         ensureReady()
-        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(video.url) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
+        val info = try { ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(com.tikitoki.downloader.domain.DownloadInputPolicy.canonicalUrl(video.url)) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; throw readableError(e) }
         FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
 
@@ -192,9 +192,9 @@ class TikTokVideoSource(private val context: Context) {
         // Remove completed remnants from an earlier run; keep .part files for --continue.
         folder.listFiles()?.filter { it.isFile && it.nameWithoutExtension == safeId &&
             it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac") }?.forEach { it.delete() }
-        val mp3Bitrate = FormatOptions.mp3Bitrate(formatId)
+        val mp3Bitrate = FormatOptions.mp3Bitrate(com.tikitoki.downloader.domain.DownloadInputPolicy.safeFormatId(formatId))
         val sourceAudio = formatId.takeIf { it.startsWith("bajaaudio-") }?.removePrefix("bajaaudio-")
-        val request = YoutubeDLRequest(video.url)
+        val request = YoutubeDLRequest(com.tikitoki.downloader.domain.DownloadInputPolicy.canonicalUrl(video.url))
             .addOption("--no-playlist")
             .addOption("--newline")
             .addOption("--continue")
