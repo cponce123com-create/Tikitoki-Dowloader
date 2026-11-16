@@ -112,6 +112,8 @@ import com.tikitoki.downloader.data.ExtractorVersion
 import com.tikitoki.downloader.data.ErrorCategory
 import com.tikitoki.downloader.data.DownloadTelemetry
 import com.tikitoki.downloader.data.DownloadDatabase
+import com.tikitoki.downloader.data.CollectionsCatalog
+import com.tikitoki.downloader.data.CatalogResult
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DeleteCompletedResult
 import com.tikitoki.downloader.data.DownloadSettings
@@ -935,7 +937,14 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                     }
                 }
             } else if (tab == 7) {
-                CollectionsPrototype(Modifier.padding(insets).consumeWindowInsets(insets), onBack = { tab = 2 })
+                CollectionsPrototype(Modifier.padding(insets).consumeWindowInsets(insets), onBack = { tab = 2 }, onOpenPlaylist = { link ->
+                    url = link
+                    profileViewModel.reset()
+                    selected.clear()
+                    message = ""
+                    tab = 0
+                    analysisRevision++
+                })
             } else if (tab == 1) {
                 val queue = records.filter { LibraryVisibility.inQueue(it.status) }
                     .sortedBy { if (it.status == DownloadState.DOWNLOADING) 0 else if (it.status == DownloadState.QUEUED) 1 else 2 }
@@ -1002,7 +1011,7 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                             TechHeader(onSettings = { tab = 5 })
                             Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                            OutlinedButton(onClick = { tab = 7 }, modifier = Modifier.fillMaxWidth()) { Text("Explorar colecciones") }
+                            OutlinedButton(onClick = { tab = 7 }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.collections_explore)) }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("Videos", "Música").forEach { kind ->
                                     FilterChip(selected = libraryKind == kind, onClick = { libraryKind = kind }, label = { Text(kind) })
@@ -1397,23 +1406,20 @@ private fun VideoThumbnail(
 
 
 
-private data class CollectionSection(val name: String, val collections: List<String>)
+
 
 @Composable
-private fun CollectionsPrototype(modifier: Modifier = Modifier, onBack: () -> Unit) {
-    val sections = remember {
-        listOf(
-            CollectionSection("Música", listOf("Rock en español", "Salsa", "Cumbia", "Baladas")),
-            CollectionSection("Cristiana", listOf("Devocionales de la mañana", "Alabanzas", "Reflexiones bíblicas")),
-            CollectionSection("Reflexiones y mensajes", listOf("Motivación", "Amor", "Amistad", "Bienestar")),
-            CollectionSection("Noticias", listOf("Perú", "Internacionales", "Tecnología"))
-        )
+private fun CollectionsPrototype(modifier: Modifier = Modifier, onBack: () -> Unit, onOpenPlaylist: (String) -> Unit) {
+    val context = LocalContext.current
+    var failed by remember { mutableStateOf(false) }
+    val catalog by produceState<CatalogResult?>(initialValue = null, key1 = context) {
+        try { value = CollectionsCatalog.load(context) }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { failed = true }
     }
-    var section by rememberSaveable { mutableStateOf<String?>(null) }
-    var collection by rememberSaveable { mutableStateOf<String?>(null) }
-    BackHandler(enabled = section != null) {
-        if (collection != null) collection = null else section = null
-    }
+    var section by rememberSaveable { mutableStateOf<Int?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    BackHandler(enabled = section != null) { section = null; query = "" }
     LazyColumn(
         modifier = modifier.fillMaxSize().background(TechBackground),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -1421,34 +1427,48 @@ private fun CollectionsPrototype(modifier: Modifier = Modifier, onBack: () -> Un
     ) {
         item {
             OutlinedButton(onClick = {
-                if (collection != null) collection = null
-                else if (section != null) section = null
-                else onBack()
-            }) { Text("Volver") }
+                if (section != null) { section = null; query = "" } else onBack()
+            }) { Text(stringResource(R.string.collections_back)) }
         }
         item {
-            Text(collection ?: section ?: "Colecciones", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Vista preliminar", color = TechMuted)
+            Text(section?.let { stringResource(it) } ?: stringResource(R.string.collections_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.collections_subtitle), color = TechMuted)
+            if (catalog?.cached == true) Text(stringResource(R.string.collections_cached), color = TechMuted)
+            if (catalog?.capped == true) Text(stringResource(R.string.collections_limit), color = TechMuted)
         }
-        if (section == null) {
-            items(sections) { entry ->
-                Card(onClick = { section = entry.name }, modifier = Modifier.fillMaxWidth()) {
+        val result = catalog
+        if (result == null) {
+            item {
+                if (failed) Text(stringResource(R.string.collections_unavailable), color = TechMuted)
+                else { CircularProgressIndicator(); Text(stringResource(R.string.collections_loading)) }
+            }
+        } else if (section == null) {
+            items(result.sections) { entry ->
+                Card(onClick = { section = entry.nameRes }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(entry.name, style = MaterialTheme.typography.titleMedium)
-                        Text(entry.collections.joinToString(" · "), color = TechMuted)
+                        Text(stringResource(entry.nameRes), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.collections_count, entry.playlists.size), color = TechMuted)
                     }
                 }
             }
-        } else if (collection == null) {
-            val entries = sections.firstOrNull { it.name == section }?.collections.orEmpty()
-            items(entries) { entry ->
-                Card(onClick = { collection = entry }, modifier = Modifier.fillMaxWidth()) {
-                    Text(entry, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-                }
-            }
+            item { Text(stringResource(R.string.collections_classification), color = TechMuted) }
         } else {
+            val all = result.sections.firstOrNull { it.nameRes == section }?.playlists.orEmpty()
+            val entries = all.filter { it.title.contains(query.trim(), ignoreCase = true) }
             item {
-                Text("El catálogo y la búsqueda automática aún no están conectados. Aquí aparecerán los contenidos disponibles.", color = TechMuted)
+                OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.collections_search)) }, singleLine = true)
+            }
+            if (entries.isEmpty()) {
+                item { Text(stringResource(if (all.isEmpty()) R.string.collections_empty else R.string.collections_no_results), color = TechMuted) }
+            }
+            items(entries) { entry ->
+                Card(onClick = { onOpenPlaylist(entry.url) }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(entry.title, style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.collections_open), color = TechMuted)
+                    }
+                }
             }
         }
     }

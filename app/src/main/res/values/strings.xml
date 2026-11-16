@@ -51,6 +51,25 @@
     <string name="format_check_status">Comprobados: %1$d de %2$d · sin comprobar: %3$d</string>
     <string name="format_check_matches">Disponible en %1$d de %2$d comprobados</string>
     <string name="format_check_failed">No se pudo consultar ningún formato. Vuelve a intentar.</string>
+    <string name="collections_explore">Explorar colecciones</string>
+    <string name="collections_back">Volver</string>
+    <string name="collections_title">Colecciones</string>
+    <string name="collections_subtitle">Descubre listas de Baja.pe</string>
+    <string name="collections_loading">Cargando colecciones…</string>
+    <string name="collections_unavailable">No se pudo cargar el catálogo. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="collections_count">%1$d listas</string>
+    <string name="collections_search">Buscar una lista</string>
+    <string name="collections_empty">Todavía no hay listas en esta sección.</string>
+    <string name="collections_no_results">No se encontraron listas.</string>
+    <string name="collections_open">Abrir lista</string>
+    <string name="collections_all">Todas las listas</string>
+    <string name="collections_music">Música</string>
+    <string name="collections_christian">Cristiana</string>
+    <string name="collections_reflection">Reflexiones y mensajes</string>
+    <string name="collections_news">Noticias</string>
+    <string name="collections_cached">Mostrando la última copia guardada.</string>
+    <string name="collections_limit">Se muestran hasta 1000 listas del canal.</string>
+    <string name="collections_classification">Las secciones se organizan automáticamente según los nombres de las listas. Busca por autor, género o tema en Todas las listas.</string>
 </resources>
 
 
