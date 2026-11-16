@@ -5,13 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.tikitoki.downloader.MainActivity
 
 /** Posts at most one notice for each completed batch. The in-app summary remains independent. */
 object CompletionNotifier {
@@ -32,7 +30,7 @@ object CompletionNotifier {
                 system.createNotificationChannel(NotificationChannel(channel, "Descargas terminadas", NotificationManager.IMPORTANCE_DEFAULT))
             }
             batches.filter { it.batchId !in sent }.forEach { batch ->
-                val intent = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java),
+                val intent = PendingIntent.getActivity(context, 0, notificationLaunchIntent(context),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                 val notice = NotificationCompat.Builder(context, channel)
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)

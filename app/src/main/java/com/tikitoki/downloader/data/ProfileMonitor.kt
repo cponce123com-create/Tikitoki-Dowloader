@@ -5,14 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.*
-import com.tikitoki.downloader.MainActivity
 import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.ProfileSnapshot
@@ -85,7 +83,7 @@ private object ProfileNotice {
             val system = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             system.createNotificationChannel(NotificationChannel(channel, "Monitoreo de perfiles", NotificationManager.IMPORTANCE_DEFAULT))
         }
-        val intent = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val intent = PendingIntent.getActivity(context, 0, notificationLaunchIntent(context), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notice = NotificationCompat.Builder(context, channel).setSmallIcon(android.R.drawable.stat_notify_more)
             .setContentTitle("Baja.pe · perfiles").setContentText(message).setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setContentIntent(intent).setAutoCancel(true).build()
