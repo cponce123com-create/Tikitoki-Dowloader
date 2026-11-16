@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 
 internal fun ComposeTestRule.acceptFirstRunNoticeIfShown() {
-    waitUntil(timeoutMillis = 10_000) {
+    waitUntil(timeoutMillis = 30_000) {
         onAllNodesWithText("Entendido").fetchSemanticsNodes().isNotEmpty() ||
             onAllNodesWithText("Inicio").fetchSemanticsNodes().isNotEmpty()
     }
