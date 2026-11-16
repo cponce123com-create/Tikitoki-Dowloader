@@ -39,6 +39,7 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
                 ExtractorRollback.run(binary, restoreMetadata = { ExtractorRecovery.restoreMetadata(applicationContext) }) {
                     updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                     val response = engine.execute(YoutubeDLRequest(emptyList()).addOption("--version"))
+                    check(response.exitCode == 0) { "Cannot verify extractor version" }
                     effectiveVersion = ExtractorVersion.parse(response.out)
                         ?: throw IllegalStateException("Cannot verify extractor version")
                     val smoke = engine.execute(YoutubeDLRequest(emptyList()).addOption("--list-extractors"))

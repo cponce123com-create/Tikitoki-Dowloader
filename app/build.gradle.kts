@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("org.jlleitschuh.gradle.ktlint")
     jacoco
 }
 
@@ -64,6 +65,11 @@ android {
     buildFeatures { compose = true }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+ktlint {
+    version.set("1.5.0")
+    baseline.set(file("ktlint-baseline.xml"))
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -161,3 +167,20 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
 
 
 
+
+/** Coverage of compiled application classes; reports only, with no threshold. */
+tasks.register<JacocoReport>("globalCoverageReport") {
+    dependsOn("testDebugUnitTest")
+    classDirectories.setFrom(fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
+    })
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(fileTree(layout.buildDirectory) {
+        include("jacoco/testDebugUnitTest.exec")
+        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+    })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}

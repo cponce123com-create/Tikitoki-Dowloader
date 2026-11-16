@@ -19,7 +19,7 @@ La concurrencia efectiva depende de la configuración, la red, la plataforma y e
 
 ## Compilación y comprobaciones
 
-Requisitos: JDK 17, Android SDK con plataforma 37 y herramientas de compilación correspondientes, y conexión a los repositorios configurados. En Linux o macOS:
+Requisitos: JDK 17, Android SDK con plataforma 36 y herramientas de compilación correspondientes, y conexión a los repositorios configurados. En Linux o macOS:
 
 ```sh
 ./gradlew testDebugUnitTest lintDebug assembleDebug
@@ -31,7 +31,19 @@ En Windows usa `gradlew.bat` con las mismas tareas. El wrapper descarga Gradle 9
 
 El objetivo del proyecto es distribuir versiones mediante GitHub Releases y, si cumplen los requisitos y son aceptadas por sus respectivos mantenedores, F-Droid e IzzyOnDroid. No se prevé distribuir por Google Play. La disponibilidad en esos catálogos no está garantizada ni implica que la integración o la publicación ya estén completadas.
 
-Antes de publicar se debe preparar una compilación reproducible y firmada, verificar las licencias de todas las dependencias y facilitar el código fuente correspondiente conforme a las licencias aplicables. Consulta [NOTICE.md](NOTICE.md) y [LICENSE](LICENSE).
+Antes de publicar se debe verificar la firma, las licencias de todas las dependencias y facilitar el código fuente correspondiente conforme a las licencias aplicables. Consulta [NOTICE.md](NOTICE.md) y [LICENSE](LICENSE).
+
+## Preparar una versión firmada
+
+La configuración de release lee las variables `KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD`. Configura las cuatro en tu entorno privado y ejecuta:
+
+```sh
+./gradlew testDebugUnitTest lintDebug assembleRelease
+```
+
+Sin ninguna variable, la compilación release queda sin firmar; con una configuración parcial, Gradle informa el error. Nunca subas el keystore ni las contraseñas al repositorio.
+
+Para GitHub Releases, crea los secretos `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD` en el repositorio. Al subir una etiqueta con formato `v*.*.*`, el flujo de release compila y verifica los APK firmados por ABI, calcula `SHA256SUMS.txt` y publica los archivos. Confirma previamente que el nombre y número de versión correspondan a la etiqueta. El funcionamiento con secretos y en dispositivos físicos debe verificarse antes de distribuir.
 
 ## Privacidad y seguridad
 
