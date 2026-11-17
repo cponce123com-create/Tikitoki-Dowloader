@@ -171,6 +171,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
+      - name: Obtener formato propuesto
+        run: |
+          ./gradlew --no-daemon :app:ktlintFormat
+          echo "FORMAT_WORKER $(base64 -w 0 app/src/main/java/com/tikitoki/downloader/data/ExtractorUpdateWorker.kt)"
+          echo "FORMAT_VERIFIER $(base64 -w 0 app/src/main/java/com/tikitoki/downloader/data/ExtractorVerifier.kt)"
       - name: Verificar estilo con línea base
         run: ./gradlew --no-daemon :app:ktlintCheck
       - uses: actions/upload-artifact@v4
