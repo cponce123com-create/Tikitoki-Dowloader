@@ -75,4 +75,32 @@ class ToolsAndAppearanceTest {
         assertEquals("Negro AMOLED", theme)
         assertEquals("720p", quality)
     }
+
+    @Test
+    fun downloadRateSelectionCallsBack() {
+        var rate: Int? = null
+
+        compose.setContent {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                DownloadSettingsSection(
+                    wifiParallel = 3,
+                    meteredParallel = 2,
+                    allowMetered = true,
+                    networkSettingsBusy = false,
+                    rateKiB = 512,
+                    showProgressNotice = false,
+                    completionNotice = true,
+                    onWifiChange = {},
+                    onMeteredChange = {},
+                    onAllowMeteredChange = {},
+                    onRateChange = { rate = it },
+                    onProgressNoticeChange = {},
+                    onCompletionNoticeChange = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Sin límite").performScrollTo().performClick()
+        assertEquals(0, rate)
+    }
 }

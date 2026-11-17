@@ -16,7 +16,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,8 +61,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -1505,32 +1502,23 @@ private fun TikitokiApp(
                                     settings.edit().putString("quality", option).apply()
                                 },
                             )
-                            Text("Descargas simultáneas", style = MaterialTheme.typography.titleMedium)
-                            Text("Wi-Fi y redes sin medición: $wifiParallel", color = TechMuted)
-                            Slider(value = wifiParallel.toFloat(), onValueChange = {
-                                wifiParallel = it.roundToInt().coerceIn(1, 8)
-                                settings.edit().putInt("wifi_parallel", wifiParallel).apply()
-                            }, valueRange = 1f..8f, steps = 6)
-                            Text("Datos y redes medidas: $meteredParallel", color = TechMuted)
-                            Slider(value = meteredParallel.toFloat(), onValueChange = {
-                                meteredParallel = it.roundToInt().coerceIn(1, 8)
-                                settings.edit().putInt("metered_parallel", meteredParallel).apply()
-                            }, valueRange = 1f..8f, steps = 6)
-                            Text(
-                                "Entre 1 y 8 por red. Al reducir el límite, los videos activos terminan antes de iniciar otros.",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Permitir redes medidas")
-                                    Text(
-                                        "Incluye datos móviles y Wi-Fi con medición.",
-                                        color = TechMuted,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                                Switch(checked = allowMetered, enabled = !networkSettingsBusy, onCheckedChange = { allowed ->
+                            DownloadSettingsSection(
+                                wifiParallel = wifiParallel,
+                                meteredParallel = meteredParallel,
+                                allowMetered = allowMetered,
+                                networkSettingsBusy = networkSettingsBusy,
+                                rateKiB = rateKiB,
+                                showProgressNotice = showProgressNotice,
+                                completionNotice = completionNotice,
+                                onWifiChange = {
+                                    wifiParallel = it.roundToInt().coerceIn(1, 8)
+                                    settings.edit().putInt("wifi_parallel", wifiParallel).apply()
+                                },
+                                onMeteredChange = {
+                                    meteredParallel = it.roundToInt().coerceIn(1, 8)
+                                    settings.edit().putInt("metered_parallel", meteredParallel).apply()
+                                },
+                                onAllowMeteredChange = { allowed ->
                                     networkSettingsBusy = true
                                     scope.launch {
                                         try {
@@ -1542,43 +1530,20 @@ private fun TikitokiApp(
                                                 } else {
                                                     "Preferencia de red actualizada."
                                                 }
-                                        } catch (
-                                            e: Exception,
-                                        ) {
+                                        } catch (e: Exception) {
                                             if (e is kotlinx.coroutines.CancellationException) throw e
                                             DiagnosticHistory.record(context, e.message)
-                                            message =
-                                                "No se pudo cambiar la preferencia de red."
+                                            message = "No se pudo cambiar la preferencia de red."
                                         } finally {
                                             networkSettingsBusy = false
                                         }
                                     }
-                                })
-                            }
-                            Text("Límite aproximado por descarga", style = MaterialTheme.typography.titleMedium)
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(
-                                    0 to "Sin límite",
-                                    256 to "256 KiB/s",
-                                    512 to "512 KiB/s",
-                                    1024 to "1 MiB/s",
-                                    2048 to "2 MiB/s",
-                                ).forEach { (rate, label) ->
-                                    FilterChip(selected = rateKiB == rate, onClick = {
-                                        rateKiB = rate
-                                        settings.edit().putInt("rate_kib", rate).apply()
-                                    }, label = { Text(label) })
-                                }
-                            }
-                            Text(
-                                "Se aplica a las siguientes descargas. El total puede variar por los fragmentos y la cantidad de videos activos.",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Text("Notificaciones", style = MaterialTheme.typography.titleMedium)
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Mostrar avance aproximado", modifier = Modifier.weight(1f))
-                                Switch(checked = showProgressNotice, onCheckedChange = {
+                                },
+                                onRateChange = { rate ->
+                                    rateKiB = rate
+                                    settings.edit().putInt("rate_kib", rate).apply()
+                                },
+                                onProgressNoticeChange = {
                                     showProgressNotice = it
                                     settings.edit().putBoolean("notify_progress_detail", it).apply()
                                     if (it &&
@@ -1588,16 +1553,8 @@ private fun TikitokiApp(
                                     ) {
                                         notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
-                                })
-                            }
-                            Text(
-                                "Android puede mantener una notificación general mientras se descarga.",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Avisar al terminar cada grupo", modifier = Modifier.weight(1f))
-                                Switch(checked = completionNotice, onCheckedChange = {
+                                },
+                                onCompletionNoticeChange = {
                                     completionNotice = it
                                     settings.edit().putBoolean("notify_completion", it).apply()
                                     if (it &&
@@ -1607,8 +1564,8 @@ private fun TikitokiApp(
                                     ) {
                                         notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
-                                })
-                            }
+                                },
+                            )
                             Text("Almacenamiento temporal", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "Limpia solo archivos temporales de Baja.pe cuando no haya descargas pendientes ni pausadas.",
