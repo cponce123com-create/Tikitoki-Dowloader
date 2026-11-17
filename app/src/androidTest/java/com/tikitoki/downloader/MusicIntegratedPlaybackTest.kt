@@ -74,14 +74,19 @@ class MusicIntegratedPlaybackTest {
             }
             assertTrue(prefs.getString("tracks", "").orEmpty().contains("music-integrated-test.wav"))
             if (android.os.Build.VERSION.SDK_INT >= 29) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, "music-playing.png")
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
-                }
+                val values =
+                    ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, "music-playing.png")
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+                    }
                 val screenshot = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
                 context.contentResolver.openOutputStream(screenshot)!!.use {
-                    compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+                    compose
+                    .onRoot()
+                    .captureToImage()
+                    .asAndroidBitmap()
+                    .compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
             }
             compose.onNodeWithContentDescription("Pausar").performClick()
