@@ -750,27 +750,31 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             TechHeader(onSettings = { tab = 5 })
 
-                        TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
-                        OutlinedTextField(
-                            value = url,
-                            onValueChange = {
-                                val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
-                                url = extracted?.url ?: it
-                                profileViewModel.reset()
-                                selected.clear()
-                                formats = listOf(defaultFormat)
-                                chosenFormat = defaultFormat
-                                message = ""
-                            },
-                            placeholder = { Text("Pega un enlace") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 1,
-                            maxLines = 3,
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); keyboard?.hide() }),
-                            shape = RoundedCornerShape(12.dp),
-                        )
+                            TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
+                            OutlinedTextField(
+                                value = url,
+                                onValueChange = {
+                                    val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
+                                    url = extracted?.url ?: it
+                                    profileViewModel.reset()
+                                    selected.clear()
+                                    formats = listOf(defaultFormat)
+                                    chosenFormat = defaultFormat
+                                    message = ""
+                                },
+                                placeholder = { Text("Pega un enlace") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 1,
+                                maxLines = 3,
+                                textStyle = MaterialTheme.typography.bodySmall,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions =
+                                    KeyboardActions(onDone = {
+                                        focusManager.clearFocus()
+                                        keyboard?.hide()
+                                    }),
+                                shape = RoundedCornerShape(12.dp),
+                            )
 
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
@@ -821,64 +825,83 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                         )
                         }
 
-                        // Force refresh remains available from the analysis action on repeat requests.
-                        if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
-                            AnalysisAnimation(found = videos.size, scanning = profileState.countingTotal || profileState.loadingMore)
-                        }
-                        if (queueBusy) CircularProgressIndicator()
-                        profileState.error?.let { error ->
-                            Column {
-                                Text(error, color = MaterialTheme.colorScheme.error)
-                                if (profileState.hasMore && !profileState.countingTotal) {
-                                    OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }
-                                }
-                                if (profileState.incompletePage && !profileState.countingTotal) {
-                                    OutlinedButton(onClick = { profileViewModel.skipIncompletePage() }) { Text("Continuar con la siguiente parte") }
-                                }
-                            }
-                        }
-                        if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
-
-
-                        if (videos.isNotEmpty()) {
-                            val allSelected = videos.all { it.id in selected }
-                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel),
-                                border = BorderStroke(1.dp, TechBorder)) {
-                                Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(TechGradient),
-                                            contentAlignment = Alignment.Center) {
-                                            if (profileState.profileImage != null) {
-                                                coil.compose.SubcomposeAsyncImage(
-                                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
-                                                        .data(profileState.profileImage).addHeader("Referer", "https://www.tiktok.com/").build(),
-                                                    contentDescription = stringResource(R.string.home_profile_photo), modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop,
-                                                    error = { Text("@", fontSize = 18.sp, color = Color.White) },
-                                                    loading = { Text("@", fontSize = 18.sp, color = Color.White) },
+                            if (videos.isNotEmpty()) {
+                                val allSelected = videos.all { it.id in selected }
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors =
+                                        androidx.compose.material3.CardDefaults
+                                            .cardColors(containerColor = TechPanel),
+                                    border = BorderStroke(1.dp, TechBorder),
+                                ) {
+                                    Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Box(
+                                                Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(TechGradient),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                if (profileState.profileImage != null) {
+                                                    coil.compose.SubcomposeAsyncImage(
+                                                        model =
+                                                            coil.request.ImageRequest
+                                                                .Builder(LocalContext.current)
+                                                                .data(
+                                                                    profileState.profileImage,
+                                                                ).addHeader("Referer", "https://www.tiktok.com/")
+                                                                .build(),
+                                                        contentDescription = stringResource(R.string.home_profile_photo),
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop,
+                                                        error = { Text("@", fontSize = 18.sp, color = Color.White) },
+                                                        loading = { Text("@", fontSize = 18.sp, color = Color.White) },
+                                                    )
+                                                } else {
+                                                    Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    url
+                                                        .substringAfter("tiktok.com/")
+                                                        .substringBefore("?")
+                                                        .substringBefore("/video/")
+                                                        .take(35)
+                                                        .ifBlank { selectedPlatform ?: "Perfil" },
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                    maxLines = 1,
+                                                    fontSize = 13.sp,
                                                 )
-                                            } else Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    stringResource(R.string.home_videos_found, videos.size),
+                                                    color = TechMuted,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { profileViewModel.resumeScan() },
+                                                enabled = !profileState.countingTotal && profileState.hasMore,
+                                            ) {
+                                                Text("↻", fontSize = 20.sp)
+                                            }
                                         }
-                                        Column(Modifier.weight(1f)) {
-                                            Text(url.substringAfter("tiktok.com/").substringBefore("?").substringBefore("/video/").take(35)
-                                                .ifBlank { selectedPlatform ?: "Perfil" }, fontWeight = FontWeight.Bold,
-                                                color = Color.White, maxLines = 1, fontSize = 13.sp)
-                                            Text(stringResource(R.string.home_videos_found, videos.size), color = TechMuted, fontSize = 11.sp)
-                                        }
-                                        IconButton(onClick = { profileViewModel.resumeScan() },
-                                            enabled = !profileState.countingTotal && profileState.hasMore) {
-                                            Text("↻", fontSize = 20.sp)
-                                        }
-                                    }
-                                    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                        listOf(
-                                            stringResource(R.string.home_detected) to (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
-                                            stringResource(R.string.home_loaded) to videos.size.toString(),
-                                            stringResource(R.string.home_selected) to selected.size.toString()
-                                        ).forEach { (label, value) ->
-                                            Text("$label: $value", fontSize = 11.sp, color = TechMuted)
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceEvenly,
+                                        ) {
+                                            listOf(
+                                                stringResource(R.string.home_detected) to
+                                                    (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
+                                                stringResource(R.string.home_loaded) to videos.size.toString(),
+                                                stringResource(R.string.home_selected) to selected.size.toString(),
+                                            ).forEach { (label, value) ->
+                                                Text("$label: $value", fontSize = 11.sp, color = TechMuted)
+                                            }
                                         }
                                     }
                                 }
@@ -988,28 +1011,45 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                 val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
                 // Show known downloads immediately; resolve older records one at a time in the background.
                 val audioKinds = remember { mutableStateMapOf<String, Boolean>() }
+
                 fun libraryKey(record: DownloadRecord) = "${record.videoId}|${record.savedUri}|${record.formatId}"
                 LaunchedEffect(allCompleted) {
                     for (record in allCompleted) {
                         val key = libraryKey(record)
                         if (audioKinds.containsKey(key)) continue
-                        val audio = withContext(Dispatchers.IO) {
-                            val uri = record.savedUri?.let(Uri::parse)
-                            val mime = if (uri?.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
-                            val name = if (uri?.scheme == "content") runCatching {
-                                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-                                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
-                            }.getOrNull() else uri?.lastPathSegment
-                            PlaybackKind.isAudio(record.formatId, mime, name)
-                        }
+                        val audio =
+                            withContext(Dispatchers.IO) {
+                                val uri = record.savedUri?.let(Uri::parse)
+                                val mime =
+                                    if (uri?.scheme ==
+                                        "content"
+                                    ) {
+                                        runCatching { context.contentResolver.getType(uri) }.getOrNull()
+                                    } else {
+                                        null
+                                    }
+                                val name =
+                                    if (uri?.scheme == "content") {
+                                        runCatching {
+                                            context.contentResolver
+                                                .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                                                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                                        }.getOrNull()
+                                    } else {
+                                        uri?.lastPathSegment
+                                    }
+                                PlaybackKind.isAudio(record.formatId, mime, name)
+                            }
                         audioKinds[key] = audio
                     }
                 }
-                val completed = allCompleted.filter { record ->
-                    val audio = audioKinds[libraryKey(record)]
-                        ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri)
-                    audio == (libraryKind == "Música")
-                }
+                val completed =
+                    allCompleted.filter { record ->
+                        val audio =
+                            audioKinds[libraryKey(record)]
+                                ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri)
+                        audio == (libraryKind == "Música")
+                    }
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 105.dp),
                     modifier = Modifier.fillMaxSize().background(if (themeChoice == "Negro AMOLED") Color.Black else TechBackground).padding(insets).consumeWindowInsets(insets),
@@ -1028,9 +1068,29 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 }
                                 if (libraryKind == "Música") OutlinedButton(onClick = { tab = 6 }) { Text("Reproductor") }
                             }
-                            if (completed.isEmpty()) Text(if (libraryKind == "Música") "Aún no hay música descargada." else "Aún no hay videos descargados.", color = TechMuted)
-                            else Text("Toca para reproducir · Mantén pulsado para eliminar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                            if (message.startsWith("No se") || message.startsWith("El archivo ya no existía")) Text(message, style = MaterialTheme.typography.bodySmall)
+                            if (completed.isEmpty()) {
+                                Text(
+                                    if (libraryKind ==
+                                        "Música"
+                                    ) {
+                                        "Aún no hay música descargada."
+                                    } else {
+                                        "Aún no hay videos descargados."
+                                    },
+                                    color = TechMuted,
+                                )
+                            } else {
+                                Text(
+                                    "Toca para reproducir · Mantén pulsado para eliminar",
+                                    color = TechMuted,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            if (message.startsWith("No se") ||
+                                message.startsWith("El archivo ya no existía")
+                            ) {
+                                Text(message, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                     gridItems(completed, key = { it.videoId }) { record ->
@@ -1048,12 +1108,46 @@ private fun TikitokiApp(incomingLink: String, shareRevision: Int) {
                                 val remote by produceState<String?>(initialValue = record.thumbnail ?: ThumbnailUrls.youtube(entry.id, entry.url), key1 = entry.url, key2 = entry.thumbnail) {
                                     value = entry.thumbnail?.takeIf { it.startsWith("https://") } ?: ThumbnailUrls.youtube(entry.id, entry.url) ?: thumbnailResolver.resolve(entry)
                                 }
+
                                 @Composable fun LocalVideoFrame() {
-                                    if (!(audioKinds[libraryKey(record)] ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri))) coil.compose.SubcomposeAsyncImage(
-                                        model = coil.request.ImageRequest.Builder(LocalContext.current).data(record.savedUri?.let(Uri::parse)).videoFrameMillis(1000).build(),
-                                        imageLoader = galleryImageLoader, contentDescription = "Miniatura de ${record.title}",
-                                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-                                        error = { Text("▶", color = TechMuted) },
+                                    if (!(audioKinds[libraryKey(record)] ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri))) {
+                                        coil.compose.SubcomposeAsyncImage(
+                                            model =
+                                                coil.request.ImageRequest
+                                                    .Builder(
+                                                        LocalContext.current,
+                                                    ).data(record.savedUri?.let(Uri::parse))
+                                                    .videoFrameMillis(1000)
+                                                    .build(),
+                                            imageLoader = galleryImageLoader,
+                                            contentDescription = "Miniatura de ${record.title}",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop,
+                                            error = { Text("▶", color = TechMuted) },
+                                            loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
+                                        )
+                                    } else {
+                                        Text("♫", color = TechMuted, style = MaterialTheme.typography.headlineMedium)
+                                    }
+                                }
+                                if (!remote.isNullOrBlank()) {
+                                    coil.compose.SubcomposeAsyncImage(
+                                        model =
+                                            coil.request.ImageRequest
+                                                .Builder(LocalContext.current)
+                                                .data(remote)
+                                                .apply {
+                                                    if (entry.url.contains(
+                                                            "tiktok.com",
+                                                        )
+                                                    ) {
+                                                        addHeader("Referer", "https://www.tiktok.com/")
+                                                    }
+                                                }.build(),
+                                        contentDescription = "Miniatura de ${record.title}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        error = { LocalVideoFrame() },
                                         loading = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
                                     ) else Text("♫", color = TechMuted, style = MaterialTheme.typography.headlineMedium)
                                 }
@@ -1398,6 +1492,7 @@ private fun VideoThumbnail(
         }
     }
 }
+
 
 
 
