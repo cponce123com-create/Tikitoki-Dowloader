@@ -6,5 +6,8 @@ plugins {
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.ktlintGradle) apply false
-    alias(libs.plugins.cyclonedxGradle)
+    alias(libs.plugins.detektGradle) apply false
+    alias(libs.plugins.dokkaGradle) apply false
+    alias(libs.plugins.baselineProfileGradle) apply false
+    alias(libs.plugins.cyclonedxGradle) apply false
 }
