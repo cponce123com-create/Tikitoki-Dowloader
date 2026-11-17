@@ -122,7 +122,7 @@ naming:
     pattern: "^[A-Z][a-zA-Z0-9]*$"
   PackageNaming:
     active: true
-    pattern: '^([a-z_][a-z0-9_]*\.)*[a-z_][a-z0-9_]*
+    pattern: '^([a-z_][a-z0-9_]*\.)*[a-z_][a-z0-9_]*$'
 
 formatting:
   Indentation:
@@ -205,87 +205,3 @@ code-style:
   MaxLineLength:
     active: true
     maxLineLength: 140
-```
-
-formatting:
-  Indentation:
-    active: true
-    indentSize: 4
-    continuationIndentSize: 4
-  NoMultipleSpaces:
-    active: true
-  NoWildcardImports:
-    active: true
-  NewlineAtEndOfFile:
-    active: true
-
-exceptions:
-  TooGenericExceptionCaught:
-    active: true
-    excludedExceptions: ["Exception", "Throwable", "CancellationException"]
-  ExceptionRaisedInUnexpectedPlace:
-    active: true
-    methodNames: ["toString", "hashCode", "equals", "finalize"]
-  SwallowedException:
-    active: true
-    ignoredExceptionTypes: ["CancellationException"]
-    allowedExceptionNameRegex: "^(ignored|expected).*"
-  ThrowingExceptionFromFinally:
-    active: true
-  ThrowingExceptionsWithoutMessageOrCause:
-    active: true
-    allowedExceptionClasses: ["IllegalStateException", "IllegalArgumentException"]
-  ThrowingNewInstanceOfSameException:
-    active: true
-
-potential-bugs:
-  NullSafeCollectionOperators:
-    active: true
-  UnreachableCode:
-    active: true
-  ReturnFromFinally:
-    active: true
-  IteratorHasNextCallsNext:
-    active: true
-  MapGetWithNotNullAssertionOperator:
-    active: true
-  LateinitUsage:
-    active: true
-
-empty-blocks:
-  EmptyCatchBlock:
-    active: true
-    allowedExceptionNameRegex: "^(ignored|expected).*"
-  EmptyDoWhileBlock:
-    active: true
-  EmptyElseBlock:
-    active: true
-  EmptyFinallyBlock:
-    active: true
-  EmptyFunctionBlock:
-    active: true
-    excludedFunctions: ["onCreate", "onCreateView", "onViewCreated", "onResume", "onPause", "onDestroy"]
-  EmptyIfBlock:
-    active: true
-  EmptyInitBlock:
-    active: true
-  EmptySecondaryConstructorBlock:
-    active: true
-  EmptyTryBlock:
-    active: true
-  EmptyWhenBlock:
-    active: true
-  EmptyWhileBlock:
-    active: true
-
-code-style:
-  WildcardImport:
-    active: true
-  NewLineAtEndOfFile:
-    active: true
-  TrailingWhitespace:
-    active: true
-  MaxLineLength:
-    active: true
-    maxLineLength: 140
-```
