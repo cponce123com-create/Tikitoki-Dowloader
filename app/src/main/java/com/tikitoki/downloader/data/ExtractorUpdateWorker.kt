@@ -48,6 +48,12 @@ class ExtractorUpdateWorker(context: Context, params: WorkerParameters) : Corout
                         ?: throw IllegalStateException("Cannot verify extractor version")
                     val smoke = engine.execute(YoutubeDLRequest(emptyList()).addOption("--list-extractors"))
                     check(extractorSmokePassed(smoke.exitCode, smoke.out)) { "Extractor smoke test failed" }
+
+                    // Verify cryptographic integrity of the updated binary against official yt-dlp release
+                    val verified = ExtractorVerifier.verifyAndLog(applicationContext)
+                    if (!verified) {
+                        throw SecurityException("yt-dlp binary verification failed - potential supply chain attack")
+                    }
                 }
             }
             if (!acquired) return@withContext Result.retry()
