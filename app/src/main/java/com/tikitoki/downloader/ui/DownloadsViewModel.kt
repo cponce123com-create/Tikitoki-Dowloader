@@ -16,6 +16,12 @@ class DownloadsViewModel(application: Application) : AndroidViewModel(applicatio
     val records = DownloadDatabase.get(application).downloads().observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<DownloadRecord>())
 
+    suspend fun pauseQueue() = DownloadQueue.pause(appContext)
+
+    suspend fun resumeQueue() = DownloadQueue.resume(appContext)
+
+    suspend fun cancelDownload(id: String) = DownloadQueue.cancel(appContext, id)
+
     fun pause() = viewModelScope.launch { DownloadQueue.pause(appContext) }
     fun resume() = viewModelScope.launch { DownloadQueue.resume(appContext) }
     fun retryFailed() = viewModelScope.launch { DownloadQueue.retryFailed(appContext) }

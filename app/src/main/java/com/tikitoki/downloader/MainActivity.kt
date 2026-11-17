@@ -1324,19 +1324,19 @@ private fun TikitokiApp(
                     onSettings = { tab = 5 },
                     onPause = {
                         scope.launch {
-                            DownloadQueue.pause(context)
+                            downloadsViewModel.pauseQueue()
                             message = "Cola pausada."
                         }
                     },
                     onResume = {
                         scope.launch {
-                            DownloadQueue.resume(context)
+                            downloadsViewModel.resumeQueue()
                             message = "Cola reanudada."
                         }
                     },
                     onCancel = { id ->
                         scope.launch {
-                            DownloadQueue.cancel(context, id)
+                            downloadsViewModel.cancelDownload(id)
                             message = "Descarga cancelada."
                         }
                     },

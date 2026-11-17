@@ -2684,8 +2684,8 @@
         <error line="16" column="35" source="standard:chain-method-continuation" />
         <error line="16" column="52" source="standard:chain-method-continuation" />
         <error line="16" column="64" source="standard:chain-method-continuation" />
-        <error line="20" column="5" source="standard:blank-line-before-declaration" />
-        <error line="21" column="5" source="standard:blank-line-before-declaration" />
+        <error line="26" column="5" source="standard:blank-line-before-declaration" />
+        <error line="27" column="5" source="standard:blank-line-before-declaration" />
     </file>
     <file name="src/main/java/com/tikitoki/downloader/ui/MusicScreen.kt">
         <error line="3" column="1" source="standard:import-ordering" />
