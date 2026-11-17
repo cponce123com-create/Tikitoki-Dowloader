@@ -121,11 +121,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             catch (e: Exception) {
                 if (token == generation) {
                     runCatching { DiagnosticHistory.record(getApplication(), e.message) }
-                    mutableState.value = ProfileUiState(
-                        hasMore = media.collection,
-                        nextPage = 1,
-                        error = AnalysisErrors.message(getApplication(), e, media.platform),
-                    )
+                    mutableState.value =
+                        ProfileUiState(
+                            hasMore = media.collection,
+                            nextPage = 1,
+                            error = AnalysisErrors.message(getApplication(), e, media.platform),
+                        )
                 }
             }
         }
@@ -198,11 +199,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             catch (e: Exception) {
                 if (token == generation) {
                     runCatching { DiagnosticHistory.record(getApplication(), e.message) }
-                    mutableState.value = mutableState.value.copy(
-                        countingTotal = false,
-                        hasMore = true,
-                        error = AnalysisErrors.message(getApplication(), e, media.platform),
-                    )
+                    mutableState.value =
+                        mutableState.value.copy(
+                            countingTotal = false,
+                            hasMore = true,
+                            error = AnalysisErrors.message(getApplication(), e, media.platform),
+                        )
                 }
             }
         }

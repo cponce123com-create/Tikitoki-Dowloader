@@ -17,6 +17,7 @@ internal object AnalysisFailureClassifier {
     fun classify(error: Throwable): AnalysisFailureKind {
         val causes = generateSequence(error) { it.cause }.take(6).toList()
         val details = causes.mapNotNull { it.message }.joinToString(" ").lowercase(Locale.ROOT)
+
         fun containsAny(vararg terms: String): Boolean = terms.any(details::contains)
         return when {
             containsAny("http error 429", "(429)", "too many requests", "limitó temporalmente") ->
