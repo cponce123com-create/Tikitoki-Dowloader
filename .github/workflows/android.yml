@@ -69,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [29, 34]
+        api: [26, 29, 31, 34, 35]
     permissions:
       contents: read
     steps:
