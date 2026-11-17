@@ -328,9 +328,10 @@ private fun TikitokiApp(
     var formats by remember { mutableStateOf(listOf(defaultFormat)) }
     var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
 
-    val diagnosticPicker = rememberDiagnosticPicker {
-        message = context.getString(R.string.diagnostic_error)
-    }
+    val diagnosticPicker =
+        rememberDiagnosticPicker {
+            message = context.getString(R.string.diagnostic_error)
+        }
 
     var analysisRevision by remember { mutableStateOf(0) }
     LaunchedEffect(incomingLink, shareRevision) {
