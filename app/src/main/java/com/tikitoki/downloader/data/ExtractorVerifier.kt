@@ -2,12 +2,11 @@ package com.tikitoki.downloader.data
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.FileInputStream
-import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import kotlinx.coroutines.CancellationException
 
 /**
  * Verifies the integrity of the yt-dlp binary by checking its SHA-256 hash
@@ -30,11 +29,12 @@ internal object ExtractorVerifier {
      * The hashes below are for yt-dlp 2024.xx.xx versions. Check youtubedl-android release notes
      * or the yt-dlp GitHub releases page for the correct hash for the version being bundled.
      */
-    private val KNOWN_HASHES = mapOf(
-        // yt-dlp 2024.09.17 (example - replace with actual version from youtubedl-android 0.18.1)
-        "2024.09.17" to "TODO_REPLACE_WITH_ACTUAL_SHA256",
-        // Add more versions as needed
-    )
+    private val KNOWN_HASHES =
+        mapOf(
+            // yt-dlp 2024.09.17 (example - replace with actual version from youtubedl-android 0.18.1)
+            "2024.09.17" to "TODO_REPLACE_WITH_ACTUAL_SHA256",
+            // Add more versions as needed
+        )
 
     /**
      * Computes the SHA-256 hash of a file.
@@ -58,10 +58,25 @@ internal object ExtractorVerifier {
      * Returns a VerificationResult indicating success, failure, or unknown version.
      */
     internal sealed class VerificationResult {
-        data class Verified(val version: String, val hash: String) : VerificationResult()
-        data class Failed(val version: String, val expectedHash: String, val actualHash: String) : VerificationResult()
-        data class UnknownVersion(val version: String, val actualHash: String) : VerificationResult()
-        data class Error(val message: String) : VerificationResult()
+        data class Verified(
+            val version: String,
+            val hash: String,
+        ) : VerificationResult()
+
+        data class Failed(
+            val version: String,
+            val expectedHash: String,
+            val actualHash: String,
+        ) : VerificationResult()
+
+        data class UnknownVersion(
+            val version: String,
+            val actualHash: String,
+        ) : VerificationResult()
+
+        data class Error(
+            val message: String,
+        ) : VerificationResult()
     }
 
     /**
@@ -75,8 +90,9 @@ internal object ExtractorVerifier {
                 return VerificationResult.Error("yt-dlp binary not found at ${binary.absolutePath}")
             }
 
-            val version = ExtractorVersion.read(context)
-                ?: return VerificationResult.Error("Cannot read yt-dlp version")
+            val version =
+                ExtractorVersion.read(context)
+                    ?: return VerificationResult.Error("Cannot read yt-dlp version")
 
             val actualHash = computeSha256(binary)
 
@@ -104,12 +120,18 @@ internal object ExtractorVerifier {
                 true
             }
             is VerificationResult.Failed -> {
-                Log.e(TAG, "❌ yt-dlp verification FAILED: version=${result.version}, expected=${result.expectedHash}, actual=${result.actualHash}")
+                Log.e(
+                    TAG,
+                    "❌ yt-dlp verification FAILED: version=${result.version}, expected=${result.expectedHash}, actual=${result.actualHash}",
+                )
                 false
             }
             is VerificationResult.UnknownVersion -> {
-                Log.w(TAG, "⚠️ yt-dlp version UNKNOWN (no reference hash): version=${result.version}, hash=${result.actualHash}. " +
-                    "Update KNOWN_HASHES in ExtractorVerifier.kt with the official hash from https://github.com/yt-dlp/yt-dlp/releases/tag/${result.version}")
+                Log.w(
+                    TAG,
+                    "⚠️ yt-dlp version UNKNOWN (no reference hash): version=${result.version}, hash=${result.actualHash}. " +
+                        "Update KNOWN_HASHES in ExtractorVerifier.kt with the official hash from https://github.com/yt-dlp/yt-dlp/releases/tag/${result.version}",
+                )
                 // Allow unknown versions for now (fail-open) but log prominently
                 // TODO: Consider fail-closed for production: return false
                 true
