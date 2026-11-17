@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.ktlintGradle)
     alias(libs.plugins.detektGradle)
     alias(libs.plugins.dokkaGradle)
-    alias(libs.plugins.baselineProfileGradle)
     jacoco
 }
 
@@ -23,14 +22,16 @@ android {
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
     }
 
-    val releaseSecrets = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
-        .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
+    val releaseSecrets =
+        listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+            .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
     val hasSigning = releaseSecrets.values.all { it != null }
     if (!hasSigning && releaseSecrets.values.any { it != null }) {
-        throw GradleException("Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.")
+        throw GradleException(
+            "Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.",
+        )
     }
     signingConfigs {
         if (hasSigning) {
@@ -48,13 +49,6 @@ android {
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = true
-        }
-        // Density splits: reduce APK size by only including needed densities
-        density {
-            isEnable = true
-            reset()
-            include("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")
-            isUniversalApk = false
         }
     }
     buildTypes {
@@ -77,71 +71,15 @@ android {
     packaging { jniLibs { useLegacyPackaging = true } }
 }
 
-// Gradle Managed Devices for consistent instrumented testing
-managedDevices {
-    devices {
-        create("pixel2Api26", com.android.build.api.dsl.ManagedVirtualDevice) {
-            device = "pixel_2"
-            apiLevel = 26
-            systemImageSource = "google-atd"
-            abi = "x86_64"
-        }
-        create("pixel2Api29", com.android.build.api.dsl.ManagedVirtualDevice) {
-            device = "pixel_2"
-            apiLevel = 29
-            systemImageSource = "google-atd"
-            abi = "x86_64"
-        }
-        create("pixel2Api31", com.android.build.api.dsl.ManagedVirtualDevice) {
-            device = "pixel_2"
-            apiLevel = 31
-            systemImageSource = "google-atd"
-            abi = "x86_64"
-        }
-        create("pixel2Api34", com.android.build.api.dsl.ManagedVirtualDevice) {
-            device = "pixel_2"
-            apiLevel = 34
-            systemImageSource = "google-atd"
-            abi = "x86_64"
-        }
-        create("pixel2Api35", com.android.build.api.dsl.ManagedVirtualDevice) {
-            device = "pixel_2"
-            apiLevel = 35
-            systemImageSource = "google-atd"
-            abi = "x86_64"
-        }
-    }
-}
-
 ktlint {
     version.set(libs.versions.ktlint.get())
     baseline.set(file("ktlint-baseline.xml"))
 }
 
 detekt {
-    config = files("detekt.yml")
+    config.setFrom(rootProject.file("detekt.yml"))
     baseline = file("detekt-baseline.xml")
     buildUponDefaultConfig = true
-}
-
-dokka {
-    outputFormat = "html"
-    outputDirectory = file("$buildDir/dokka")
-    modules {
-        getByName("main") {
-            moduleName = "Tikitoki Downloader"
-            moduleVersion = "0.5.0"
-        }
-    }
-}
-
-baselineProfile {
-    managedDevices = listOf(
-        "pixel2Api29",
-        "pixel2Api31",
-        "pixel2Api34",
-        "pixel2Api35"
-    )
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }

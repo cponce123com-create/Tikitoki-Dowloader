@@ -1,38 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-check-suppression.2.0.xsd">
-  <!--
-    Suppressions for known false positives or accepted risks.
-    Each suppression should include a comment explaining why it's acceptable.
-  -->
-
-  <!-- Example suppression template:
-  <suppress>
-    <notes><![CDATA[
-      CVE-XXXX-XXXX: [Reason for suppression]
-      This is a false positive because...
-    ]]></notes>
-    <packageUrl regex="true">pkg:maven/com.example/library@.*</packageUrl>
-    <cve>CVE-XXXX-XXXX</cve>
-  </suppress>
-  -->
-
-  <!-- GPL-3.0 extractor dependencies are from trusted sources (JitPack/GitHub releases)
-       and are verified via SHA-256 in ExtractorVerifier.kt -->
-  <suppress>
-    <notes><![CDATA[
-      GPL-3.0 extractor dependencies (NewPipeExtractor, youtubedl-android) are
-      verified via SHA-256 hash against official GitHub releases in ExtractorVerifier.kt.
-      These are not vulnerable supply-chain attacks.
-    ]]></notes>
-    <packageUrl regex="true">pkg:maven/com.github.TeamNewPipe/NewPipeExtractor@.*</packageUrl>
-  </suppress>
-  <suppress>
-    <notes><![CDATA[
-      GPL-3.0 extractor dependencies (NewPipeExtractor, youtubedl-android) are
-      verified via SHA-256 hash against official GitHub releases in ExtractorVerifier.kt.
-      These are not vulnerable supply-chain attacks.
-    ]]></notes>
-    <packageUrl regex="true">pkg:maven/io.github.junkfood02.youtubedl-android/.*@.*</packageUrl>
-  </suppress>
-
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+  <!-- Add only individually justified, reviewed false-positive suppressions. -->
 </suppressions>

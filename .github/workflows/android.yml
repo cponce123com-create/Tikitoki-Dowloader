@@ -81,7 +81,7 @@ jobs:
         with:
           gradle-version: '9.3.1'
       - name: Run Detekt
-        run: ./gradlew --no-daemon :app:detektCheck
+        run: ./gradlew --no-daemon :app:detekt
       - name: Upload Detekt report
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,7 +90,7 @@ jobs:
           path: app/build/reports/detekt/
           if-no-files-found: warn
       - name: Upload SARIF
-        if: always()
+        if: always() && hashFiles('app/build/reports/detekt/detekt.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: app/build/reports/detekt/detekt.sarif
@@ -102,19 +102,6 @@ jobs:
       fail-fast: false
       matrix:
         api: [26, 29, 31, 34, 35]
-        # Use Gradle Managed Devices for consistent emulator management
-        device: [pixel-2-api-${{ matrix.api }}]
-        include:
-          - api: 26
-            device: pixel-2-api-26
-          - api: 29
-            device: pixel-2-api-29
-          - api: 31
-            device: pixel-2-api-31
-          - api: 34
-            device: pixel-2-api-34
-          - api: 35
-            device: pixel-2-api-35
     permissions:
       contents: read
     steps:
@@ -131,16 +118,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Android Intent security tests on managed device
-        uses: gradle/gradle-managed-devices-action@v1
-        with:
-          devices: ${{ matrix.device }}
-          gradle-command: connectedDebugAndroidTest
-      - name: Pull music layout screenshots
-        if: matrix.api >= 29
+      - name: Enable KVM acceleration
         run: |
-          adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png" 2>/dev/null || true
-          adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png" 2>/dev/null || true
+          if [ -c /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            sudo udevadm settle --timeout=10
+            if test -r /dev/kvm && test -w /dev/kvm; then
+              echo "KVM disponible."
+            else
+              echo "::warning::KVM no accesible; el emulador usará software."
+            fi
+          else
+            echo "::warning::KVM no disponible; el emulador usará software."
+          fi
+      - name: Android Intent security tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: |
+            ./gradlew --no-daemon connectedDebugAndroidTest || { adb logcat -d -s ExoPlayerImplInternal:E; exit 1; }
+            [ "${{ matrix.api }}" -lt 29 ] || adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
+            [ "${{ matrix.api }}" -lt 29 ] || adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload instrumented test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,7 +162,11 @@ jobs:
           path: |
             music-layout.png
             music-playing.png
-          if-no-files-found: warn
+          if-no-files-found: error
+
+
+
+
 
   sbom:
     runs-on: ubuntu-latest
