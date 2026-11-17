@@ -7,8 +7,7 @@ import java.io.FileInputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 /**
  * Verifies the integrity of the yt-dlp binary by checking its SHA-256 hash
@@ -41,7 +40,7 @@ internal object ExtractorVerifier {
      * Computes the SHA-256 hash of a file.
      */
     @Throws(NoSuchAlgorithmException::class)
-    internal suspend fun computeSha256(file: File): String = withContext(Dispatchers.IO) {
+    internal fun computeSha256(file: File): String {
         val digest = MessageDigest.getInstance(ALGORITHM)
         val buffer = ByteArray(BUFFER_SIZE)
         FileInputStream(file).use { input ->
@@ -51,7 +50,7 @@ internal object ExtractorVerifier {
                 bytesRead = input.read(buffer)
             }
         }
-        digest.digest().joinToString("") { "%02x".format(it) }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     /**
@@ -69,7 +68,7 @@ internal object ExtractorVerifier {
      * Verifies the currently installed yt-dlp binary.
      * Called after an update to ensure the binary matches official releases.
      */
-    internal suspend fun verifyInstalledBinary(context: Context): VerificationResult = withContext(Dispatchers.IO) {
+    internal fun verifyInstalledBinary(context: Context): VerificationResult {
         try {
             val binary = ExtractorRecovery.binary(context)
             if (!binary.exists()) {
@@ -86,8 +85,10 @@ internal object ExtractorVerifier {
                 actualHash -> VerificationResult.Verified(version, actualHash)
                 else -> VerificationResult.Failed(version, expectedHash, actualHash)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            VerificationResult.Error("Verification failed: ${e.message}")
+            return VerificationResult.Error("Verification failed: ${e.message}")
         }
     }
 
@@ -95,9 +96,9 @@ internal object ExtractorVerifier {
      * Verifies and logs the result. Returns true if verified, false otherwise.
      * Logs details for audit trail.
      */
-    internal suspend fun verifyAndLog(context: Context): Boolean = withContext(Dispatchers.IO) {
+    internal fun verifyAndLog(context: Context): Boolean {
         val result = verifyInstalledBinary(context)
-        when (result) {
+        return when (result) {
             is VerificationResult.Verified -> {
                 Log.i(TAG, "✅ yt-dlp verification PASSED: version=${result.version}, hash=${result.hash}")
                 true
