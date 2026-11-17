@@ -210,24 +210,20 @@
     </file>
     <file name="src/main/java/com/tikitoki/downloader/MainActivity.kt">
         <error line="3" column="1" source="standard:import-ordering" />
-        <error line="247" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="491" column="17" source="standard:multiline-if-else" />
+        <error line="239" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="483" column="17" source="standard:multiline-if-else" />
+        <error line="669" column="1" source="standard:indent" />
         <error line="677" column="1" source="standard:indent" />
-        <error line="685" column="1" source="standard:indent" />
-        <error line="686" column="1" source="standard:indent" />
-        <error line="687" column="1" source="standard:indent" />
-        <error line="1059" column="1" source="standard:indent" />
-        <error line="1060" column="1" source="standard:no-empty-first-line-in-method-block" />
-        <error line="1076" column="1" source="standard:indent" />
-        <error line="1077" column="1" source="standard:indent" />
-        <error line="1158" column="1" source="standard:indent" />
-        <error line="1159" column="1" source="standard:indent" />
-        <error line="1160" column="1" source="standard:indent" />
-        <error line="1213" column="1" source="standard:indent" />
-        <error line="1521" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="1534" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="1534" column="33" source="standard:blank-line-before-declaration" />
-        <error line="1534" column="49" source="standard:function-naming" />
+        <error line="678" column="1" source="standard:indent" />
+        <error line="679" column="1" source="standard:indent" />
+        <error line="1051" column="1" source="standard:indent" />
+        <error line="1052" column="1" source="standard:no-empty-first-line-in-method-block" />
+        <error line="1068" column="1" source="standard:indent" />
+        <error line="1069" column="1" source="standard:indent" />
+        <error line="1150" column="1" source="standard:indent" />
+        <error line="1151" column="1" source="standard:indent" />
+        <error line="1152" column="1" source="standard:indent" />
+        <error line="1205" column="1" source="standard:indent" />
     </file>
     <file name="src/main/java/com/tikitoki/downloader/MiniPlayer.kt">
         <error line="9" column="1" source="standard:no-wildcard-imports" />
