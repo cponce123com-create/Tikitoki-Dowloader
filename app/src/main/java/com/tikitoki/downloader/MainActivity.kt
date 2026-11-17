@@ -115,7 +115,6 @@ import com.tikitoki.downloader.data.FormatAvailability
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.FormatOptions
 import com.tikitoki.downloader.data.ProfileAvatarResolver
-import com.tikitoki.downloader.data.ProfileIdentity
 import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
@@ -124,11 +123,9 @@ import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.DownloadIdentity
 import com.tikitoki.downloader.domain.IncomingIntentReader
 import com.tikitoki.downloader.domain.IncomingLinkValidator
-import com.tikitoki.downloader.domain.LinkParseResult
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.PlaybackKind
-import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import com.tikitoki.downloader.ui.MusicScreen
@@ -1385,128 +1382,41 @@ private fun TikitokiApp(
                             )
                         3 -> {
                             val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
-                            val failedCount = records.count { it.status == DownloadState.FAILED }
-                            Text("Herramientas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Text(
-                                "Reproducción y seguimiento en un solo lugar",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            if (failedCount > 0) {
-                                Text("Descargas con errores: $failedCount", style = MaterialTheme.typography.titleMedium)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = {
-                                        scope.launch {
-                                            DownloadQueue.retryFailed(context)
-                                            tab = 1
-                                            message =
-                                                "Reintentando descargas."
-                                        }
-                                    }) { Text("Reintentar") }
-                                    OutlinedButton(onClick = { scope.launch { dao.clearFailed() } }) { Text("Limpiar errores") }
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                colors =
-                                    androidx.compose.material3.CardDefaults
-                                        .cardColors(containerColor = TechPanel),
-                                border = BorderStroke(1.dp, TechBorder),
-                                shape = RoundedCornerShape(18.dp),
-                            ) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Reproductor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(
-                                        "Abre tu música o biblioteca de videos.",
-                                        color = TechMuted,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                    OutlinedButton(onClick = { showPlayerChoice = true }) { Text("Abrir reproductor") }
-                                }
-                            }
-                            Text("Monitoreo de perfiles", style = MaterialTheme.typography.titleLarge)
-
-                            OutlinedButton(onClick = {
-                                if (ProfileMonitor.add(context, url.trim())) {
-                                    if (Build.VERSION.SDK_INT >= 33 &&
-                                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            ToolsScreen(
+                                monitored = monitored,
+                                failedCount = records.count { it.status == DownloadState.FAILED },
+                                currentUrl = url,
+                                profileImage = profileState.profileImage,
+                                avatarResolver = avatarResolver,
+                                message = message,
+                                onRetryFailed = {
+                                    scope.launch {
+                                        DownloadQueue.retryFailed(context)
+                                        tab = 1
+                                        message = "Reintentando descargas."
                                     }
-                                    monitorRevision++
-                                    message = "Perfil agregado al monitoreo."
-                                } else {
-                                    message = "Pega un enlace válido de perfil en Buscar."
-                                }
-                            }) { Text("Seguir perfil del enlace actual") }
-                            monitored.forEach { profile ->
-                                val parsedProfile = TikTokLinkParser.parse(profile) as? LinkParseResult.Success
-                                val username = parsedProfile?.link?.username.orEmpty()
-                                val activeUsername = (TikTokLinkParser.parse(url) as? LinkParseResult.Success)?.link?.username
-                                val initialAvatar =
-                                    profileState.profileImage.takeIf {
-                                        username.isNotBlank() &&
-                                            username.equals(activeUsername, ignoreCase = true)
-                                    }
-
-                                // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
-                                @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
-                                val identity by produceState<ProfileIdentity?>(
-                                    initialValue = ProfileIdentity(null, initialAvatar),
-                                    key1 = profile,
-                                ) {
-                                    val found = avatarResolver.resolveIdentity(profile)
-                                    if (found != null) value = found.copy(avatar = found.avatar ?: value?.avatar)
-                                }
-                                Card {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
+                                },
+                                onClearErrors = { scope.launch { dao.clearFailed() } },
+                                onOpenPlayer = { showPlayerChoice = true },
+                                onFollowProfile = {
+                                    if (ProfileMonitor.add(context, url.trim())) {
+                                        if (Build.VERSION.SDK_INT >= 33 &&
+                                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                                            PackageManager.PERMISSION_GRANTED
                                         ) {
-                                            Box(
-                                                Modifier.size(52.dp).clip(RoundedCornerShape(26.dp)).background(TechGradient),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                if (identity?.avatar != null) {
-                                                    coil.compose.SubcomposeAsyncImage(
-                                                        model =
-                                                            coil.request.ImageRequest
-                                                                .Builder(LocalContext.current)
-                                                                .data(identity?.avatar)
-                                                                .addHeader("Referer", "https://www.tiktok.com/")
-                                                                .build(),
-                                                        contentDescription = "Foto de perfil",
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop,
-                                                        error = { Text("@", color = Color.White) },
-                                                        loading = { Text("@", color = Color.White) },
-                                                    )
-                                                } else {
-                                                    Text("@", color = Color.White)
-                                                }
-                                            }
-                                            Column(Modifier.weight(1f)) {
-                                                Text(identity?.displayName ?: "@$username", fontWeight = FontWeight.Bold, maxLines = 1)
-                                                if (identity?.displayName != null) Text("@$username", color = TechMuted, maxLines = 1)
-                                            }
+                                            notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                         }
-                                        OutlinedButton(onClick = {
-                                            ProfileMonitor.remove(context, profile)
-                                            monitorRevision++
-                                        }) { Text("Dejar de seguir") }
+                                        monitorRevision++
+                                        message = "Perfil agregado al monitoreo."
+                                    } else {
+                                        message = "Pega un enlace válido de perfil en Buscar."
                                     }
-                                }
-                            }
-                            if (monitored.isEmpty()) Text("Todavía no sigues perfiles.")
-                            if (message.contains(
-                                    "perfil",
-                                    ignoreCase = true,
-                                )
-                            ) {
-                                Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
-                            }
+                                },
+                                onUnfollowProfile = { profile ->
+                                    ProfileMonitor.remove(context, profile)
+                                    monitorRevision++
+                                },
+                            )
                         }
                         5 -> {
                             Image(
@@ -1583,24 +1493,18 @@ private fun TikitokiApp(
                                     downloadFolder = null
                                 }) { Text("Restablecer carpeta predeterminada") }
                             }
-                            Text("Tema", style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("Oscuro", "Negro AMOLED").forEach { option ->
-                                    FilterChip(selected = themeChoice == option, onClick = {
-                                        themeChoice = option
-                                        settings.edit().putString("theme", option).apply()
-                                    }, label = { Text(option) })
-                                }
-                            }
-                            Text("Calidad predeterminada", style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("Máxima", "720p", "480p").forEach { option ->
-                                    FilterChip(selected = preferredQuality == option, onClick = {
-                                        preferredQuality = option
-                                        settings.edit().putString("quality", option).apply()
-                                    }, label = { Text(option) })
-                                }
-                            }
+                            SettingsAppearanceSection(
+                                themeChoice = themeChoice,
+                                preferredQuality = preferredQuality,
+                                onThemeChange = { option ->
+                                    themeChoice = option
+                                    settings.edit().putString("theme", option).apply()
+                                },
+                                onQualityChange = { option ->
+                                    preferredQuality = option
+                                    settings.edit().putString("quality", option).apply()
+                                },
+                            )
                             Text("Descargas simultáneas", style = MaterialTheme.typography.titleMedium)
                             Text("Wi-Fi y redes sin medición: $wifiParallel", color = TechMuted)
                             Slider(value = wifiParallel.toFloat(), onValueChange = {
