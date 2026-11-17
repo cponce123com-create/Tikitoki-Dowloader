@@ -1,22 +1,22 @@
 import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
-    id("org.jlleitschuh.gradle.ktlint")
+    alias(libs.plugins.agp)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.ktlintGradle)
     jacoco
 }
 
 android {
     namespace = "com.tikitoki.downloader"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.tikitoki.downloader"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -68,7 +68,7 @@ android {
 }
 
 ktlint {
-    version.set("1.5.0")
+    version.set(libs.versions.ktlint.get())
     baseline.set(file("ktlint-baseline.xml"))
 }
 
@@ -85,47 +85,47 @@ androidComponents {
 
 dependencies {
     implementation(project(":core:security"))
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.27.1")
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("androidx.work:work-runtime-ktx:2.12.0")
-    implementation("androidx.media3:media3-exoplayer:1.5.1")
-    implementation("androidx.media3:media3-session:1.5.1")
-    implementation("androidx.media3:media3-ui:1.5.1")
+    coreLibraryDesugaring(libs.coreLibraryDesugaring)
+    implementation(libs.newPipeExtractor)
+    implementation(libs.androidxCoreKtx)
+    implementation(libs.androidxCoreSplashscreen)
+    implementation(libs.androidxDocumentfile)
+    implementation(libs.androidxLifecycleRuntimeKtx)
+    implementation(libs.androidxLifecycleViewmodelCompose)
+    implementation(libs.androidxActivityCompose)
+    implementation(libs.kotlinxCoroutinesAndroid)
+    implementation(libs.androidxWorkRuntimeKtx)
+    implementation(libs.androidxMedia3Exoplayer)
+    implementation(libs.androidxMedia3Session)
+    implementation(libs.androidxMedia3Ui)
 
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("io.coil-kt:coil-video:2.7.0")
+    implementation(platform(libs.androidxComposeBom))
+    implementation(libs.androidxComposeUi)
+    implementation(libs.androidxComposeUiToolingPreview)
+    implementation(libs.androidxComposeFoundation)
+    implementation(libs.androidxComposeMaterial3)
+    implementation(libs.androidxComposeMaterial)
+    implementation(libs.androidxComposeMaterialIconsExtended)
+    implementation(libs.coilCompose)
+    implementation(libs.coilVideo)
 
-    implementation("androidx.room:room-runtime:2.7.2")
-    implementation("androidx.room:room-ktx:2.7.2")
-    ksp("androidx.room:room-compiler:2.7.2")
+    implementation(libs.androidxRoomRuntime)
+    implementation(libs.androidxRoomKtx)
+    ksp(libs.androidxRoomCompiler)
 
     // GPL-3.0: consult redistribution obligations before publishing.
-    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
+    implementation(libs.youtubedlAndroidLibrary)
+    implementation(libs.youtubedlAndroidFfmpeg)
 
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.room:room-testing:2.7.2")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    debugImplementation(libs.androidxComposeUiTooling)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinxCoroutinesTest)
+    androidTestImplementation(libs.androidxTestJunit)
+    androidTestImplementation(libs.androidxTestRunner)
+    androidTestImplementation(libs.androidxRoomTesting)
+    androidTestImplementation(platform(libs.androidxComposeBom))
+    androidTestImplementation(libs.androidxComposeUiTestJunit4)
+    debugImplementation(libs.androidxComposeUiTestManifest)
 }
 
 // M1 coverage gate: pure URL and Intent-boundary validation logic.
