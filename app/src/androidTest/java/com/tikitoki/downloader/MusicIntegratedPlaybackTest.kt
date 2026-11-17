@@ -83,10 +83,10 @@ class MusicIntegratedPlaybackTest {
                 val screenshot = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
                 context.contentResolver.openOutputStream(screenshot)!!.use {
                     compose
-                    .onRoot()
-                    .captureToImage()
-                    .asAndroidBitmap()
-                    .compress(Bitmap.CompressFormat.PNG, 100, it)
+                        .onRoot()
+                        .captureToImage()
+                        .asAndroidBitmap()
+                        .compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
             }
             compose.onNodeWithContentDescription("Pausar").performClick()
@@ -96,4 +96,3 @@ class MusicIntegratedPlaybackTest {
         }
     }
 }
-
