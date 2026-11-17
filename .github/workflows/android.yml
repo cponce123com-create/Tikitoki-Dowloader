@@ -31,7 +31,7 @@ jobs:
           gradle-version: '9.3.1'
       - name: Test and build APK
         run: |
-          ./gradlew --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' --stacktrace testDebugUnitTest lintDebug assembleDebug verifyM1Coverage globalCoverageReport || {
+          ./gradlew --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' --stacktrace testDebugUnitTest lintDebug assembleDebug verifyM1Coverage globalCoverageReport verifyGlobalCoverage || {
             cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt 2>/dev/null || true
             exit 1
           }

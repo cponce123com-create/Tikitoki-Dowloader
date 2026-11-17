@@ -131,9 +131,15 @@ dependencies {
     implementation(libs.youtubedlAndroidLibrary)
     implementation(libs.youtubedlAndroidFfmpeg)
 
+    // Dependency Injection (Koin)
+    implementation(libs.bundles.koin)
+
     debugImplementation(libs.androidxComposeUiTooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinxCoroutinesTest)
+    testImplementation(libs.bundles.koinTest)
+    testImplementation(libs.bundles.mockk)
+    testImplementation(libs.turbine)
     androidTestImplementation(libs.androidxTestJunit)
     androidTestImplementation(libs.androidxTestRunner)
     androidTestImplementation(libs.androidxRoomTesting)
@@ -204,5 +210,26 @@ tasks.register<JacocoReport>("globalCoverageReport") {
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+/** Global coverage gate: enforces minimum 70% line coverage across all modules. */
+tasks.register<JacocoCoverageVerification>("verifyGlobalCoverage") {
+    dependsOn("globalCoverageReport")
+    classDirectories.setFrom(tasks.named<JacocoReport>("globalCoverageReport").map { it.classDirectories })
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include("jacoco/testDebugUnitTest.exec")
+            include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.70".toBigDecimal()
+            }
+        }
     }
 }
