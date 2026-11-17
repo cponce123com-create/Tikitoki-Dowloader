@@ -80,7 +80,9 @@ internal fun SettingsGeneralSection(
         Text(
             stringResource(
                 R.string.settings_last_update,
-                java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastSuccess)),
+                java.text.DateFormat
+                    .getDateTimeInstance()
+                    .format(java.util.Date(lastSuccess)),
             ),
         )
     }
