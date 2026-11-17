@@ -8,6 +8,5 @@ plugins {
     alias(libs.plugins.ktlintGradle) apply false
     alias(libs.plugins.detektGradle) apply false
     alias(libs.plugins.dokkaGradle) apply false
-    alias(libs.plugins.baselineProfileGradle) apply false
-    alias(libs.plugins.cyclonedxGradle) apply false
+    alias(libs.plugins.cyclonedxGradle)
 }

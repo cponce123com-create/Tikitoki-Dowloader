@@ -48,10 +48,12 @@ jobs:
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         id: depcheck
+        env:
+          JAVA_HOME: /opt/jdk
         with:
           project: 'Tikitoki Downloader'
           path: '.'
-          format: 'SARIF'
+          format: 'ALL'
           out: 'reports'
           args: >
             --failOnCVSS 7
@@ -61,7 +63,7 @@ jobs:
 
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('reports/dependency-check-report.sarif') != ''
         with:
           sarif_file: reports/dependency-check-report.sarif
           category: dependency-check
@@ -74,8 +76,3 @@ jobs:
           path: reports/dependency-check-report.html
           if-no-files-found: warn
 
-      - name: Check for critical vulnerabilities
-        if: failure() && steps.depcheck.outcome == 'failure'
-        run: |
-          echo "::error::Critical vulnerabilities found (CVSS >= 7). Check the Dependency Check report."
-          exit 1
