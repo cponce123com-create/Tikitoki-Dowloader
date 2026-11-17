@@ -111,10 +111,8 @@ jobs:
           emulator-boot-timeout: 900
           script: |
             ./gradlew --no-daemon connectedDebugAndroidTest || { adb logcat -d -s ExoPlayerImplInternal:E; exit 1; }
-            if [ "${{ matrix.api }}" -ge 29 ]; then
-              adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
-              adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
-            fi
+            [ "${{ matrix.api }}" -lt 29 ] || adb pull /sdcard/Download/music-layout.png "$GITHUB_WORKSPACE/music-layout.png"
+            [ "${{ matrix.api }}" -lt 29 ] || adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload instrumented test results
         if: always()
         uses: actions/upload-artifact@v4
