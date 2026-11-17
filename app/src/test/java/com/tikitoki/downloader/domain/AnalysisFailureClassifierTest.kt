@@ -1,8 +1,8 @@
 package com.tikitoki.downloader.domain
 
-import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.net.UnknownHostException
 
 class AnalysisFailureClassifierTest {
     @Test
