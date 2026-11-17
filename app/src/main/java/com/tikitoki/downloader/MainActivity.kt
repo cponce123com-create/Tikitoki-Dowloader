@@ -226,6 +226,7 @@ private val TikitokiColors =
     )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Suppress("ktlint:standard:function-naming")
 @Composable
 private fun TikitokiApp(
     incomingLink: String,
@@ -1930,7 +1931,11 @@ private fun TikitokiApp(
                                             val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
                                             allowMetered = allowed
                                             message =
-                                                if (pending) "Cola pausada para cambiar la red. Pulsa Continuar en Descargas." else "Preferencia de red actualizada."
+                                                if (pending) {
+                                                    "Cola pausada para cambiar la red. Pulsa Continuar en Descargas."
+                                                } else {
+                                                    "Preferencia de red actualizada."
+                                                }
                                         } catch (
                                             e: Exception,
                                         ) {
@@ -2075,6 +2080,7 @@ private fun TikitokiApp(
     }
 }
 
+@Suppress("ktlint:standard:function-naming")
 @Composable
 private fun SummaryTile(
     label: String,
@@ -2090,6 +2096,7 @@ private fun SummaryTile(
     }
 }
 
+@Suppress("ktlint:standard:function-naming")
 @Composable
 private fun DownloadHistoryCard(
     record: DownloadRecord,

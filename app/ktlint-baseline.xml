@@ -210,35 +210,35 @@
     </file>
     <file name="src/main/java/com/tikitoki/downloader/MainActivity.kt">
         <error line="3" column="1" source="standard:import-ordering" />
-        <error line="267" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="511" column="17" source="standard:multiline-if-else" />
-        <error line="697" column="1" source="standard:indent" />
-        <error line="705" column="1" source="standard:indent" />
+        <error line="268" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="512" column="17" source="standard:multiline-if-else" />
+        <error line="698" column="1" source="standard:indent" />
         <error line="706" column="1" source="standard:indent" />
         <error line="707" column="1" source="standard:indent" />
-        <error line="992" column="1" source="standard:indent" />
+        <error line="708" column="1" source="standard:indent" />
         <error line="993" column="1" source="standard:indent" />
-        <error line="1120" column="1" source="standard:indent" />
-        <error line="1121" column="1" source="standard:no-empty-first-line-in-method-block" />
-        <error line="1137" column="1" source="standard:indent" />
+        <error line="994" column="1" source="standard:indent" />
+        <error line="1121" column="1" source="standard:indent" />
+        <error line="1122" column="1" source="standard:no-empty-first-line-in-method-block" />
         <error line="1138" column="1" source="standard:indent" />
-        <error line="1219" column="1" source="standard:indent" />
+        <error line="1139" column="1" source="standard:indent" />
         <error line="1220" column="1" source="standard:indent" />
         <error line="1221" column="1" source="standard:indent" />
-        <error line="1274" column="1" source="standard:indent" />
-        <error line="1582" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="1595" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="1595" column="33" source="standard:blank-line-before-declaration" />
-        <error line="1595" column="49" source="standard:function-naming" />
-        <error line="2186" column="13" source="standard:function-naming" />
-        <error line="2194" column="1" source="standard:spacing-between-declarations-with-annotations" />
-        <error line="2210" column="1" source="standard:indent" />
-        <error line="2211" column="1" source="standard:indent" />
-        <error line="2212" column="1" source="standard:indent" />
-        <error line="2213" column="1" source="standard:indent" />
-        <error line="2239" column="1" source="standard:indent" />
+        <error line="1222" column="1" source="standard:indent" />
+        <error line="1275" column="1" source="standard:indent" />
+        <error line="1583" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="1596" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="1596" column="33" source="standard:blank-line-before-declaration" />
+        <error line="1596" column="49" source="standard:function-naming" />
+        <error line="2193" column="13" source="standard:function-naming" />
+        <error line="2201" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="2217" column="1" source="standard:indent" />
+        <error line="2218" column="1" source="standard:indent" />
+        <error line="2219" column="1" source="standard:indent" />
+        <error line="2220" column="1" source="standard:indent" />
         <error line="2246" column="1" source="standard:indent" />
-        <error line="2246" column="26" source="standard:trailing-comma-on-call-site" />
+        <error line="2253" column="1" source="standard:indent" />
+        <error line="2253" column="26" source="standard:trailing-comma-on-call-site" />
     </file>
     <file name="src/main/java/com/tikitoki/downloader/MiniPlayer.kt">
         <error line="9" column="1" source="standard:no-wildcard-imports" />
