@@ -22,14 +22,16 @@ android {
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
     }
 
-    val releaseSecrets = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
-        .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
+    val releaseSecrets =
+        listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+            .associateWith { providers.environmentVariable(it).orNull?.takeIf(String::isNotBlank) }
     val hasSigning = releaseSecrets.values.all { it != null }
     if (!hasSigning && releaseSecrets.values.any { it != null }) {
-        throw GradleException("Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.")
+        throw GradleException(
+            "Para firmar release se requieren las cuatro variables KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS y KEY_PASSWORD.",
+        )
     }
     signingConfigs {
         if (hasSigning) {
