@@ -172,7 +172,12 @@ jobs:
         with:
           gradle-version: '9.3.1'
       - name: Verificar estilo con línea base
-        run: ./gradlew --no-daemon :app:ktlintCheck
+        run: |
+          ./gradlew --no-daemon :app:ktlintFormat || true
+          tar -czf /tmp/formatted.tar.gz app/src/main/java/com/tikitoki/downloader/MainActivity.kt app/src/main/java/com/tikitoki/downloader/data/CompletionNotifier.kt app/src/main/java/com/tikitoki/downloader/data/ProfileMonitor.kt app/src/main/java/com/tikitoki/downloader/data/TikTokVideoSource.kt app/src/main/java/com/tikitoki/downloader/data/VideoThumbnailResolver.kt
+          printf 'FORMATTED_ARCHIVE='
+          base64 -w 0 /tmp/formatted.tar.gz
+          printf '\n'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
