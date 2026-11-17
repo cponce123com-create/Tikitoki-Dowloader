@@ -101,6 +101,26 @@
     <string name="settings_show_progress">Mostrar avance aproximado</string>
     <string name="settings_notification_explanation">Android puede mantener una notificación general mientras se descarga.</string>
     <string name="settings_notify_completion">Avisar al terminar cada grupo</string>
+    <string name="home_link_hint">Pega un enlace</string>
+    <string name="home_paste">Pegar</string>
+    <string name="home_analyzing">Analizando…</string>
+    <string name="home_analyze">Analizar</string>
+    <string name="settings_title">Configuración</string>
+    <string name="settings_monitor_frequency">Frecuencia de monitoreo de perfiles</string>
+    <string name="settings_version_label">Baja.pe · v0.5</string>
+    <string name="settings_app_update">Actualización de la app</string>
+    <string name="settings_update_failed">No se pudo actualizar. Inténtalo otra vez.</string>
+    <string name="settings_update_complete">Actualización completada.</string>
+    <string name="settings_update_pending">Actualización pendiente.</string>
+    <string name="settings_last_update">Última actualización: %1$s</string>
+    <string name="settings_update_search">↻ Buscar actualización</string>
+    <string name="settings_destination">Destino de las descargas</string>
+    <string name="settings_choose_folder">📁 Elegir carpeta o memoria SD</string>
+    <string name="settings_reset_folder">Restablecer carpeta predeterminada</string>
+    <string name="settings_temporary_storage">Almacenamiento temporal</string>
+    <string name="settings_temporary_explanation">Limpia solo archivos temporales de Baja.pe cuando no haya descargas pendientes ni pausadas.</string>
+    <string name="settings_clear_temporary">Limpiar temporales</string>
+    <string name="settings_authorized_gpl">Uso de contenido autorizado · GPL-3.0</string>
 </resources>
 
 
