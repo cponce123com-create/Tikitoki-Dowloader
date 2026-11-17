@@ -1,16 +1,14 @@
 package com.tikitoki.downloader.data
 
-import kotlinx.coroutines.runBlocking
-import java.io.File
-import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 class ExtractorVerifierTest {
-
     @Test
-    fun computesSha256Correctly() = runBlocking {
+    fun computesSha256Correctly() {
         val dir = Files.createTempDirectory("verifier-test").toFile()
         try {
             val file = File(dir, "test.bin")
@@ -18,11 +16,13 @@ class ExtractorVerifierTest {
             val hash = ExtractorVerifier.computeSha256(file)
             // SHA-256 of "abc"
             assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", hash)
-        } finally { dir.deleteRecursively() }
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test
-    fun computesSha256ForEmptyFile() = runBlocking {
+    fun computesSha256ForEmptyFile() {
         val dir = Files.createTempDirectory("verifier-test").toFile()
         try {
             val file = File(dir, "empty.bin")
@@ -30,11 +30,13 @@ class ExtractorVerifierTest {
             val hash = ExtractorVerifier.computeSha256(file)
             // SHA-256 of empty string
             assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", hash)
-        } finally { dir.deleteRecursively() }
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test
-    fun verifiesKnownHash() = runBlocking {
+    fun verifiesKnownHash() {
         val dir = Files.createTempDirectory("verifier-test").toFile()
         try {
             val file = File(dir, "yt-dlp")
@@ -47,11 +49,13 @@ class ExtractorVerifierTest {
             assertTrue(verified is ExtractorVerifier.VerificationResult.Verified)
             assertEquals("test-version", verified.version)
             assertEquals(hash, verified.hash)
-        } finally { dir.deleteRecursively() }
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test
-    fun detectsHashMismatch() = runBlocking {
+    fun detectsHashMismatch() {
         val dir = Files.createTempDirectory("verifier-test").toFile()
         try {
             val file = File(dir, "yt-dlp")
@@ -64,7 +68,9 @@ class ExtractorVerifierTest {
             assertEquals("test-version", failed.version)
             assertEquals(expectedHash, failed.expectedHash)
             assertEquals(actualHash, failed.actualHash)
-        } finally { dir.deleteRecursively() }
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test
