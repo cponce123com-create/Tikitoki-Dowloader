@@ -226,20 +226,7 @@ private fun TikitokiApp(
 ) {
     val context = LocalContext.current
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
-    var showFirstRunNotice by remember { mutableStateOf(!settings.getBoolean("first_run_notice_accepted", false)) }
-    if (showFirstRunNotice) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = { Text(stringResource(R.string.first_run_title)) },
-            text = { Text(stringResource(R.string.first_run_body)) },
-            confirmButton = {
-                Button(onClick = {
-                    settings.edit().putBoolean("first_run_notice_accepted", true).apply()
-                    showFirstRunNotice = false
-                }) { Text(stringResource(R.string.first_run_accept)) }
-            },
-        )
-    }
+    FirstRunNotice(settings)
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
     var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
     var wifiParallel by remember { mutableStateOf(DownloadSettings.wifiLimit(context)) }
