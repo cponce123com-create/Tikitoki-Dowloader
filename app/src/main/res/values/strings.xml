@@ -64,6 +64,43 @@
     <string name="navigation_library">Biblioteca</string>
     <string name="navigation_tools">Herramientas</string>
     <string name="navigation_files">Archivos</string>
+    <string name="tools_title">Herramientas</string>
+    <string name="tools_subtitle">Reproducción y seguimiento en un solo lugar</string>
+    <string name="tools_failed_count">Descargas con errores: %1$d</string>
+    <string name="tools_retry">Reintentar</string>
+    <string name="tools_clear_errors">Limpiar errores</string>
+    <string name="tools_player">Reproductor</string>
+    <string name="tools_player_subtitle">Abre tu música o biblioteca de videos.</string>
+    <string name="tools_open_player">Abrir reproductor</string>
+    <string name="tools_profile_monitor">Monitoreo de perfiles</string>
+    <string name="tools_follow_profile">Seguir perfil del enlace actual</string>
+    <string name="tools_profile_photo">Foto de perfil</string>
+    <string name="tools_unfollow">Dejar de seguir</string>
+    <string name="tools_empty_profiles">Todavía no sigues perfiles.</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_theme_amoled">Negro AMOLED</string>
+    <string name="settings_default_quality">Calidad predeterminada</string>
+    <string name="settings_quality_maximum">Máxima</string>
+    <string name="settings_quality_720">720p</string>
+    <string name="settings_quality_480">480p</string>
+    <string name="settings_parallel">Descargas simultáneas</string>
+    <string name="settings_wifi_count">Wi-Fi y redes sin medición: %1$d</string>
+    <string name="settings_metered_count">Datos y redes medidas: %1$d</string>
+    <string name="settings_parallel_explanation">Entre 1 y 8 por red. Al reducir el límite, los videos activos terminan antes de iniciar otros.</string>
+    <string name="settings_allow_metered">Permitir redes medidas</string>
+    <string name="settings_metered_explanation">Incluye datos móviles y Wi-Fi con medición.</string>
+    <string name="settings_rate_limit">Límite aproximado por descarga</string>
+    <string name="settings_rate_unlimited">Sin límite</string>
+    <string name="settings_rate_256">256 KiB/s</string>
+    <string name="settings_rate_512">512 KiB/s</string>
+    <string name="settings_rate_1024">1 MiB/s</string>
+    <string name="settings_rate_2048">2 MiB/s</string>
+    <string name="settings_rate_explanation">Se aplica a las siguientes descargas. El total puede variar por los fragmentos y la cantidad de videos activos.</string>
+    <string name="settings_notifications">Notificaciones</string>
+    <string name="settings_show_progress">Mostrar avance aproximado</string>
+    <string name="settings_notification_explanation">Android puede mantener una notificación general mientras se descarga.</string>
+    <string name="settings_notify_completion">Avisar al terminar cada grupo</string>
 </resources>
 
 
