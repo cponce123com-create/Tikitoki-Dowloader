@@ -75,20 +75,9 @@ ktlint {
 }
 
 detekt {
-    config = files(rootProject.file("detekt.yml"))
+    config.setFrom(rootProject.file("detekt.yml"))
     baseline = file("detekt-baseline.xml")
     buildUponDefaultConfig = true
-}
-
-dokka {
-    outputFormat = "html"
-    outputDirectory = file("$buildDir/dokka")
-    modules {
-        getByName("main") {
-            moduleName = "Tikitoki Downloader"
-            moduleVersion = "0.5.0"
-        }
-    }
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
