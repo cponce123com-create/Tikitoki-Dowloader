@@ -11,12 +11,12 @@ plugins {
 
 android {
     namespace = "com.tikitoki.downloader"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk = Integer.parseInt(libs.versions.compileSdk.get())
 
     defaultConfig {
         applicationId = "com.tikitoki.downloader"
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        minSdk = Integer.parseInt(libs.versions.minSdk.get())
+        targetSdk = Integer.parseInt(libs.versions.targetSdk.get())
         versionCode = 5
         versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

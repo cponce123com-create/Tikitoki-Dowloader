@@ -38,15 +38,22 @@ class MusicIntegratedScreenTest {
         compose.onNodeWithContentDescription("Repetir").assertIsDisplayed()
         compose.onNodeWithText("Biblioteca").assertIsDisplayed()
 
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "music-layout.png")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
-        }
-        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
-        context.contentResolver.openOutputStream(uri)!!.use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val values =
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "music-layout.png")
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+                }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+            context.contentResolver.openOutputStream(uri)!!.use {
+                compose
+                    .onRoot()
+                    .captureToImage()
+                    .asAndroidBitmap()
+                    .compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
         }
     }
 }
