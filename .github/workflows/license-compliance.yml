@@ -168,7 +168,7 @@ jobs:
           test -f "$SBOM_PATH" || { echo "❌ SBOM not generated"; exit 1; }
 
           # Check for key components
-          jq -e '.components[]? | select(.name=="youtubedl-android")' "$SBOM_PATH" >/dev/null || {
+          jq -e '.components[]? | select(.group=="io.github.junkfood02.youtubedl-android" and .name=="library")' "$SBOM_PATH" >/dev/null || {
             echo "❌ youtubedl-android not in SBOM"
             exit 1
           }
@@ -187,7 +187,7 @@ jobs:
 
       # --- 6. Summary ---
       - name: Compliance Summary
-        if: always()
+        if: success()
         run: |
           echo "=========================================="
           echo "LICENSE COMPLIANCE CHECK SUMMARY"

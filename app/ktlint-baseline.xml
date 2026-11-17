@@ -52,22 +52,12 @@
         <error line="73" column="141" source="standard:max-line-length" />
         <error line="73" column="150" source="standard:argument-list-wrapping" />
         <error line="73" column="155" source="standard:argument-list-wrapping" />
-        <error line="76" column="26" source="standard:multiline-expression-wrapping" />
-        <error line="83" column="24" source="standard:chain-method-continuation" />
-        <error line="83" column="33" source="standard:chain-method-continuation" />
-        <error line="83" column="50" source="standard:chain-method-continuation" />
-        <error line="83" column="68" source="standard:chain-method-continuation" />
-        <error line="93" column="1" source="standard:no-consecutive-blank-lines" />
+        <error line="95" column="1" source="standard:no-consecutive-blank-lines" />
     </file>
     <file name="src/androidTest/java/com/tikitoki/downloader/MusicIntegratedScreenTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
         <error line="26" column="39" source="standard:statement-wrapping" />
         <error line="26" column="77" source="standard:statement-wrapping" />
-        <error line="42" column="22" source="standard:multiline-expression-wrapping" />
-        <error line="49" column="20" source="standard:chain-method-continuation" />
-        <error line="49" column="29" source="standard:chain-method-continuation" />
-        <error line="49" column="46" source="standard:chain-method-continuation" />
-        <error line="49" column="64" source="standard:chain-method-continuation" />
     </file>
     <file name="src/androidTest/java/com/tikitoki/downloader/audio/SpectrumAudioProcessorTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
