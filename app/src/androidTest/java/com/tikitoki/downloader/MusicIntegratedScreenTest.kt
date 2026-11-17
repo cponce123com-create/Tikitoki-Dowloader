@@ -48,7 +48,8 @@ class MusicIntegratedScreenTest {
             val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
             context.contentResolver.openOutputStream(uri)!!.use {
                 compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
-            }        }
+            }
+        }
 
     }
 }
