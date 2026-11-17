@@ -54,6 +54,7 @@ androidxComposeUiTestManifest = "1.6.7"
 
 # Code Quality
 ktlint = "1.5.0"
+ktlintPlugin = "14.2.0"
 
 # CycloneDX SBOM
 cyclonedx = "3.6.1"
@@ -152,3 +153,13 @@ coil = ["coilCompose", "coilVideo"]
 extractors = ["newPipeExtractor", "youtubedlAndroidLibrary", "youtubedlAndroidFfmpeg"]
 testing = ["junit", "androidxTestJunit", "androidxTestRunner", "androidxRoomTesting", "androidxComposeUiTestJunit4", "androidxComposeUiTestManifest"]
 composeTest = ["androidxComposeUiTestJunit4", "androidxComposeUiTestManifest"]
+
+[plugins]
+agp = { id = "com.android.application", version.ref = "agp" }
+kotlinGradlePlugin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+ktlintGradle = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintPlugin" }
+cyclonedxGradle = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
