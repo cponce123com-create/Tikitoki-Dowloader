@@ -121,6 +121,13 @@
     <string name="settings_temporary_explanation">Limpia solo archivos temporales de Baja.pe cuando no haya descargas pendientes ni pausadas.</string>
     <string name="settings_clear_temporary">Limpiar temporales</string>
     <string name="settings_authorized_gpl">Uso de contenido autorizado · GPL-3.0</string>
+    <string name="analysis_error_rate_limit">El sitio limitó temporalmente las solicitudes. Espera unos minutos y vuelve a intentarlo.</string>
+    <string name="analysis_error_access">El contenido podría ser privado o requerir una sesión autorizada.</string>
+    <string name="analysis_error_network">No se pudo conectar. Comprueba tu conexión y vuelve a intentarlo.</string>
+    <string name="analysis_error_update_requested">TikTok devolvió una respuesta que el motor no pudo interpretar. Se solicitó una actualización; requiere una red sin medición y que no haya descargas pendientes. Cuando termine, vuelve a intentar.</string>
+    <string name="analysis_error_update_manual">TikTok devolvió una respuesta que el motor no pudo interpretar. En Ajustes, solicita la actualización del motor con una red sin medición y vuelve a intentar.</string>
+    <string name="analysis_error_tiktok">No se pudo analizar TikTok. Comprueba la conexión y, si el problema continúa, actualiza el motor desde Ajustes con una red sin medición.</string>
+    <string name="analysis_error_generic">No se pudo analizar el enlace. Comprueba la conexión y que el contenido esté disponible.</string>
 </resources>
 
 

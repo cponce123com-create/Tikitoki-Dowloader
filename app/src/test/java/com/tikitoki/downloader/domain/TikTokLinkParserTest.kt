@@ -38,4 +38,13 @@ class TikTokLinkParserTest {
         val result = TikTokLinkParser.parse("www.tiktok.com/@demo")
         assertTrue(result is LinkParseResult.Success)
     }
+    @Test fun recognizesSharedProfileWithTrackingParameters() {
+        val url = "https://www.tiktok.com/@usuario123?_r=1&_t=ZS-example"
+        val media = MediaLinkParser.parse(url)
+        assertEquals(MediaPlatform.TIKTOK, media?.platform)
+        assertEquals(true, media?.collection)
+        val result = TikTokLinkParser.parse(url) as LinkParseResult.Success
+        assertEquals(TikTokLinkType.PROFILE, result.link.type)
+        assertEquals("usuario123", result.link.username)
+    }
 }
