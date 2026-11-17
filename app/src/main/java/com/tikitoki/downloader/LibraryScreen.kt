@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -57,6 +56,7 @@ import com.tikitoki.downloader.ui.TechMuted
 import com.tikitoki.downloader.ui.TechPanel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.lazy.grid.items as gridItems
 
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("ktlint:standard:function-naming")
