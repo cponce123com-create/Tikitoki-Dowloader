@@ -43,9 +43,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -135,7 +133,6 @@ import com.tikitoki.downloader.ui.TechHeader
 import com.tikitoki.downloader.ui.TechMuted
 import com.tikitoki.downloader.ui.TechPanel
 import com.tikitoki.downloader.ui.TechPink
-import com.tikitoki.downloader.ui.TechPlatformStrip
 import com.tikitoki.downloader.ui.TechPrimaryButton
 import com.tikitoki.downloader.ui.TechPurple
 import kotlinx.coroutines.Dispatchers
@@ -965,10 +962,13 @@ private fun TikitokiApp(
                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             TechHeader(onSettings = { tab = 5 })
 
-                            TechPlatformStrip(selectedPlatform) { platform -> selectedPlatform = platform }
-                            OutlinedTextField(
-                                value = url,
-                                onValueChange = {
+                            HomeLinkInput(
+                                selectedPlatform = selectedPlatform,
+                                url = url,
+                                loading = profileState.loading,
+                                loadingMore = profileState.loadingMore,
+                                onPlatformChange = { selectedPlatform = it },
+                                onUrlChange = {
                                     val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
                                     url = extracted?.url ?: it
                                     profileViewModel.reset()
@@ -977,72 +977,41 @@ private fun TikitokiApp(
                                     chosenFormat = defaultFormat
                                     message = ""
                                 },
-                                placeholder = { Text("Pega un enlace") },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 1,
-                                maxLines = 3,
-                                textStyle = MaterialTheme.typography.bodySmall,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions =
-                                    KeyboardActions(onDone = {
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
-                                    }),
-                                shape = RoundedCornerShape(12.dp),
-                            )
-
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedButton(
-                                    modifier = Modifier.weight(1f).height(44.dp),
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
-                                        val pasted = clipboard.getText()?.text.orEmpty()
-                                        val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)
-                                        if (link != null) {
-                                            url = link.url
-                                            profileViewModel.reset()
+                                onKeyboardDone = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                },
+                                onPaste = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                    val pasted = clipboard.getText()?.text.orEmpty()
+                                    val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)
+                                    if (link != null) {
+                                        url = link.url
+                                        profileViewModel.reset()
+                                        selected.clear()
+                                        formats = listOf(defaultFormat)
+                                        chosenFormat = defaultFormat
+                                        message = ""
+                                        analysisRevision++
+                                    } else {
+                                        message = "El portapapeles no contiene un enlace válido."
+                                    }
+                                },
+                                onAnalyze = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                    when (val parsed = IncomingLinkValidator.validate(url)) {
+                                        null -> message = invalidLinkMessage
+                                        else -> {
                                             selected.clear()
-                                            formats = listOf(defaultFormat)
-                                            chosenFormat = defaultFormat
+                                            profileViewModel.inspect(url, forceRefresh)
+                                            forceRefresh = false
                                             message = ""
-                                            analysisRevision++
-                                        } else {
-                                            message = "El portapapeles no contiene un enlace válido."
                                         }
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, TechBorder),
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.ContentPaste,
-                                        contentDescription = null,
-                                        tint = TechPink,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                    Spacer(Modifier.width(5.dp))
-                                    Text("Pegar")
-                                }
-                                TechPrimaryButton(
-                                    modifier = Modifier.weight(1f).height(44.dp),
-                                    enabled = !profileState.loading && !profileState.loadingMore && url.isNotBlank(),
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
-                                        when (val parsed = IncomingLinkValidator.validate(url)) {
-                                            null -> message = invalidLinkMessage
-                                            else -> {
-                                                selected.clear()
-                                                profileViewModel.inspect(url, forceRefresh)
-                                                forceRefresh = false
-                                                message = ""
-                                            }
-                                        }
-                                    },
-                                    icon = Icons.Outlined.Search,
-                                    text = if (profileState.loading) "Analizando…" else "Analizar",
-                                )
-                            }
+                                    }
+                                },
+                            )
 
                             // Force refresh remains available from the analysis action on repeat requests.
                             if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
@@ -1416,80 +1385,32 @@ private fun TikitokiApp(
                             )
                         }
                         5 -> {
-                            Image(
-                                painter = painterResource(R.drawable.bajape_logo),
-                                contentDescription = null,
-                                modifier = Modifier.size(76.dp),
-                            )
-                            Text("Configuración", style = MaterialTheme.typography.titleLarge)
-                            OutlinedButton(onClick = { showAbout = true }) { Text(stringResource(R.string.about_open)) }
-                            val diagnosticFilename = stringResource(R.string.diagnostic_filename)
-                            OutlinedButton(
-                                onClick = { diagnosticPicker.launch(diagnosticFilename) },
-                            ) { Text(stringResource(R.string.diagnostic_export)) }
-                            Text("Frecuencia de monitoreo de perfiles", style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(6, 12, 24).forEach { hours ->
-                                    FilterChip(selected = monitorHours == hours, onClick = {
-                                        monitorHours = hours
-                                        ProfileMonitor.setInterval(context, hours)
-                                    }, label = { Text(stringResource(R.string.monitor_hours, hours)) })
-                                }
-                            }
-                            Text(stringResource(R.string.monitor_weekly), color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                            Text(stringResource(R.string.monitor_page_limit), style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(5, 10, 25, 50).forEach { pages ->
-                                    FilterChip(selected = monitorPages == pages, onClick = {
-                                        monitorPages = pages
-                                        ProfileMonitor.setPageLimit(context, pages)
-                                    }, label = { Text(pages.toString()) })
-                                }
-                            }
-                            Text("Baja.pe · v0.5")
-                            Text("Actualización de la app", style = MaterialTheme.typography.titleMedium)
-                            val updateStatus =
-                                remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }
-                            val lastResult = updateStatus.getString("last_result", "Actualización aún no ejecutada.")
-                            Text(
-                                if (lastResult?.startsWith("Falló") ==
-                                    true
-                                ) {
-                                    "No se pudo actualizar. Inténtalo otra vez."
-                                } else if (lastResult?.startsWith("Actualización ejecutada") ==
-                                    true
-                                ) {
-                                    "Actualización completada."
-                                } else {
-                                    "Actualización pendiente."
+                            SettingsGeneralSection(
+                                monitorHours = monitorHours,
+                                monitorPages = monitorPages,
+                                folderDescription = folderDescription,
+                                hasCustomFolder = downloadFolder != null,
+                                message = message,
+                                onAbout = { showAbout = true },
+                                onExportDiagnostic = { diagnosticPicker.launch(context.getString(R.string.diagnostic_filename)) },
+                                onMonitorHoursChange = { hours ->
+                                    monitorHours = hours
+                                    ProfileMonitor.setInterval(context, hours)
                                 },
-                                color = TechMuted,
-                            )
-                            val lastSuccess = updateStatus.getLong("last_success", 0L)
-                            if (lastSuccess >
-                                0L
-                            ) {
-                                Text(
-                                    "Última actualización: " +
-                                        java.text.DateFormat
-                                            .getDateTimeInstance()
-                                            .format(java.util.Date(lastSuccess)),
-                                )
-                            }
-                            OutlinedButton(onClick = {
-                                ExtractorUpdateWorker.updateNow(context)
-                                message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
-                            }) { Text("↻ Buscar actualización") }
-                            Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
-                            Text("Destino de las descargas", style = MaterialTheme.typography.titleMedium)
-                            Text(folderDescription, color = TechMuted)
-                            OutlinedButton(onClick = { folderPicker.launch(null) }) { Text("📁 Elegir carpeta o memoria SD") }
-                            if (downloadFolder != null) {
-                                OutlinedButton(onClick = {
+                                onMonitorPagesChange = { pages ->
+                                    monitorPages = pages
+                                    ProfileMonitor.setPageLimit(context, pages)
+                                },
+                                onUpdateExtractor = {
+                                    ExtractorUpdateWorker.updateNow(context)
+                                    message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
+                                },
+                                onChooseFolder = { folderPicker.launch(null) },
+                                onResetFolder = {
                                     settings.edit().remove("download_tree").apply()
                                     downloadFolder = null
-                                }) { Text("Restablecer carpeta predeterminada") }
-                            }
+                                },
+                            )
                             SettingsAppearanceSection(
                                 themeChoice = themeChoice,
                                 preferredQuality = preferredQuality,
@@ -1566,16 +1487,10 @@ private fun TikitokiApp(
                                     }
                                 },
                             )
-                            Text("Almacenamiento temporal", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Limpia solo archivos temporales de Baja.pe cuando no haya descargas pendientes ni pausadas.",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.bodySmall,
+                            SettingsStorageSection(
+                                message = message,
+                                onClearTemporary = { showClearTemp = true },
                             )
-                            OutlinedButton(onClick = { showClearTemp = true }) { Text("Limpiar temporales") }
-                            if (message.isNotBlank()) Text(message, color = TechMuted, style = MaterialTheme.typography.bodySmall)
-
-                            Text("Uso de contenido autorizado · GPL-3.0")
                         }
                         else -> {
                             Text("Archivos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

@@ -121,8 +121,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             catch (e: Exception) {
                 if (token == generation) {
                     runCatching { DiagnosticHistory.record(getApplication(), e.message) }
-                    mutableState.value = ProfileUiState(hasMore = media.collection, nextPage = 1,
-                        error = "No se pudo analizar el enlace. Comprueba que sea público y vuelve a intentarlo.")
+                    mutableState.value =
+                        ProfileUiState(
+                            hasMore = media.collection,
+                            nextPage = 1,
+                            error = AnalysisErrors.message(getApplication(), e, media.platform),
+                        )
                 }
             }
         }
@@ -195,8 +199,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             catch (e: Exception) {
                 if (token == generation) {
                     runCatching { DiagnosticHistory.record(getApplication(), e.message) }
-                    mutableState.value = mutableState.value.copy(countingTotal = false,
-                        hasMore = true, error = "Conexión interrumpida. Pulsa Reanudar escaneo para continuar.")
+                    mutableState.value =
+                        mutableState.value.copy(
+                            countingTotal = false,
+                            hasMore = true,
+                            error = AnalysisErrors.message(getApplication(), e, media.platform),
+                        )
                 }
             }
         }
