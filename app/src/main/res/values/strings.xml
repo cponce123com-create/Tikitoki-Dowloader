@@ -59,6 +59,11 @@
     <string name="home_detected">Detectados</string>
     <string name="home_loaded">Cargados</string>
     <string name="home_selected">Seleccionados</string>
+    <string name="navigation_home">Inicio</string>
+    <string name="navigation_downloads">Descargas</string>
+    <string name="navigation_library">Biblioteca</string>
+    <string name="navigation_tools">Herramientas</string>
+    <string name="navigation_files">Archivos</string>
 </resources>
 
 

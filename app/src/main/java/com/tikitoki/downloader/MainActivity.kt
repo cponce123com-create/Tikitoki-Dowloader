@@ -46,13 +46,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -64,8 +60,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -940,56 +934,15 @@ private fun TikitokiApp(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = { SafeAreaTopBar { } },
             bottomBar = {
-                Column(Modifier.fillMaxWidth().background(Color(0xFF09231B))) {
-                    MiniPlayer(musicScreenOpen = tab == 6, onMusic = { tab = 6 })
-                    NavigationBar(containerColor = Color(0xFF09231B)) {
-                        listOf("Inicio", "Descargas", "Biblioteca", "Herramientas", "Archivos").forEachIndexed { index, name ->
-                            val target = listOf(0, 1, 2, 3, 4)[index]
-                            NavigationBarItem(
-                                selected = tab == target || (tab == 6 && target == 3),
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    keyboard?.hide()
-                                    tab = target
-                                },
-                                icon = {
-                                    Icon(
-                                        listOf(
-                                            Icons.Outlined.Home,
-                                            Icons.Outlined.Download,
-                                            Icons.Outlined.VideoLibrary,
-                                            Icons.Outlined.Build,
-                                            Icons.Outlined.Folder,
-                                        )[index],
-                                        contentDescription = name,
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        name,
-                                        maxLines = 1,
-                                        fontSize =
-                                            if (name == "Herramientas" ||
-                                                name == "Biblioteca"
-                                            ) {
-                                                10.sp
-                                            } else {
-                                                12.sp
-                                            },
-                                    )
-                                },
-                                colors =
-                                    androidx.compose.material3.NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color.White,
-                                        selectedTextColor = Color.White,
-                                        indicatorColor = TechPurple,
-                                        unselectedIconColor = TechMuted,
-                                        unselectedTextColor = TechMuted,
-                                    ),
-                            )
-                        }
-                    }
-                }
+                MainNavigationBar(
+                    selectedTab = tab,
+                    onMusic = { tab = 6 },
+                    onNavigate = { target ->
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                        tab = target
+                    },
+                )
             },
         ) { insets ->
             val completedKinds =

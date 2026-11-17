@@ -38,4 +38,13 @@ class DownloadNavigationTest {
         compose.onNodeWithText("Videos").assertIsDisplayed()
         compose.onNodeWithText("Música").assertIsDisplayed()
     }
+
+    @Test
+    fun switchesBetweenDownloadsAndHome() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Descargas").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Descargas").performClick()
+        compose.onNodeWithText("Cola de descargas").assertIsDisplayed()
+        compose.onNodeWithText("Inicio").performClick()
+        compose.onNodeWithText("Pegar").assertIsDisplayed()
+    }
 }
