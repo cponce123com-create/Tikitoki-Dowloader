@@ -90,7 +90,21 @@ jobs:
           # FFmpeg - LGPL-2.1/GPL-2.0 (bundled in youtubedl-android)
           echo "Note: FFmpeg source bundled in youtubedl-android artifact"
 
-      # --- 3. Build debug APK and verify NOTICE is included ---
+      # --- 3. Verify network_security_config.xml ---
+      - name: Verify network_security_config.xml
+        run: |
+          echo "=== Checking network_security_config.xml ==="
+          test -f app/src/main/res/xml/network_security_config.xml || { echo "❌ network_security_config.xml not found"; exit 1; }
+
+          # Verify it has pinning for critical domains
+          grep -q "github.com" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing github.com pinning"; exit 1; }
+          grep -q "jitpack.io" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing jitpack.io pinning"; exit 1; }
+          grep -q "pin-set" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing pin-set"; exit 1; }
+          grep -q "networkSecurityConfig" app/src/main/AndroidManifest.xml || { echo "❌ AndroidManifest.xml missing networkSecurityConfig reference"; exit 1; }
+
+          echo "✅ network_security_config.xml verified with pinning"
+
+      # --- 4. Build debug APK and verify NOTICE is included ---
       - name: Build debug APK
         run: |
           ./gradlew --no-daemon --max-workers=2 \
@@ -180,7 +194,8 @@ jobs:
           echo "=========================================="
           echo "✅ NOTICE.md verified"
           echo "✅ GPL source availability confirmed"
-          echo "✅ NOTICE.md included in APK"
+          echo "✅ network_security_config.xml with pinning verified"
+          echo "✅ NOTICE.md and LICENSE included in APK assets"
           echo "✅ Build instructions in README.md"
           echo "✅ SBOM generated and contains GPL components"
           echo "=========================================="
