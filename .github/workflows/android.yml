@@ -210,5 +210,7 @@ jobs:
           test "${#apks[@]}" -eq 2
           for apk in "${apks[@]}"; do
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$apk"
+            # Verify x86_64 is excluded: no production Android devices use x86_64
+            # (only emulators). Release APKs should only contain arm64-v8a and armeabi-v7a.
             if unzip -Z1 "$apk" | grep -q '^lib/x86_64/'; then exit 1; fi
           done

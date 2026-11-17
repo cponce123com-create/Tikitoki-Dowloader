@@ -78,6 +78,10 @@ androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         variant.outputs.forEach { output ->
             val abi = output.filters.find { it.filterType == ABI }?.identifier
+            // Exclude x86_64: virtually no production Android devices use x86_64
+            // (only emulators). Reduces universal APK size by ~25% and avoids
+            // shipping native libs for an architecture with zero real users.
+            // See: https://developer.android.com/ndk/guides/abis#x86_64
             if (abi == null || abi == "x86_64") output.enabled.set(false)
         }
     }
