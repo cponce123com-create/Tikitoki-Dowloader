@@ -36,9 +36,13 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
+          accept-android-sdk-licenses: true
 
       - name: Install Android 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
