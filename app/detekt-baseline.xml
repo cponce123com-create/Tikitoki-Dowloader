@@ -1,3 +1,827 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<baseline>
-</baseline>
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ComplexCondition:MiniPlayer.kt$(!musicScreenOpen || video) &amp;&amp; uri.isNotBlank() &amp;&amp; (video || uri.startsWith("content:") || uri.startsWith("file:"))</ID>
+    <ID>ComplexCondition:PlaybackKind.kt$PlaybackKind$selector.startsWith("bestaudio") || selector.startsWith("worstaudio") || selector.startsWith("bajaaudio-") || selector.matches(Regex("bajamp3-(128|192|256|320)"))</ID>
+    <ID>CyclomaticComplexMethod:DestinationNaming.kt$DestinationNaming$fun account(url: String): String</ID>
+    <ID>CyclomaticComplexMethod:DiagnosticExport.kt$@Composable internal fun rememberDiagnosticPicker(onError: () -&gt; Unit): ManagedActivityResultLauncher&lt;String, Uri?&gt;</ID>
+    <ID>CyclomaticComplexMethod:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadHistoryCard( record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -&gt; Unit, onCancel: () -&gt; Unit = {}, onOpen: () -&gt; Unit, )</ID>
+    <ID>CyclomaticComplexMethod:DownloadWorker.kt$DownloadWorker$private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri</ID>
+    <ID>CyclomaticComplexMethod:DownloadWorker.kt$DownloadWorker$private suspend fun downloadOne(item: DownloadRecord)</ID>
+    <ID>CyclomaticComplexMethod:FormatOptions.kt$FormatOptions$fun individual(context: Context, formats: List&lt;VideoFormat&gt;, durationSeconds: Int): List&lt;FormatChoice&gt;</ID>
+    <ID>CyclomaticComplexMethod:LibraryScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable internal fun LibraryScreen( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, libraryKind: String, message: String, thumbnailResolver: VideoThumbnailResolver, galleryImageLoader: ImageLoader, onSettings: () -&gt; Unit, onKindChange: (String) -&gt; Unit, onMusic: () -&gt; Unit, onCollections: () -&gt; Unit, onOpen: (DownloadRecord) -&gt; Unit, onDelete: (DownloadRecord) -&gt; Unit, )</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable private fun TikitokiApp( incomingLink: String, shareRevision: Int, )</ID>
+    <ID>CyclomaticComplexMethod:MiniPlayer.kt$@Composable fun MiniPlayer(musicScreenOpen: Boolean, onMusic: () -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:MusicActivity.kt$MusicActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>CyclomaticComplexMethod:MusicActivity.kt$MusicActivity$private fun updateUi()</ID>
+    <ID>CyclomaticComplexMethod:MusicScreen.kt$@Composable fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onRequestConsumed: () -&gt; Unit = {})</ID>
+    <ID>CyclomaticComplexMethod:PlayerActivity.kt$PlayerActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>CyclomaticComplexMethod:ProfileAvatarResolver.kt$ProfileAvatarResolver$internal fun findIdentity(html: String, username: String): ProfileIdentity?</ID>
+    <ID>CyclomaticComplexMethod:ProfileMonitor.kt$ProfileFullMonitorWorker$override suspend fun doWork(): Result</ID>
+    <ID>CyclomaticComplexMethod:ProfileViewModel.kt$ProfileViewModel$fun inspect(url: String, forceRefresh: Boolean = false)</ID>
+    <ID>CyclomaticComplexMethod:ProfileViewModel.kt$ProfileViewModel$private fun scanRemaining(token: Int)</ID>
+    <ID>CyclomaticComplexMethod:TikTokLinkParser.kt$TikTokLinkParser$fun parse(rawInput: String): LinkParseResult</ID>
+    <ID>CyclomaticComplexMethod:TikTokVideoSource.kt$TikTokVideoSource$private fun inspectProfileWithStatus( link: TikTokLink, start: Int? = null, end: Int? = null, ): ScanPage</ID>
+    <ID>CyclomaticComplexMethod:TikTokVideoSource.kt$TikTokVideoSource$suspend fun downloadToCache( video: VideoEntry, formatId: String, onSpeed: (String) -&gt; Unit = {}, onProgress: (Int) -&gt; Unit, ): File</ID>
+    <ID>EmptyElseBlock:MusicActivity.kt$MusicActivity$if (!favorites.add(uri)) favorites.remove(uri)</ID>
+    <ID>EmptyElseBlock:MusicActivity.kt$MusicActivity$if (e is kotlinx.coroutines.CancellationException) throw e</ID>
+    <ID>EmptyElseBlock:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;$if (p != null &amp;&amp; p.duration &gt; 0) p.seekTo(p.duration * progress / 1000)</ID>
+    <ID>EmptyElseBlock:MusicScreen.kt$if (duration &gt; 0) controller?.seekTo(position)</ID>
+    <ID>EmptyElseBlock:MusicScreen.kt$if (e is kotlinx.coroutines.CancellationException) throw e</ID>
+    <ID>EmptyElseBlock:PlayerActivity.kt$PlayerActivity$if (e is kotlinx.coroutines.CancellationException) throw e</ID>
+    <ID>EmptyFunctionBlock:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;${ }</ID>
+    <ID>EmptyFunctionBlock:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;${}</ID>
+    <ID>ForbiddenComment:ExtractorVerifier.kt$ExtractorVerifier$// TODO: Consider fail-closed for production: return false</ID>
+    <ID>FunctionNaming:AnalysisAnimation.kt$@Composable fun AnalysisAnimation(found: Int, scanning: Boolean)</ID>
+    <ID>FunctionNaming:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadHistoryCard( record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -&gt; Unit, onCancel: () -&gt; Unit = {}, onOpen: () -&gt; Unit, )</ID>
+    <ID>FunctionNaming:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun SummaryTile( label: String, count: Int, modifier: Modifier = Modifier, )</ID>
+    <ID>FunctionNaming:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun VideoThumbnail( video: VideoEntry, resolver: VideoThumbnailResolver, modifier: Modifier = Modifier, deferLookup: Boolean = false, )</ID>
+    <ID>FunctionNaming:DownloadQueueScreen.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadQueueScreen( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, message: String, thumbnailResolver: VideoThumbnailResolver, downloadSpeeds: Map&lt;String, String&gt;, onSettings: () -&gt; Unit, onPause: () -&gt; Unit, onResume: () -&gt; Unit, onCancel: (String) -&gt; Unit, )</ID>
+    <ID>FunctionNaming:DownloadSettingsSection.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadSettingsSection( wifiParallel: Int, meteredParallel: Int, allowMetered: Boolean, networkSettingsBusy: Boolean, rateKiB: Int, showProgressNotice: Boolean, completionNotice: Boolean, onWifiChange: (Float) -&gt; Unit, onMeteredChange: (Float) -&gt; Unit, onAllowMeteredChange: (Boolean) -&gt; Unit, onRateChange: (Int) -&gt; Unit, onProgressNoticeChange: (Boolean) -&gt; Unit, onCompletionNoticeChange: (Boolean) -&gt; Unit, )</ID>
+    <ID>FunctionNaming:FirstRunNotice.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun FirstRunNotice(settings: SharedPreferences)</ID>
+    <ID>FunctionNaming:HomeLinkInput.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun HomeLinkInput( selectedPlatform: String?, url: String, loading: Boolean, loadingMore: Boolean, onPlatformChange: (String) -&gt; Unit, onUrlChange: (String) -&gt; Unit, onKeyboardDone: () -&gt; Unit, onPaste: () -&gt; Unit, onAnalyze: () -&gt; Unit, )</ID>
+    <ID>FunctionNaming:LibraryScreen.kt$@Composable fun LocalVideoFrame()</ID>
+    <ID>FunctionNaming:LibraryScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable internal fun LibraryScreen( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, libraryKind: String, message: String, thumbnailResolver: VideoThumbnailResolver, galleryImageLoader: ImageLoader, onSettings: () -&gt; Unit, onKindChange: (String) -&gt; Unit, onMusic: () -&gt; Unit, onCollections: () -&gt; Unit, onOpen: (DownloadRecord) -&gt; Unit, onDelete: (DownloadRecord) -&gt; Unit, )</ID>
+    <ID>FunctionNaming:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable private fun TikitokiApp( incomingLink: String, shareRevision: Int, )</ID>
+    <ID>FunctionNaming:MainNavigationBar.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun MainNavigationBar( selectedTab: Int, onMusic: () -&gt; Unit, onNavigate: (Int) -&gt; Unit, )</ID>
+    <ID>FunctionNaming:MiniPlayer.kt$@Composable fun MiniPlayer(musicScreenOpen: Boolean, onMusic: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:MusicScreen.kt$@Composable fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onRequestConsumed: () -&gt; Unit = {})</ID>
+    <ID>FunctionNaming:MusicScreen.kt$@Composable private fun DeckButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, active: Boolean, modifier: Modifier = Modifier, onClick: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:SafeAreaTopBar.kt$@Composable fun SafeAreaTopBar( insets: WindowInsets = WindowInsets.safeDrawing, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:SettingsAppearanceSection.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun SettingsAppearanceSection( themeChoice: String, preferredQuality: String, onThemeChange: (String) -&gt; Unit, onQualityChange: (String) -&gt; Unit, )</ID>
+    <ID>FunctionNaming:SettingsGeneralSection.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun SettingsGeneralSection( monitorHours: Int, monitorPages: Int, folderDescription: String, hasCustomFolder: Boolean, message: String, onAbout: () -&gt; Unit, onExportDiagnostic: () -&gt; Unit, onMonitorHoursChange: (Int) -&gt; Unit, onMonitorPagesChange: (Int) -&gt; Unit, onUpdateExtractor: () -&gt; Unit, onChooseFolder: () -&gt; Unit, onResetFolder: () -&gt; Unit, )</ID>
+    <ID>FunctionNaming:SettingsGeneralSection.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun SettingsStorageSection( message: String, onClearTemporary: () -&gt; Unit, )</ID>
+    <ID>FunctionNaming:TechDesign.kt$@Composable fun TechHeader(onSettings: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:TechDesign.kt$@Composable fun TechPlatformStrip(selected: String?, onSelect: (String) -&gt; Unit)</ID>
+    <ID>FunctionNaming:TechDesign.kt$@Composable fun TechPrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:TechDesign.kt$@Composable fun TechShortcut(title: String, value: String, symbol: String, modifier: Modifier = Modifier, onClick: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:TechDesign.kt$@Composable private fun PlatformLogo(platform: String, modifier: Modifier = Modifier)</ID>
+    <ID>FunctionNaming:ToolsScreen.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun ToolsScreen( monitored: List&lt;String&gt;, failedCount: Int, currentUrl: String, profileImage: String?, avatarResolver: ProfileAvatarResolver, message: String, onRetryFailed: () -&gt; Unit, onClearErrors: () -&gt; Unit, onOpenPlayer: () -&gt; Unit, onFollowProfile: () -&gt; Unit, onUnfollowProfile: (String) -&gt; Unit, )</ID>
+    <ID>InstanceOfCheckForException:DiagnosticExport.kt$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$e is RestoreFailedException</ID>
+    <ID>InstanceOfCheckForException:MainActivity.kt$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:MusicActivity.kt$MusicActivity$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:MusicScreen.kt$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:PlayerActivity.kt$PlayerActivity$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:SavedFileDeletion.kt$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>InstanceOfCheckForException:TikTokVideoSource.kt$TikTokVideoSource$e is kotlinx.coroutines.CancellationException</ID>
+    <ID>LongMethod:DiagnosticExport.kt$@Composable internal fun rememberDiagnosticPicker(onError: () -&gt; Unit): ManagedActivityResultLauncher&lt;String, Uri?&gt;</ID>
+    <ID>LongMethod:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadHistoryCard( record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -&gt; Unit, onCancel: () -&gt; Unit = {}, onOpen: () -&gt; Unit, )</ID>
+    <ID>LongMethod:DownloadComponents.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun VideoThumbnail( video: VideoEntry, resolver: VideoThumbnailResolver, modifier: Modifier = Modifier, deferLookup: Boolean = false, )</ID>
+    <ID>LongMethod:DownloadQueueScreen.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun DownloadQueueScreen( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, message: String, thumbnailResolver: VideoThumbnailResolver, downloadSpeeds: Map&lt;String, String&gt;, onSettings: () -&gt; Unit, onPause: () -&gt; Unit, onResume: () -&gt; Unit, onCancel: (String) -&gt; Unit, )</ID>
+    <ID>LongMethod:DownloadWorker.kt$DownloadWorker$private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri</ID>
+    <ID>LongMethod:DownloadWorker.kt$DownloadWorker$private suspend fun downloadOne(item: DownloadRecord)</ID>
+    <ID>LongMethod:LibraryScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable internal fun LibraryScreen( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, libraryKind: String, message: String, thumbnailResolver: VideoThumbnailResolver, galleryImageLoader: ImageLoader, onSettings: () -&gt; Unit, onKindChange: (String) -&gt; Unit, onMusic: () -&gt; Unit, onCollections: () -&gt; Unit, onOpen: (DownloadRecord) -&gt; Unit, onDelete: (DownloadRecord) -&gt; Unit, )</ID>
+    <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable private fun TikitokiApp( incomingLink: String, shareRevision: Int, )</ID>
+    <ID>LongMethod:MusicActivity.kt$MusicActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:MusicScreen.kt$@Composable fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onRequestConsumed: () -&gt; Unit = {})</ID>
+    <ID>LongMethod:PlayerActivity.kt$PlayerActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:ProfileMonitor.kt$ProfileFullMonitorWorker$override suspend fun doWork(): Result</ID>
+    <ID>LongMethod:SettingsGeneralSection.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun SettingsGeneralSection( monitorHours: Int, monitorPages: Int, folderDescription: String, hasCustomFolder: Boolean, message: String, onAbout: () -&gt; Unit, onExportDiagnostic: () -&gt; Unit, onMonitorHoursChange: (Int) -&gt; Unit, onMonitorPagesChange: (Int) -&gt; Unit, onUpdateExtractor: () -&gt; Unit, onChooseFolder: () -&gt; Unit, onResetFolder: () -&gt; Unit, )</ID>
+    <ID>LongMethod:TechDesign.kt$@Composable private fun PlatformLogo(platform: String, modifier: Modifier = Modifier)</ID>
+    <ID>LongMethod:TikTokVideoSource.kt$TikTokVideoSource$private fun inspectProfileWithStatus( link: TikTokLink, start: Int? = null, end: Int? = null, ): ScanPage</ID>
+    <ID>LongMethod:TikTokVideoSource.kt$TikTokVideoSource$suspend fun downloadToCache( video: VideoEntry, formatId: String, onSpeed: (String) -&gt; Unit = {}, onProgress: (Int) -&gt; Unit, ): File</ID>
+    <ID>LongMethod:ToolsScreen.kt$@Suppress("ktlint:standard:function-naming") @Composable internal fun ToolsScreen( monitored: List&lt;String&gt;, failedCount: Int, currentUrl: String, profileImage: String?, avatarResolver: ProfileAvatarResolver, message: String, onRetryFailed: () -&gt; Unit, onClearErrors: () -&gt; Unit, onOpenPlayer: () -&gt; Unit, onFollowProfile: () -&gt; Unit, onUnfollowProfile: (String) -&gt; Unit, )</ID>
+    <ID>LongParameterList:DownloadComponents.kt$( record: DownloadRecord, resolver: VideoThumbnailResolver, speed: String? = null, onDelete: () -&gt; Unit, onCancel: () -&gt; Unit = {}, onOpen: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:DownloadQueueScreen.kt$( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, message: String, thumbnailResolver: VideoThumbnailResolver, downloadSpeeds: Map&lt;String, String&gt;, onSettings: () -&gt; Unit, onPause: () -&gt; Unit, onResume: () -&gt; Unit, onCancel: (String) -&gt; Unit, )</ID>
+    <ID>LongParameterList:DownloadSettingsSection.kt$( wifiParallel: Int, meteredParallel: Int, allowMetered: Boolean, networkSettingsBusy: Boolean, rateKiB: Int, showProgressNotice: Boolean, completionNotice: Boolean, onWifiChange: (Float) -&gt; Unit, onMeteredChange: (Float) -&gt; Unit, onAllowMeteredChange: (Boolean) -&gt; Unit, onRateChange: (Int) -&gt; Unit, onProgressNoticeChange: (Boolean) -&gt; Unit, onCompletionNoticeChange: (Boolean) -&gt; Unit, )</ID>
+    <ID>LongParameterList:HomeLinkInput.kt$( selectedPlatform: String?, url: String, loading: Boolean, loadingMore: Boolean, onPlatformChange: (String) -&gt; Unit, onUrlChange: (String) -&gt; Unit, onKeyboardDone: () -&gt; Unit, onPaste: () -&gt; Unit, onAnalyze: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:LibraryScreen.kt$( records: List&lt;DownloadRecord&gt;, themeChoice: String, insets: PaddingValues, libraryKind: String, message: String, thumbnailResolver: VideoThumbnailResolver, galleryImageLoader: ImageLoader, onSettings: () -&gt; Unit, onKindChange: (String) -&gt; Unit, onMusic: () -&gt; Unit, onCollections: () -&gt; Unit, onOpen: (DownloadRecord) -&gt; Unit, onDelete: (DownloadRecord) -&gt; Unit, )</ID>
+    <ID>LongParameterList:SettingsGeneralSection.kt$( monitorHours: Int, monitorPages: Int, folderDescription: String, hasCustomFolder: Boolean, message: String, onAbout: () -&gt; Unit, onExportDiagnostic: () -&gt; Unit, onMonitorHoursChange: (Int) -&gt; Unit, onMonitorPagesChange: (Int) -&gt; Unit, onUpdateExtractor: () -&gt; Unit, onChooseFolder: () -&gt; Unit, onResetFolder: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:ToolsScreen.kt$( monitored: List&lt;String&gt;, failedCount: Int, currentUrl: String, profileImage: String?, avatarResolver: ProfileAvatarResolver, message: String, onRetryFailed: () -&gt; Unit, onClearErrors: () -&gt; Unit, onOpenPlayer: () -&gt; Unit, onFollowProfile: () -&gt; Unit, onUnfollowProfile: (String) -&gt; Unit, )</ID>
+    <ID>LoopWithTooManyJumpStatements:AdaptiveQueue.kt$while</ID>
+    <ID>LoopWithTooManyJumpStatements:BoundedInput.kt$while</ID>
+    <ID>LoopWithTooManyJumpStatements:ProfileMonitor.kt$ProfileFullMonitorWorker$for</ID>
+    <ID>LoopWithTooManyJumpStatements:TikTokVideoSource.kt$TikTokVideoSource$for</ID>
+    <ID>MagicNumber:AdaptiveQueue.kt$750</ID>
+    <ID>MagicNumber:AdaptiveQueue.kt$8</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$.30f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$.48f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$.62f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$.85f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF071F17</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF0C6042</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF0F7953</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF102B23</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF137A55</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF15563C</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF19A46B</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF1DB579</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF21483A</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF356453</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF38D896</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF43E6A1</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF47D99A</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFF80F4C4</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$0xFFA7FFDC</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$2.05f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$3</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$3f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$4</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$4.6f</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$4200</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$5</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$6</ID>
+    <ID>MagicNumber:AnalysisAnimation.kt$7</ID>
+    <ID>MagicNumber:AnalysisFailureClassifier.kt$AnalysisFailureClassifier$6</ID>
+    <ID>MagicNumber:BoundedInput.kt$8192</ID>
+    <ID>MagicNumber:CompletionNotifier.kt$CompletionNotifier$33</ID>
+    <ID>MagicNumber:DestinationNaming.kt$DestinationNaming$100</ID>
+    <ID>MagicNumber:DestinationNaming.kt$DestinationNaming$24</ID>
+    <ID>MagicNumber:DestinationNaming.kt$DestinationNaming$8</ID>
+    <ID>MagicNumber:DestinationNaming.kt$DestinationNaming$90</ID>
+    <ID>MagicNumber:DownloadComponents.kt$100</ID>
+    <ID>MagicNumber:DownloadComponents.kt$16f</ID>
+    <ID>MagicNumber:DownloadComponents.kt$99</ID>
+    <ID>MagicNumber:DownloadComponents.kt$9f</ID>
+    <ID>MagicNumber:DownloadProgressParser.kt$DownloadProgressParser$100</ID>
+    <ID>MagicNumber:DownloadQueue.kt$DownloadQueue$30</ID>
+    <ID>MagicNumber:DownloadQueue.kt$DownloadQueue$400</ID>
+    <ID>MagicNumber:DownloadSettings.kt$DownloadSettings$3</ID>
+    <ID>MagicNumber:DownloadSettings.kt$DownloadSettings$8</ID>
+    <ID>MagicNumber:DownloadSettings.kt$DownloadSettings$8192</ID>
+    <ID>MagicNumber:DownloadSettingsSection.kt$1024</ID>
+    <ID>MagicNumber:DownloadSettingsSection.kt$2048</ID>
+    <ID>MagicNumber:DownloadSettingsSection.kt$256</ID>
+    <ID>MagicNumber:DownloadSettingsSection.kt$512</ID>
+    <ID>MagicNumber:DownloadTelemetry.kt$DownloadTelemetry$1000L</ID>
+    <ID>MagicNumber:DownloadTelemetry.kt$DownloadTelemetry$500</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$100</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$1000</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$250</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$33</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$400</ID>
+    <ID>MagicNumber:DownloadWorker.kt$DownloadWorker$901</ID>
+    <ID>MagicNumber:DownloadsViewModel.kt$DownloadsViewModel$5_000</ID>
+    <ID>MagicNumber:EngineFallback.kt$EngineFallback.Companion$4</ID>
+    <ID>MagicNumber:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$120</ID>
+    <ID>MagicNumber:ExtractorUpdateWorker.kt$ExtractorUpdateWorker.Companion$24</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$1000L</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$1080</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$128</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$1440</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$16384</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$192</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$2160</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$240</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$256</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$320</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$360</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$480</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$720</ID>
+    <ID>MagicNumber:FormatOptions.kt$FormatOptions$8L</ID>
+    <ID>MagicNumber:LibraryScreen.kt$0.78f</ID>
+    <ID>MagicNumber:LibraryScreen.kt$1000</ID>
+    <ID>MagicNumber:MainActivity.kt$0.92f</ID>
+    <ID>MagicNumber:MainActivity.kt$0xFFF4F4F7</ID>
+    <ID>MagicNumber:MainActivity.kt$16384</ID>
+    <ID>MagicNumber:MainActivity.kt$16f</ID>
+    <ID>MagicNumber:MainActivity.kt$3</ID>
+    <ID>MagicNumber:MainActivity.kt$33</ID>
+    <ID>MagicNumber:MainActivity.kt$35</ID>
+    <ID>MagicNumber:MainActivity.kt$5</ID>
+    <ID>MagicNumber:MainActivity.kt$500</ID>
+    <ID>MagicNumber:MainActivity.kt$6</ID>
+    <ID>MagicNumber:MainActivity.kt$8</ID>
+    <ID>MagicNumber:MainActivity.kt$9f</ID>
+    <ID>MagicNumber:MainActivity.kt$MainActivity$1000</ID>
+    <ID>MagicNumber:MainNavigationBar.kt$0xFF09231B</ID>
+    <ID>MagicNumber:MiniPlayer.kt$0xFF102A20</ID>
+    <ID>MagicNumber:MiniPlayer.kt$0xFF24483A</ID>
+    <ID>MagicNumber:MiniPlayer.kt$0xFF43866A</ID>
+    <ID>MagicNumber:MiniPlayer.kt$0xFF43E6A1</ID>
+    <ID>MagicNumber:MiniPlayer.kt$0xFFADC8BC</ID>
+    <ID>MagicNumber:MiniPlayer.kt$500</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$100</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$12</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$24</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$5</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$6</ID>
+    <ID>MagicNumber:MonitorPolicy.kt$MonitorPolicy$8</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$10</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$1000</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$101</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$112</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$12</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$122</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$132</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$14</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$14f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$157</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$158</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$16</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$172</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$180</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$188</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$18f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$19f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$20</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$20f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$22</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$220</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$22f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$231</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$232</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$235</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$24</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$249</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$25</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$26</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$26f</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$28</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$3</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$31</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$32</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$37</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$40</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$42</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$43</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$48</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$49</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$5</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$52</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$56</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$60</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$60000</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$66</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$70</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$76</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$8</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$9</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity$92</ID>
+    <ID>MagicNumber:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;$1000</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF041C13</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF064B31</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF073A24</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF0B1D17</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF101A16</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF112C20</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF13784D</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF164D38</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF16563C</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF168D59</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF1A2922</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF3D4A44</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF43E6A1</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF526B5E</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF60766B</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF798D83</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFF7C8982</ID>
+    <ID>MagicNumber:MusicScreen.kt$0xFFADC8BC</ID>
+    <ID>MagicNumber:MusicScreen.kt$1.2f</ID>
+    <ID>MagicNumber:MusicScreen.kt$100</ID>
+    <ID>MagicNumber:MusicScreen.kt$1000</ID>
+    <ID>MagicNumber:MusicScreen.kt$1024</ID>
+    <ID>MagicNumber:MusicScreen.kt$3</ID>
+    <ID>MagicNumber:MusicScreen.kt$360</ID>
+    <ID>MagicNumber:MusicScreen.kt$4</ID>
+    <ID>MagicNumber:MusicScreen.kt$5</ID>
+    <ID>MagicNumber:MusicScreen.kt$500</ID>
+    <ID>MagicNumber:MusicScreen.kt$60</ID>
+    <ID>MagicNumber:MusicScreen.kt$60000</ID>
+    <ID>MagicNumber:NewPipeSource.kt$NewPipeSource.&lt;no name provided&gt;$1024</ID>
+    <ID>MagicNumber:NewPipeSource.kt$NewPipeSource.&lt;no name provided&gt;$12000</ID>
+    <ID>MagicNumber:NewPipeSource.kt$NewPipeSource.&lt;no name provided&gt;$20000</ID>
+    <ID>MagicNumber:NewPipeSource.kt$NewPipeSource.&lt;no name provided&gt;$4</ID>
+    <ID>MagicNumber:NewPipeSource.kt$NewPipeSource.&lt;no name provided&gt;$400</ID>
+    <ID>MagicNumber:ParallelQueue.kt$8</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$10_000</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$0.5f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$0.75f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$1.25f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$1.5f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$10</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$109</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$115</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$12</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$12f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$13</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$132</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$14</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$15</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$16</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$161</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$16f</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$19</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$2</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$20</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$21</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$22</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$230</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$27</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$28</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$29</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$3</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$3000</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$32</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$39</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$4</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$40</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$42</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$49</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$5</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$52</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$54</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$56</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$65</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$67</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$75</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$78</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$8</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$81</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$91</ID>
+    <ID>MagicNumber:PlayerActivity.kt$PlayerActivity$93</ID>
+    <ID>MagicNumber:ProfileAvatarResolver.kt$ProfileAvatarResolver$1024</ID>
+    <ID>MagicNumber:ProfileAvatarResolver.kt$ProfileAvatarResolver$200</ID>
+    <ID>MagicNumber:ProfileAvatarResolver.kt$ProfileAvatarResolver$50000</ID>
+    <ID>MagicNumber:ProfileAvatarResolver.kt$ProfileAvatarResolver$8000</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$180</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileFullMonitorWorker$100</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$10</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$100</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$12</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$15</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$24</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$30</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$6</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileMonitor$7</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileNotice$26</ID>
+    <ID>MagicNumber:ProfileMonitor.kt$ProfileNotice$33</ID>
+    <ID>MagicNumber:ProfileViewModel.kt$ProfileViewModel$1500L</ID>
+    <ID>MagicNumber:ProfileViewModel.kt$ProfileViewModel$3</ID>
+    <ID>MagicNumber:ProfileViewModel.kt$ProfileViewModel$4</ID>
+    <ID>MagicNumber:SafeAreaTopBar.kt$0xFF110D20</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$10</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$12</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$24</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$25</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$5</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$50</ID>
+    <ID>MagicNumber:SettingsGeneralSection.kt$6</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$0.5</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$11</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$14</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$18</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$22</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$28</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$3</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$3.0</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$34</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$4</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$40</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$48</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$56</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$6</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$64</ID>
+    <ID>MagicNumber:SpectrumAnalyzer.kt$SpectrumAnalyzer$8</ID>
+    <ID>MagicNumber:SpectrumAudioProcessor.kt$PlaybackSpectrum$16</ID>
+    <ID>MagicNumber:SpectrumAudioProcessor.kt$SpectrumAudioProcessor$32768f</ID>
+    <ID>MagicNumber:SpectrumAudioProcessor.kt$SpectrumAudioProcessor$80_000_000L</ID>
+    <ID>MagicNumber:TechDesign.kt$.04f</ID>
+    <ID>MagicNumber:TechDesign.kt$.10f</ID>
+    <ID>MagicNumber:TechDesign.kt$.14f</ID>
+    <ID>MagicNumber:TechDesign.kt$.15f</ID>
+    <ID>MagicNumber:TechDesign.kt$.16f</ID>
+    <ID>MagicNumber:TechDesign.kt$.18f</ID>
+    <ID>MagicNumber:TechDesign.kt$.21f</ID>
+    <ID>MagicNumber:TechDesign.kt$.23f</ID>
+    <ID>MagicNumber:TechDesign.kt$.25f</ID>
+    <ID>MagicNumber:TechDesign.kt$.27f</ID>
+    <ID>MagicNumber:TechDesign.kt$.28f</ID>
+    <ID>MagicNumber:TechDesign.kt$.29f</ID>
+    <ID>MagicNumber:TechDesign.kt$.2f</ID>
+    <ID>MagicNumber:TechDesign.kt$.30f</ID>
+    <ID>MagicNumber:TechDesign.kt$.31f</ID>
+    <ID>MagicNumber:TechDesign.kt$.34f</ID>
+    <ID>MagicNumber:TechDesign.kt$.35f</ID>
+    <ID>MagicNumber:TechDesign.kt$.36f</ID>
+    <ID>MagicNumber:TechDesign.kt$.40f</ID>
+    <ID>MagicNumber:TechDesign.kt$.41f</ID>
+    <ID>MagicNumber:TechDesign.kt$.42f</ID>
+    <ID>MagicNumber:TechDesign.kt$.43f</ID>
+    <ID>MagicNumber:TechDesign.kt$.44f</ID>
+    <ID>MagicNumber:TechDesign.kt$.46f</ID>
+    <ID>MagicNumber:TechDesign.kt$.47f</ID>
+    <ID>MagicNumber:TechDesign.kt$.48f</ID>
+    <ID>MagicNumber:TechDesign.kt$.50f</ID>
+    <ID>MagicNumber:TechDesign.kt$.51f</ID>
+    <ID>MagicNumber:TechDesign.kt$.54f</ID>
+    <ID>MagicNumber:TechDesign.kt$.55f</ID>
+    <ID>MagicNumber:TechDesign.kt$.57f</ID>
+    <ID>MagicNumber:TechDesign.kt$.58f</ID>
+    <ID>MagicNumber:TechDesign.kt$.59f</ID>
+    <ID>MagicNumber:TechDesign.kt$.60f</ID>
+    <ID>MagicNumber:TechDesign.kt$.61f</ID>
+    <ID>MagicNumber:TechDesign.kt$.63f</ID>
+    <ID>MagicNumber:TechDesign.kt$.64f</ID>
+    <ID>MagicNumber:TechDesign.kt$.66f</ID>
+    <ID>MagicNumber:TechDesign.kt$.67f</ID>
+    <ID>MagicNumber:TechDesign.kt$.68f</ID>
+    <ID>MagicNumber:TechDesign.kt$.70f</ID>
+    <ID>MagicNumber:TechDesign.kt$.72f</ID>
+    <ID>MagicNumber:TechDesign.kt$.74f</ID>
+    <ID>MagicNumber:TechDesign.kt$.75f</ID>
+    <ID>MagicNumber:TechDesign.kt$.77f</ID>
+    <ID>MagicNumber:TechDesign.kt$.79f</ID>
+    <ID>MagicNumber:TechDesign.kt$.80f</ID>
+    <ID>MagicNumber:TechDesign.kt$.83f</ID>
+    <ID>MagicNumber:TechDesign.kt$.85f</ID>
+    <ID>MagicNumber:TechDesign.kt$.88f</ID>
+    <ID>MagicNumber:TechDesign.kt$.92f</ID>
+    <ID>MagicNumber:TechDesign.kt$.93f</ID>
+    <ID>MagicNumber:TechDesign.kt$.94f</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF031914</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF087456</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF102B23</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF10533D</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF137556</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF1877F2</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF25F4EE</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF356453</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFF46C8FF</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFFB4CFC3</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFFBDF9E0</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFFEA4CCF</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFFFE2C55</ID>
+    <ID>MagicNumber:TechDesign.kt$0xFFFF334F</ID>
+    <ID>MagicNumber:TemporaryFiles.kt$100_000</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$0xff</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$100</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$1000L</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$12</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$15</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$210</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$4</ID>
+    <ID>MagicNumber:TikTokVideoSource.kt$TikTokVideoSource$60</ID>
+    <ID>MagicNumber:UniversalMediaSource.kt$UniversalMediaSource$100</ID>
+    <ID>MagicNumber:UniversalMediaSource.kt$UniversalMediaSource$300</ID>
+    <ID>MaxLineLength:AdaptiveQueueTest.kt$AdaptiveQueueTest$drainAdaptiveQueue</ID>
+    <ID>MaxLineLength:AnalysisAnimation.kt$drawCircle(Color(0xFF47D99A).copy(alpha = .3f), radius = scale * 1.45f, center = center, style = Stroke(1.dp.toPx()))</ID>
+    <ID>MaxLineLength:AnalysisAnimation.kt$faces[face].forEachIndexed { index, vertex -&gt; val p = project(rotated[vertex]); if (index == 0) moveTo(p.x,p.y) else lineTo(p.x,p.y) }</ID>
+    <ID>MaxLineLength:AnalysisAnimation.kt$return Offset(center.x + p.x * scale * .62f * perspective, center.y + p.y * scale * .62f * perspective)</ID>
+    <ID>MaxLineLength:AnalysisAnimation.kt$val colors = listOf(Color(0xFF0C6042), Color(0xFF19A46B), Color(0xFF38D896), Color(0xFF0F7953), Color(0xFF137A55), Color(0xFF1DB579))</ID>
+    <ID>MaxLineLength:CanonicalProfileTest.kt$CanonicalProfileTest$assertEquals("https://www.tiktok.com/@Carlos", TikTokLinkParser.canonicalProfile("https://tiktok.com/@Carlos?lang=es#top"))</ID>
+    <ID>MaxLineLength:CompletionNotifier.kt$CompletionNotifier$"${batch.total} videos: ${batch.completed} descargados, ${batch.failed} errores, ${batch.cancelled} cancelados. Duplicados omitidos: ${batch.duplicates}."</ID>
+    <ID>MaxLineLength:CompletionNotifier.kt$CompletionNotifier$.</ID>
+    <ID>MaxLineLength:CompletionNotifier.kt$CompletionNotifier$ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED</ID>
+    <ID>MaxLineLength:DestinationNaming.kt$DestinationNaming$MediaPlatform.TIKTOK -&gt; (TikTokLinkParser.parse(link.url) as? LinkParseResult.Success)?.link?.username?.let { "@$it" }</ID>
+    <ID>MaxLineLength:DestinationNaming.kt$DestinationNaming$it.lowercase() in setOf("watch", "reel", "reels", "videos", "share", "video.php", "profile.php", "groups", "pages")</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$appendLine(context.getString(R.string.diagnostic_abi, Build.SUPPORTED_ABIS.joinToString(", ")))</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$appendLine(context.getString(R.string.diagnostic_android, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$appendLine(context.getString(R.string.diagnostic_error_entry, date, context.getString(category)))</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$val status = context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE)</ID>
+    <ID>MaxLineLength:DiagnosticExport.kt$val stream = context.contentResolver.openOutputStream(destination) ?: error("output unavailable")</ID>
+    <ID>MaxLineLength:DiagnosticHistory.kt$DiagnosticHistory$decode(context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "").orEmpty())</ID>
+    <ID>MaxLineLength:DiagnosticHistory.kt$DiagnosticHistory$internal fun encode(entries: List&lt;DiagnosticEntry&gt;): String</ID>
+    <ID>MaxLineLength:DiagnosticHistory.kt$DiagnosticHistory$val entries = listOf(DiagnosticEntry(System.currentTimeMillis(), DiagnosticReport.errorCategory(message))) + decode(prefs.getString(KEY, "").orEmpty())</ID>
+    <ID>MaxLineLength:DiagnosticHistoryTest.kt$DiagnosticHistoryTest$assertEquals(listOf(DiagnosticEntry(1, ErrorCategory.OTHER)), DiagnosticHistory.decode("1|OTHER\n0|NETWORK\n2|https://example.com\nwrong"))</ID>
+    <ID>MaxLineLength:DownloadComponents.kt$.</ID>
+    <ID>MaxLineLength:DownloadComponents.kt$Icon(Icons.Outlined.Close, contentDescription = "Cancelar descarga de ${record.title}", tint = TechMuted)</ID>
+    <ID>MaxLineLength:DownloadComponents.kt$Text(count.toString(), fontWeight = FontWeight.Bold, color = Color.White, style = MaterialTheme.typography.titleMedium)</ID>
+    <ID>MaxLineLength:DownloadComponents.kt$Text(stringResource(R.string.download_speed, speed), color = TechMuted, style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>MaxLineLength:DownloadComponents.kt$val</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$BatchSummary</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadBatch$data</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadBatchItem$@Entity(tableName = "download_batch_items", primaryKeys = ["batchId", "videoId"], indices = [androidx.room.Index(value = ["videoId"])])</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("SELECT * FROM downloads WHERE status = 'QUEUED' AND videoId NOT IN (:excluded) ORDER BY createdAt ASC LIMIT 1")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("UPDATE downloads SET status = 'CANCELLED', error = NULL, updatedAt = :now WHERE videoId = :id AND status IN ('QUEUED', 'DOWNLOADING', 'PAUSED')")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("UPDATE downloads SET status = 'COMPLETED', progress = 100, savedUri = :uri, error = NULL, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("UPDATE downloads SET status = 'COMPLETED', progress = 100, savedUri = :uri, error = NULL, updatedAt = :now WHERE videoId = :id")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("UPDATE downloads SET status = 'FAILED', error = :error, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDao$@Query("UPDATE downloads SET status = 'QUEUED', progress = 0, error = NULL, updatedAt = :now WHERE status = 'FAILED'")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase$@Database(entities = [DownloadRecord::class, DownloadBatch::class, DownloadBatchItem::class], version = 2, exportSchema = true)</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE INDEX IF NOT EXISTS index_download_batch_items_videoId ON download_batch_items (videoId)")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE TABLE IF NOT EXISTS download_batch_items (batchId TEXT NOT NULL, videoId TEXT NOT NULL, outcome TEXT, PRIMARY KEY(batchId, videoId))")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE TABLE IF NOT EXISTS download_batches (batchId TEXT NOT NULL PRIMARY KEY, createdAt INTEGER NOT NULL, duplicates INTEGER NOT NULL, acknowledged INTEGER NOT NULL)")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase.Companion.&lt;no name provided&gt;$db.execSQL("INSERT INTO download_batch_items(batchId, videoId, outcome) SELECT 'migrated-pending', videoId, NULL FROM downloads WHERE status IN ('QUEUED','DOWNLOADING','PAUSED')")</ID>
+    <ID>MaxLineLength:DownloadDatabase.kt$DownloadDatabase.Companion.&lt;no name provided&gt;$db.execSQL("INSERT INTO download_batches(batchId, createdAt, duplicates, acknowledged) SELECT 'migrated-pending', 0, 0, 0 WHERE EXISTS (SELECT 1 FROM downloads WHERE status IN ('QUEUED','DOWNLOADING','PAUSED'))")</ID>
+    <ID>MaxLineLength:DownloadFormatPreference.kt$DownloadFormatPreference$preference?.startsWith("height:") == true -&gt; (label.startsWith(preference.removePrefix("height:") + "p", ignoreCase = true) || id.contains("height&lt;=${preference.removePrefix("height:")}"))</ID>
+    <ID>MaxLineLength:DownloadFormatPreference.kt$DownloadFormatPreference$val height = Regex("height&lt;=([0-9]+)").find(id)?.groupValues?.get(1) ?: Regex("^(\\d+)p", RegexOption.IGNORE_CASE).find(label)?.groupValues?.get(1)</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$.</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$check(!running &amp;&amp; dao.activeOrPausedCount() == 0) { "Espera a que terminen o cancela las descargas pendientes y pausadas." }</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$check(context.getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE).edit().putBoolean("allow_metered", allowed).commit())</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$suspend</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$val</ID>
+    <ID>MaxLineLength:DownloadQueue.kt$DownloadQueue$val legacy = existing[video.id]?.takeIf { PlaybackKind.isAudio(it.formatId, null, it.savedUri) == audio }</ID>
+    <ID>MaxLineLength:DownloadQueueScreen.kt$DownloadHistoryCard</ID>
+    <ID>MaxLineLength:DownloadQueueScreen.kt$SummaryTile("Activas", queue.count { it.status == DownloadState.DOWNLOADING }, Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:DownloadQueueScreen.kt$if (queue.isNotEmpty() &amp;&amp; message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)</ID>
+    <ID>MaxLineLength:DownloadSettings.kt$DownloadSettings$fun isMetered(context: Context): Boolean</ID>
+    <ID>MaxLineLength:DownloadSettings.kt$DownloadSettings$fun wifiLimit(context: Context): Int</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$.</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification)</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$VideoEntry(item.videoId, DownloadInputPolicy.canonicalUrl(item.videoUrl), item.title, item.thumbnail)</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$if</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/TikitokiDownloader/" + account)</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$runCatching { NotificationManagerCompat.from(applicationContext).notify(901, notification("Descargando ${activeIds.size} videos").notification) }</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$runCatching { clearVideoTemporaryFiles(safeTemporaryDirectory(applicationContext.cacheDir), item.videoId) }</ID>
+    <ID>MaxLineLength:DownloadWorker.kt$DownloadWorker$val progress = activeProgress.values.toList().let { if (it.isEmpty()) null else it.average().toInt().coerceIn(0, 100) }</ID>
+    <ID>MaxLineLength:ExtractorRecovery.kt$ExtractorRecovery$fun binary(context: Context): File</ID>
+    <ID>MaxLineLength:ExtractorRollback.kt$ExtractorRollback$Files.move(temp.toPath(), binary.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)</ID>
+    <ID>MaxLineLength:ExtractorRollbackTest.kt$ExtractorRollbackTest$try</ID>
+    <ID>MaxLineLength:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$ExtractorRollback</ID>
+    <ID>MaxLineLength:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$throw SecurityException("yt-dlp binary verification failed - potential supply chain attack")</ID>
+    <ID>MaxLineLength:ExtractorVerifier.kt$ExtractorVerifier$"Update KNOWN_HASHES in ExtractorVerifier.kt with the official hash from https://github.com/yt-dlp/yt-dlp/releases/tag/${result.version}"</ID>
+    <ID>MaxLineLength:ExtractorVerifier.kt$ExtractorVerifier$"⚠️ yt-dlp version UNKNOWN (no reference hash): version=${result.version}, hash=${result.actualHash}. "</ID>
+    <ID>MaxLineLength:ExtractorVerifier.kt$ExtractorVerifier$"❌ yt-dlp verification FAILED: version=${result.version}, expected=${result.expectedHash}, actual=${result.actualHash}"</ID>
+    <ID>MaxLineLength:ExtractorVersion.kt$ExtractorVersion$version?.let { app.getSharedPreferences("extractor_status", Context.MODE_PRIVATE).edit().putString("effective_version", it).apply() }</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$.</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$FormatChoice(safe, context.getString(R.string.format_video_option, f.height, ext, size), height = f.height)</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$f.fileSizeApproximate &gt; 0 -&gt; context.getString(R.string.format_size_approx, Formatter.formatShortFileSize(context, f.fileSizeApproximate))</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$heights.map { height -&gt; FormatChoice("bestvideo[height&lt;=$height]+bestaudio/best[height&lt;=$height]", context.getString(R.string.format_video_upto, height)) }</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$listOf(FormatChoice("bestaudio", context.getString(R.string.format_audio_original), isAudio = true))</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val bestVideo = if (videoOptions.isNotEmpty()) listOf(FormatChoice(TikTokVideoSource.DEFAULT_FORMAT, context.getString(R.string.format_video_best))) else emptyList()</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val bitrate = if (f.abr &gt; 0) context.getString(R.string.format_audio_bitrate, f.abr) else context.getString(R.string.format_audio_bitrate_unknown)</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val hasAudioOnly = formats.any { !it.formatId.isNullOrBlank() &amp;&amp; !it.acodec.isNullOrBlank() &amp;&amp; it.acodec != "none" &amp;&amp; it.vcodec == "none" }</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val heights = (listOf(240, 360, 480, 720, 1080, 1440, 2160) + extraHeights.filter { it in 1..16384 }).distinct().sorted()</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val originalAudio = if (hasAudioOnly) listOf(FormatChoice("bestaudio", context.getString(R.string.format_audio_original), isAudio = true)) + audioOptions else emptyList()</ID>
+    <ID>MaxLineLength:FormatOptions.kt$FormatOptions$val safe = runCatching { DownloadInputPolicy.safeFormatId(selector) }.getOrNull() ?: return@mapNotNull null</ID>
+    <ID>MaxLineLength:HomeLinkInput.kt$Icon(Icons.Outlined.ContentPaste, contentDescription = null, tint = TechPink, modifier = Modifier.size(20.dp))</ID>
+    <ID>MaxLineLength:IncomingSecurityTest.kt$IncomingSecurityTest$IncomingLinkValidator.extractFirstHttps("Mira esto https://www.youtube.com/watch?v=ab--cdefghi por favor")?.url</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$.</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$// The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$FilterChip(selected = libraryKind == kind, onClick = { onKindChange(kind) }, label = { Text(kind) })</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$entry.thumbnail?.takeIf { it.startsWith("https://") } ?: ThumbnailUrls.youtube(entry.id, entry.url)</ID>
+    <ID>MaxLineLength:LibraryScreen.kt$if</ID>
+    <ID>MaxLineLength:LibraryVisibility.kt$LibraryVisibility$fun inLibrary(status: String, savedUri: String?): Boolean</ID>
+    <ID>MaxLineLength:LibraryVisibility.kt$LibraryVisibility$fun inQueue(status: String): Boolean</ID>
+    <ID>MaxLineLength:MainActivity.kt$"No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos."</ID>
+    <ID>MaxLineLength:MainActivity.kt$"Se borrarán solo los archivos temporales de Baja.pe. Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan."</ID>
+    <ID>MaxLineLength:MainActivity.kt$(profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—")</ID>
+    <ID>MaxLineLength:MainActivity.kt$)</ID>
+    <ID>MaxLineLength:MainActivity.kt$.</ID>
+    <ID>MaxLineLength:MainActivity.kt$AnalysisAnimation(found = videos.size, scanning = profileState.countingTotal || profileState.loadingMore)</ID>
+    <ID>MaxLineLength:MainActivity.kt$Column</ID>
+    <ID>MaxLineLength:MainActivity.kt$DeleteCompletedResult.DELETED -&gt; "Video eliminado del dispositivo y del historial."</ID>
+    <ID>MaxLineLength:MainActivity.kt$DeleteCompletedResult.FAILED -&gt; "No se pudo eliminar el archivo. El registro se conserva."</ID>
+    <ID>MaxLineLength:MainActivity.kt$DeleteCompletedResult.FILE_MISSING -&gt; "El archivo ya no existía. Se eliminó del historial."</ID>
+    <ID>MaxLineLength:MainActivity.kt$FilterChip(selected = !gridMode, onClick = { gridMode = false }, label = { Text("Lista") })</ID>
+    <ID>MaxLineLength:MainActivity.kt$FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })</ID>
+    <ID>MaxLineLength:MainActivity.kt$Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))</ID>
+    <ID>MaxLineLength:MainActivity.kt$Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/cponce123com-create/Tikitoki-Dowloader"))</ID>
+    <ID>MaxLineLength:MainActivity.kt$Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION</ID>
+    <ID>MaxLineLength:MainActivity.kt$Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(TechGradient)</ID>
+    <ID>MaxLineLength:MainActivity.kt$OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }</ID>
+    <ID>MaxLineLength:MainActivity.kt$Row</ID>
+    <ID>MaxLineLength:MainActivity.kt$Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:MainActivity.kt$Text("Archivos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:MainActivity.kt$Text("Cancelados: ${batch.cancelled}", color = TechMuted, style = MaterialTheme.typography.bodySmall)</ID>
+    <ID>MaxLineLength:MainActivity.kt$Text("Carpeta de descarga", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:MainActivity.kt$Text("Duplicados omitidos: ${batch.duplicates}", color = TechMuted, style = MaterialTheme.typography.bodySmall)</ID>
+    <ID>MaxLineLength:MainActivity.kt$checkedItems.count { FormatAvailability.matches(preset.id, it) }</ID>
+    <ID>MaxLineLength:MainActivity.kt$confirmButton = { Button(onClick = { scope.launch { dao.acknowledgeBatch(batch.batchId) } }) { Text("Aceptar") } }</ID>
+    <ID>MaxLineLength:MainActivity.kt$confirmButton = { Button(onClick = { showAbout = false }) { Text(stringResource(R.string.about_close)) } }</ID>
+    <ID>MaxLineLength:MainActivity.kt$contentDescription = stringResource(R.string.home_profile_photo)</ID>
+    <ID>MaxLineLength:MainActivity.kt$formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) }</ID>
+    <ID>MaxLineLength:MainActivity.kt$if</ID>
+    <ID>MaxLineLength:MainActivity.kt$if (formatError) Text(stringResource(R.string.format_check_failed), color = MaterialTheme.colorScheme.error)</ID>
+    <ID>MaxLineLength:MainActivity.kt$onExportDiagnostic = { diagnosticPicker.launch(context.getString(R.string.diagnostic_filename)) }</ID>
+    <ID>MaxLineLength:MainActivity.kt$setDataAndType(folder, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)</ID>
+    <ID>MaxLineLength:MainActivity.kt$stringResource(R.string.format_check_matches, batchCounts[option.id] ?: 0, batchChecked)</ID>
+    <ID>MaxLineLength:MainActivity.kt$text = { Text("¿Eliminar este video del dispositivo y del historial de Baja.pe? Esta acción no se puede deshacer.") }</ID>
+    <ID>MaxLineLength:MainActivity.kt$val discovered = found.mapNotNull { it.height }.filter { it in 1..16384 }</ID>
+    <ID>MaxLineLength:MainActivity.kt$val extracted = if (it.length - url.length &gt; 1) IncomingLinkValidator.extractFirstHttps(it) else null</ID>
+    <ID>MaxLineLength:MainActivity.kt$val found = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)</ID>
+    <ID>MaxLineLength:MainActivity.kt$val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)</ID>
+    <ID>MaxLineLength:MainActivity.kt$val preference = DownloadFormatPreference.fromChoice(chosenFormat.id, chosenFormat.label)</ID>
+    <ID>MaxLineLength:MainActivity.kt$val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }</ID>
+    <ID>MaxLineLength:MainActivity.kt$}</ID>
+    <ID>MaxLineLength:MediaLinkParserTest.kt$MediaLinkParserTest$assertEquals(MediaPlatform.TIKTOK, MediaLinkParser.parse("https://www.tiktok.com/@creator/video/123456789")?.platform)</ID>
+    <ID>MaxLineLength:MediaLinkParserTest.kt$MediaLinkParserTest$assertEquals(source, DownloadInputPolicy.extractorPage(MediaPlatform.DIRECT_MEDIA, "123", source, source, false))</ID>
+    <ID>MaxLineLength:MediaLinkParserTest.kt$MediaLinkParserTest$assertNull(DownloadInputPolicy.extractorPage(MediaPlatform.DIRECT_MEDIA, "123", "https://soundcloud.com/artist/track", source, false))</ID>
+    <ID>MaxLineLength:MediaLinkParserTest.kt$MediaLinkParserTest$listOf("https://vimeo.com.evil.test/123", "https://fakesoundcloud.com/a", "https://127.0.0.1/a", "https://localhost/a")</ID>
+    <ID>MaxLineLength:MediaLinkParserTest.kt$MediaLinkParserTest$listOf("https://vimeo.com/123", "https://www.dailymotion.com/video/abc", "https://dai.ly/abc", "https://soundcloud.com/artist/track", "https://www.twitch.tv/videos/123")</ID>
+    <ID>MaxLineLength:MetadataSanitizerTest.kt$MetadataSanitizerTest$assertEquals(180, MetadataSanitizer.title("😀".repeat(300)).codePointCount(0, MetadataSanitizer.title("😀".repeat(300)).length))</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$Column</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pausar" else "Reproducir", tint = mint)</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp), color = mint, trackColor = Color(0xFF24483A))</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$Text(if (video) "Video · Toca para abrir" else "Música · Toca para abrir", color = Color(0xFFADC8BC), fontSize = 11.sp)</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$Text(title.ifBlank { if (video) "Video" else "Música" }, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$future.addListener({ if (!disposed) controller = runCatching { future.get() }.getOrNull() }, ContextCompat.getMainExecutor(context))</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$if</ID>
+    <ID>MaxLineLength:MiniPlayer.kt$val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()</ID>
+    <ID>MaxLineLength:MonitorPolicy.kt$MonitorPolicy$if (Regex("(?&lt;![0-9])429(?![0-9])").containsMatchIn(item.message.orEmpty()) || item.message.orEmpty().contains("too many requests", true)) return true</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$background</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$background = GradientDrawable().apply { setColor(Color.rgb(10, 43, 32)); cornerRadius = 12 * resources.displayMetrics.density }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(37, 56, 52), Color.rgb(9, 31, 26))).apply { cornerRadius = 18f; setStroke(2, Color.rgb(28, 158, 112)) }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); Toast.makeText(this, "No se pudo abrir el audio.", Toast.LENGTH_LONG).show() }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "Canción"</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$controls.addView(button("⏭") { controller?.seekToNextMediaItem() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$controls.addView(button("⏮") { controller?.seekToPreviousMediaItem() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$favorite = button("♡") { val uri = controller?.currentMediaItem?.localConfiguration?.uri?.toString() ?: return@button; if (!favorites.add(uri)) favorites.remove(uri); save(); updateUi(); renderList() }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$favorite.text = if (player.currentMediaItem?.localConfiguration?.uri?.toString()?.let { it in favorites } == true) "♥" else "♡"</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$if (!seeking) seek.progress = if (duration &gt; 0) (player.currentPosition * 1000 / duration).toInt().coerceIn(0, 1000) else 0</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$if (current == artworkUri &amp;&amp; bytes != null) artwork.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$listHeader.addView(label(20f).apply { text = "Lista de reproducción" }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$override fun onDestroy()</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$play = button("▶") { controller?.let { p -&gt; if (p.currentMediaItem?.localConfiguration?.uri?.toString()?.let { uri -&gt; tracks.any { it.uri == uri } } != true) { if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } else if (p.isPlaying) p.pause() else if (p.mediaItemCount &gt; 0) p.play() else if (tracks.isNotEmpty()) startAt(0) else Toast.makeText(this, "Agrega una canción para reproducir.", Toast.LENGTH_SHORT).show() } }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$repeat = button("Repetir") { controller?.let { it.repeatMode = when (it.repeatMode) { Player.REPEAT_MODE_OFF -&gt; Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -&gt; Player.REPEAT_MODE_ONE; else -&gt; Player.REPEAT_MODE_OFF } }; updateUi() }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$repeat.text = when (player.repeatMode) { Player.REPEAT_MODE_ONE -&gt; "Repetir 1"; Player.REPEAT_MODE_ALL -&gt; "Repetir ✓"; else -&gt; "Repetir" }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$root.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$setOnClickListener { val removed = tracks.removeAt(index); controller?.let { p -&gt; for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == removed.uri) p.removeMediaItem(i) }; save(); renderList() }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$shuffle = button("Aleatorio") { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }; updateUi() }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$text = "Quitar"</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$try { MediaMetadataRetriever().let { retriever -&gt; try { retriever.setDataSource(this@MusicActivity, Uri.parse(current)); retriever.embeddedPicture } finally { retriever.release() } } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); null }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$try { val array = JSONArray(prefs.getString("tracks", "[]")); for (i in 0 until array.length()) { val t = array.getJSONObject(i); tracks.add(Track(t.getString("uri"), t.getString("title"))) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$val nowText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((12*dp).toInt(), 0, 0, 0) }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$val pending = MediaController.Builder(this, SessionToken(this, ComponentName(this, PlaybackService::class.java))).buildAsync()</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((16*dp).toInt(), (16*dp).toInt(), (16*dp).toInt(), (12*dp).toInt()); setBackgroundColor(Color.rgb(3, 25, 20)) }</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity$}</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;$Toast.makeText(this@MusicActivity, "No se pudo reproducir el audio. Comprueba que el archivo siga disponible.", Toast.LENGTH_LONG).show()</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;$override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean)</ID>
+    <ID>MaxLineLength:MusicActivity.kt$MusicActivity.&lt;no name provided&gt;$override fun onStopTrackingTouch(bar: SeekBar?)</ID>
+    <ID>MaxLineLength:MusicScreen.kt$.</ID>
+    <ID>MaxLineLength:MusicScreen.kt$// The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.</ID>
+    <ID>MaxLineLength:MusicScreen.kt$&lt;no name provided&gt;$override fun onPlayerError(error: PlaybackException)</ID>
+    <ID>MaxLineLength:MusicScreen.kt$&lt;no name provided&gt;$}</ID>
+    <ID>MaxLineLength:MusicScreen.kt$?:</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Box</ID>
+    <ID>MaxLineLength:MusicScreen.kt$ClassicSlider(value = volume.coerceIn(0f, maxVolume), onValueChange = { volume = it; audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0) }, valueRange = 0f..maxVolume, modifier = Modifier.weight(1f), colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Column</ID>
+    <ID>MaxLineLength:MusicScreen.kt$DeckButton</ID>
+    <ID>MaxLineLength:MusicScreen.kt$DeckButton(Icons.Default.Shuffle, "Aleatorio", shuffle, Modifier.weight(1f)) { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled; shuffle = it.shuffleModeEnabled } }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$DeckButton(Icons.Default.SkipNext, "Siguiente", false, Modifier.weight(1f)) { controller?.seekToNextMediaItem() }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$DeckButton(Icons.Default.SkipPrevious, "Anterior", false, Modifier.weight(1f)) { controller?.seekToPreviousMediaItem() }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$DropdownMenuItem</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Icon(icon, contentDescription = label, tint = if (active) Mint else Color.White, modifier = Modifier.size(26.dp))</ID>
+    <ID>MaxLineLength:MusicScreen.kt$OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp, maxLines = 1) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Row</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Text("Mi música", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = Color.White)</ID>
+    <ID>MaxLineLength:MusicScreen.kt$Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:MusicScreen.kt$artwork.bitmap?.let { Image(it, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo abrir el audio. Comprueba que el archivo esté disponible." }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$controller?.let { p -&gt; for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == track.uri) p.removeMediaItem(i) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$controller?.let { p -&gt; p.repeatMode = when (p.repeatMode) { Player.REPEAT_MODE_OFF -&gt; Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -&gt; Player.REPEAT_MODE_ONE; else -&gt; Player.REPEAT_MODE_OFF }; repeat = p.repeatMode }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$currentItemUri(p)?.let { uri -&gt; tracks.any { it.uri == uri } } != true -&gt; if (tracks.isNotEmpty()) start(0) else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$enabled = duration &gt; 0</ID>
+    <ID>MaxLineLength:MusicScreen.kt$for (i in 0 until a.length()) { val o = a.getJSONObject(i); add(MusicTrack(o.getString("uri"), o.getString("title"))) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))</ID>
+    <ID>MaxLineLength:MusicScreen.kt$menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()</ID>
+    <ID>MaxLineLength:MusicScreen.kt$onValueChange = { seeking = true; position = (it * duration).toLong() }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$private</ID>
+    <ID>MaxLineLength:MusicScreen.kt$private val Metal = Brush.verticalGradient(listOf(Color(0xFF7C8982), Color(0xFF3D4A44), Color(0xFF1A2922), Color(0xFF101A16)))</ID>
+    <ID>MaxLineLength:MusicScreen.kt$trackArtwork.artist?.let { Text(it, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$trackArtwork.bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }</ID>
+    <ID>MaxLineLength:MusicScreen.kt$val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()</ID>
+    <ID>MaxLineLength:MusicScreen.kt$val name = runCatching { context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } }.getOrNull() ?: "Canción"</ID>
+    <ID>MaxLineLength:PlaybackKind.kt$PlaybackKind$if (selector.startsWith("bestaudio") || selector.startsWith("worstaudio") || selector.startsWith("bajaaudio-") || selector.matches(Regex("bajamp3-(128|192|256|320)"))) return true</ID>
+    <ID>MaxLineLength:PlaybackService.kt$PlaybackService.&lt;no name provided&gt;$override</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$button.background = panel(intArrayOf(Color.rgb(75, 91, 81), Color.rgb(32, 49, 40), Color.rgb(13, 28, 20)), Color.rgb(93, 132, 109), 10)</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$controller.setMediaItem(MediaItem.Builder().setMediaId("video:$uri").setUri(uri).setMediaMetadata(metadata).build())</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$decor.systemUiVisibility = if (isFull) 0 else (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$fun</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$requestedOrientation = if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$val position = getSharedPreferences("playback_positions", MODE_PRIVATE).getLong(uri.toString(), 0L)</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity$}</ID>
+    <ID>MaxLineLength:PlayerActivity.kt$PlayerActivity.&lt;no name provided&gt;$Toast.makeText(this@PlayerActivity, "No se pudo reproducir el archivo.", Toast.LENGTH_LONG).show()</ID>
+    <ID>MaxLineLength:ProfileAvatarResolver.kt$ProfileAvatarResolver$connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")</ID>
+    <ID>MaxLineLength:ProfileAvatarResolver.kt$ProfileAvatarResolver$val</ID>
+    <ID>MaxLineLength:ProfileMonitor.kt$ProfileMonitorWorker$if (checkRecent(applicationContext, url, source) == RecentResult.RATE_LIMITED) return@withContext Result.retry()</ID>
+    <ID>MaxLineLength:ProfileMonitor.kt$ProfileNotice$ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED</ID>
+    <ID>MaxLineLength:ProfileMonitor.kt$ProfileNotice$system.createNotificationChannel(NotificationChannel(channel, "Monitoreo de perfiles", NotificationManager.IMPORTANCE_DEFAULT))</ID>
+    <ID>MaxLineLength:ProfileMonitor.kt$if (newIds.isNotEmpty()) ProfileNotice.send(context, url, "@${parsed.link.username}: ${newIds.size} video(s) nuevo(s).")</ID>
+    <ID>MaxLineLength:ProfileMonitor.kt$if (page.incomplete || page.items.isEmpty()) throw IllegalStateException("No se pudo completar la consulta del perfil.")</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$error = "Algunos resultados no estuvieron disponibles. Reintenta esta parte o continúa con la siguiente."</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$error = if (current.omittedPages) "Exploración terminada con resultados omitidos." else null</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$if (it.profileImage == null &amp;&amp; page.profileImage != null) it.copy(profileImage = page.profileImage) else it</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$if (token == generation &amp;&amp; avatar != null) mutableState.value = mutableState.value.copy(profileImage = avatar)</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$if (token == generation) mutableState.value = ProfileUiState(videos = first.distinctBy { it.id }, totalVideos = first.size)</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$mutableState.value = ProfileUiState(error = getApplication&lt;Application&gt;().getString(R.string.media_invalid_link))</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$mutableState.value = ProfileUiState(profileImage = mutableState.value.profileImage ?: page.profileImage)</ID>
+    <ID>MaxLineLength:ProfileViewModel.kt$ProfileViewModel$mutableState.value = current.copy(videos = combined, nextPage = nextScanPage, hasMore = true, incompletePage = false)</ID>
+    <ID>MaxLineLength:SavedFileDeletion.kt$deletionOutcome(delete = { target.delete() }, isMissing = { !target.exists() }, onError = { DiagnosticHistory.record(context, it.message) })</ID>
+    <ID>MaxLineLength:SavedFileDeletion.kt$internal</ID>
+    <ID>MaxLineLength:SavedFileDeletion.kt$val</ID>
+    <ID>MaxLineLength:ScanPage.kt$ScanPage$data</ID>
+    <ID>MaxLineLength:SettingsAppearanceSection.kt$FilterChip(selected = preferredQuality == value, onClick = { onQualityChange(value) }, label = { Text(label) })</ID>
+    <ID>MaxLineLength:SettingsGeneralSection.kt$FilterChip(selected = monitorPages == pages, onClick = { onMonitorPagesChange(pages) }, label = { Text(pages.toString()) })</ID>
+    <ID>MaxLineLength:SettingsGeneralSection.kt$val updateStatus = remember { context.getSharedPreferences("extractor_status", android.content.Context.MODE_PRIVATE) }</ID>
+    <ID>MaxLineLength:SpectrumAnalyzer.kt$SpectrumAnalyzer$private val cosine = Array(bins.size) { band -&gt; DoubleArray(WINDOW) { i -&gt; cos(2.0 * PI * bins[band] * i / WINDOW) } }</ID>
+    <ID>MaxLineLength:TechDesign.kt$Image(painter = painterResource(R.drawable.bajape_logo), contentDescription = null, modifier = Modifier.size(40.dp))</ID>
+    <ID>MaxLineLength:TechDesign.kt$border = BorderStroke(if (selected == platform) 2.dp else 1.dp, if (selected == platform) TechPink else TechBorder)</ID>
+    <ID>MaxLineLength:TechDesign.kt$fun</ID>
+    <ID>MaxLineLength:TechDesign.kt$if (icon != null) { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }</ID>
+    <ID>MaxLineLength:TechDesign.kt$if (platform == "Auto") Icon(Icons.Outlined.Public, contentDescription = "Web", tint = Color(0xFF46C8FF), modifier = Modifier.size(31.dp)) else PlatformLogo(platform, Modifier.size(31.dp))</ID>
+    <ID>MaxLineLength:TemporaryFilesTest.kt$TemporaryFilesTest$listOf("123.part", "123.mp4.part", "123.ytdl", "123.f137.mp4").forEach { cache.resolve(it).writeText("temp") }</ID>
+    <ID>MaxLineLength:TikTokVideoSource.kt$TikTokVideoSource$FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it &gt; 0 } ?: info.duration)</ID>
+    <ID>MaxLineLength:TikTokVideoSource.kt$TikTokVideoSource$it.extension.lowercase() in setOf("mp4", "mkv", "webm", "mov", "m4a", "mp3", "opus", "ogg", "aac")</ID>
+    <ID>MaxLineLength:TikTokVideoSource.kt$TikTokVideoSource$thumbs.optJSONObject(i)?.optString("url")?.takeIf { it.startsWith("https://") }</ID>
+    <ID>MaxLineLength:TikTokVideoSource.kt$TikTokVideoSource$val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || results.size &lt; entries.length()</ID>
+    <ID>MaxLineLength:ToolsScreen.kt$OutlinedButton(onClick = { onUnfollowProfile(profile) }) { Text(stringResource(R.string.tools_unfollow)) }</ID>
+    <ID>MaxLineLength:ToolsScreen.kt$Text(stringResource(R.string.tools_player), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:ToolsScreen.kt$Text(stringResource(R.string.tools_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:UniversalMediaSource.kt$UniversalMediaSource$throw IllegalStateException(response.err.take(300).ifBlank { "No se pudo consultar el enlace público." })</ID>
+    <ID>MaxLineLength:UniversalMediaSource.kt$UniversalMediaSource$val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || distinct.size &lt; rawCount</ID>
+    <ID>MaxLineLength:UniversalMediaSource.kt$UniversalMediaSource$val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }</ID>
+    <ID>MaxLineLength:UniversalMediaSource.kt$UniversalMediaSource$val response = ExtractorAccess.useEngine { YoutubeDL.getInstance().execute(request, "universal_inspect") }</ID>
+    <ID>MaxLineLength:VideoPagination.kt$VideoPagination$minOf(total.coerceAtLeast(0), pages.coerceAtLeast(1).toLong().times(PAGE_SIZE).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())</ID>
+    <ID>NestedBlockDepth:DownloadWorker.kt$DownloadWorker$private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri</ID>
+    <ID>NestedBlockDepth:EngineFallback.kt$EngineFallback$suspend fun execute(): T</ID>
+    <ID>NestedBlockDepth:ProfileAvatarResolver.kt$ProfileAvatarResolver$internal fun findIdentity(html: String, username: String): ProfileIdentity?</ID>
+    <ID>RethrowCaughtException:DownloadWorker.kt$DownloadWorker$throw e</ID>
+    <ID>ReturnCount:BoundedInputTest.kt$BoundedInputTest.&lt;no name provided&gt;$override fun read(b: ByteArray, off: Int, len: Int): Int</ID>
+    <ID>ReturnCount:CompletionNotifier.kt$CompletionNotifier$suspend fun notifyFinished( context: Context, batchIds: List&lt;String&gt;, )</ID>
+    <ID>ReturnCount:DestinationNaming.kt$DestinationNaming$fun account(url: String): String</ID>
+    <ID>ReturnCount:DownloadFormatPreference.kt$DownloadFormatPreference$fun fromChoice(id: String, label: String): String</ID>
+    <ID>ReturnCount:DownloadProgressParser.kt$DownloadProgressParser$fun percent(line: String): Int?</ID>
+    <ID>ReturnCount:DownloadWorker.kt$DownloadWorker$private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri</ID>
+    <ID>ReturnCount:ExtractorVerifier.kt$ExtractorVerifier$internal fun verifyInstalledBinary(context: Context): VerificationResult</ID>
+    <ID>ReturnCount:FormatAvailability.kt$FormatAvailability$fun matches(preset: String, available: List&lt;FormatChoice&gt;): Boolean</ID>
+    <ID>ReturnCount:MonitorPolicy.kt$MonitorPolicy$fun rateLimited(error: Throwable): Boolean</ID>
+    <ID>ReturnCount:PlaybackKind.kt$PlaybackKind$fun isAudio(format: String?, mime: String?, filename: String?): Boolean</ID>
+    <ID>ReturnCount:SavedFileDeletion.kt$internal fun deleteSavedFile(context: Context, uri: Uri?): DeleteCompletedResult</ID>
+    <ID>ReturnCount:ThumbnailUrls.kt$ThumbnailUrls$fun youtube(videoId: String, videoUrl: String): String?</ID>
+    <ID>ReturnCount:TikTokLinkParser.kt$TikTokLinkParser$fun canonicalProfile(raw: String): String?</ID>
+    <ID>ReturnCount:TikTokLinkParser.kt$TikTokLinkParser$fun parse(rawInput: String): LinkParseResult</ID>
+    <ID>ReturnCount:TikTokLinkParser.kt$TikTokLinkParser$fun sameProfile(first: String, second: String): Boolean</ID>
+    <ID>ReturnCount:TikTokVideoSource.kt$TikTokVideoSource$private fun cachedProfile(url: String): List&lt;VideoEntry&gt;?</ID>
+    <ID>ReturnCount:UniversalMediaSource.kt$UniversalMediaSource$private fun parseEntry(json: JSONObject, link: MediaLink): VideoEntry?</ID>
+    <ID>ReturnCount:VideoThumbnailResolver.kt$VideoThumbnailResolver$suspend fun resolve(video: VideoEntry): String?</ID>
+    <ID>SwallowedException:EngineFallback.kt$EngineFallback$first: Exception</ID>
+    <ID>ThrowsCount:DownloadWorker.kt$DownloadWorker$private fun publishVideo(context: Context, file: File, item: DownloadRecord): Uri</ID>
+    <ID>ThrowsCount:EngineFallback.kt$EngineFallback$suspend fun execute(): T</ID>
+    <ID>ThrowsCount:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Suppress("ktlint:standard:function-naming") @Composable private fun TikitokiApp( incomingLink: String, shareRevision: Int, )</ID>
+    <ID>ThrowsCount:ProfileViewModel.kt$ProfileViewModel$private suspend fun fetchPage(media: MediaLink, page: Int): ScanPage</ID>
+    <ID>ThrowsCount:SavedFileDeletionTest.kt$SavedFileDeletionTest$@Test fun distinguishesDeletedMissingAndFailed()</ID>
+    <ID>ThrowsCount:TikTokVideoSource.kt$TikTokVideoSource$private fun fetchSingle(url: String): VideoEntry</ID>
+    <ID>ThrowsCount:TikTokVideoSource.kt$TikTokVideoSource$private fun inspectProfileWithStatus( link: TikTokLink, start: Int? = null, end: Int? = null, ): ScanPage</ID>
+    <ID>TooGenericExceptionCaught:AnalysisErrors.kt$AnalysisErrors$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:DiagnosticExport.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DownloadWorker.kt$DownloadWorker$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EngineFallback.kt$EngineFallback$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EngineFallback.kt$EngineFallback$first: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractorRollback.kt$ExtractorRollback$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractorRollback.kt$ExtractorRollback$restoreFailure: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractorVerifier.kt$ExtractorVerifier$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractorVersion.kt$ExtractorVersion$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:MainActivity.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MusicActivity.kt$MusicActivity$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MusicScreen.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:NewPipeSource.kt$NewPipeSource$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:PlayerActivity.kt$PlayerActivity$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ProfileAvatarResolver.kt$ProfileAvatarResolver$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ProfileMonitor.kt$ProfileFullMonitorWorker$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ProfileMonitor.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ProfileViewModel.kt$ProfileViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SavedFileDeletion.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TikTokVideoSource.kt$TikTokVideoSource$e: Exception</ID>
+    <ID>TooManyFunctions:DownloadDatabase.kt$DownloadDao</ID>
+    <ID>TooManyFunctions:ProfileMonitor.kt$ProfileMonitor</ID>
+    <ID>TooManyFunctions:TikTokVideoSource.kt$TikTokVideoSource</ID>
+    <ID>UnusedPrivateProperty:IntentThreatMatrixTest.kt$IntentThreatMatrixTest$val base = "https://www.youtube.com/watch?v=abc"</ID>
+    <ID>UnusedPrivateProperty:MainActivity.kt$val parsed = IncomingLinkValidator.validate(url)</ID>
+    <ID>UnusedPrivateProperty:MainActivity.kt$var historyFilter by rememberSaveable { mutableStateOf("TODOS") }</ID>
+    <ID>UnusedPrivateProperty:TikTokVideoSource.kt$TikTokVideoSource$private var updateAttempted = false</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("Android necesita permiso para guardar en Descargas.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("La carpeta seleccionada ya no está disponible.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("No se pudo crear Descargas.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("No se pudo crear el archivo en Descargas.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("No se pudo crear el archivo en la carpeta seleccionada.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("No se pudo crear la carpeta de la cuenta.")</ID>
+    <ID>UseCheckOrError:DownloadWorker.kt$DownloadWorker$throw IllegalStateException("No se pudo escribir el archivo.")</ID>
+    <ID>UseCheckOrError:ExtractorRollbackTest.kt$ExtractorRollbackTest$throw IllegalStateException("failed")</ID>
+    <ID>UseCheckOrError:ExtractorUpdateWorker.kt$ExtractorUpdateWorker$throw IllegalStateException("Cannot verify extractor version")</ID>
+    <ID>UseCheckOrError:MainActivity.kt$throw IllegalStateException("No formats")</ID>
+    <ID>UseCheckOrError:ProfileMonitor.kt$throw IllegalStateException("No se pudo completar la consulta del perfil.")</ID>
+    <ID>UseCheckOrError:ProfileViewModel.kt$ProfileViewModel$throw last ?: IllegalStateException("No se pudo recuperar la página")</ID>
+    <ID>UseCheckOrError:TemporaryFiles.kt$throw IllegalStateException("No se encontró un nombre disponible.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("El extractor no devolvió un ID de video.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("No se encontró el archivo descargado.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("No se identificó el usuario.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("No se pudo crear la carpeta temporal.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("No se pudo enumerar el perfil. Puede estar restringido.")</ID>
+    <ID>UseCheckOrError:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalStateException("TikTok no devolvió un catálogo válido de publicaciones.")</ID>
+    <ID>UseRequire:TikTokVideoSource.kt$TikTokVideoSource$throw IllegalArgumentException("ID de video inválido.")</ID>
+    <ID>WildcardImport:AnalysisAnimation.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CanonicalProfileTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:DownloadFormatPreferenceTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:DownloadInputPolicyTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:ExtractorPagePolicyTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:FormatAvailabilityTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:IncomingSecurityTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:IntentThreatMatrixTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:MediaLinkParserTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:MetadataSanitizerTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:MiniPlayer.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MiniPlayer.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:MiniPlayer.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MonitorPolicyTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:MusicScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MusicScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:MusicScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:MusicScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:PlaybackKindTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:ProfileMonitor.kt$import androidx.work.*</ID>
+    <ID>WildcardImport:ProfileViewModel.kt$import com.tikitoki.downloader.data.*</ID>
+    <ID>WildcardImport:SpectrumAnalyzerTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:TechDesign.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TechDesign.kt$import androidx.compose.material3.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +73,7 @@ internal fun LibraryScreen(
     onSettings: () -> Unit,
     onKindChange: (String) -> Unit,
     onMusic: () -> Unit,
+    onCollections: () -> Unit,
     onOpen: (DownloadRecord) -> Unit,
     onDelete: (DownloadRecord) -> Unit,
 ) {
@@ -144,6 +146,9 @@ internal fun LibraryScreen(
                 TechHeader(onSettings = onSettings)
                 Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = onCollections, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.collections_explore))
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Videos", "Música").forEach { kind ->
                         FilterChip(selected = libraryKind == kind, onClick = { onKindChange(kind) }, label = { Text(kind) })

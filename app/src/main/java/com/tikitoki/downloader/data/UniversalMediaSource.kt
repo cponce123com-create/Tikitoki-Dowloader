@@ -138,9 +138,23 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
         FormatOptions.individual(app, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
     }
+
+    /** Consults the public playlist tab; entries are playlists, not individual videos. */
+    internal suspend fun channelPlaylistsJson(): String =
+        withContext(Dispatchers.IO) {
+            ready()
+            val request =
+                YoutubeDLRequest("https://www.youtube.com/channel/UCb5Wa57eqZv48hcRNCZL1fw/playlists")
+                    .addOption("--flat-playlist")
+                    .addOption("--dump-single-json")
+                    .addOption("--ignore-errors")
+                    .addOption("--no-warnings")
+                    .addOption("--playlist-end", CollectionsCatalog.MAX_PLAYLISTS)
+            val response =
+                ExtractorAccess.useEngine {
+                    YoutubeDL.getInstance().execute(request, "bajape_channel_playlists")
+                }
+            check(response.exitCode == 0 && response.out.isNotBlank())
+            response.out
+        }
 }
-
-
-
-
-

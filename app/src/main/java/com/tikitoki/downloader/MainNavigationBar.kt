@@ -50,7 +50,10 @@ internal fun MainNavigationBar(
                 )
             names.forEachIndexed { index, name ->
                 NavigationBarItem(
-                    selected = selectedTab == index || (selectedTab == 6 && index == 3),
+                    selected =
+                        selectedTab == index ||
+                            (selectedTab == 6 && index == 3) ||
+                            (selectedTab == COLLECTIONS_TAB && index == 2),
                     onClick = { onNavigate(index) },
                     icon = { Icon(icons[index], contentDescription = name) },
                     label = {
@@ -73,3 +76,5 @@ internal fun MainNavigationBar(
         }
     }
 }
+
+internal const val COLLECTIONS_TAB = 7

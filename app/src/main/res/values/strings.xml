@@ -128,6 +128,25 @@
     <string name="analysis_error_update_manual">TikTok devolvió una respuesta que el motor no pudo interpretar. En Ajustes, solicita la actualización del motor con una red sin medición y vuelve a intentar.</string>
     <string name="analysis_error_tiktok">No se pudo analizar TikTok. Comprueba la conexión y, si el problema continúa, actualiza el motor desde Ajustes con una red sin medición.</string>
     <string name="analysis_error_generic">No se pudo analizar el enlace. Comprueba la conexión y que el contenido esté disponible.</string>
+    <string name="collections_explore">Explorar colecciones</string>
+    <string name="collections_back">Volver</string>
+    <string name="collections_title">Colecciones</string>
+    <string name="collections_subtitle">Descubre listas de Baja.pe</string>
+    <string name="collections_loading">Cargando colecciones…</string>
+    <string name="collections_unavailable">No se pudo cargar el catálogo. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="collections_count">%1$d listas</string>
+    <string name="collections_search">Buscar una lista</string>
+    <string name="collections_empty">Todavía no hay listas en esta sección.</string>
+    <string name="collections_no_results">No se encontraron listas.</string>
+    <string name="collections_open">Abrir lista</string>
+    <string name="collections_all">Todas las listas</string>
+    <string name="collections_music">Música</string>
+    <string name="collections_christian">Cristiana</string>
+    <string name="collections_reflection">Reflexiones y mensajes</string>
+    <string name="collections_news">Noticias</string>
+    <string name="collections_cached">Mostrando la última copia guardada.</string>
+    <string name="collections_limit">Se muestran hasta 1000 listas del canal.</string>
+    <string name="collections_classification">Las secciones se organizan automáticamente según los nombres de las listas. Busca por autor, género o tema en Todas las listas.</string>
 </resources>
 
 
