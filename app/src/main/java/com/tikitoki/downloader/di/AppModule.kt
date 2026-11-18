@@ -3,11 +3,12 @@ package com.tikitoki.downloader.di
 import com.tikitoki.downloader.data.*
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import com.tikitoki.downloader.ui.ProfileViewModel
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.android.logger.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
-import org.koin.androidx.scope.dsl.scope
+import org.koin.core.viewmodel.dsl.viewModel
+import org.koin.core.scope.scope
 
 /**
  * Koin module for dependency injection.

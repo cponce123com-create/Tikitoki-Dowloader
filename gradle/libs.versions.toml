@@ -59,7 +59,7 @@ detekt = "1.23.6"
 dokka = "1.9.20"
 
 # Dependency Injection
-koin = "4.0.0"
+koin = "4.2.1"
 
 # Testing utilities
 mockk = "1.14.1"
@@ -153,12 +153,15 @@ cyclonedxGradle = { module = "org.cyclonedx:cyclonedx-gradle-plugin", version.re
 # ProGuard
 proguardGradle = { module = "com.guardsquare:proguard-gradle", version.ref = "proguard" }
 
-# Dependency Injection (Koin)
+# Dependency Injection (Koin) - Koin 4.x artifacts
 koinCore = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koinAndroid = { module = "io.insert-koin:koin-android", version.ref = "koin" }
-koinAndroidxViewmodel = { module = "io.insert-koin:koin-androidx-viewmodel", version.ref = "koin" }
-koinAndroidxScope = { module = "io.insert-koin:koin-androidx-scope", version.ref = "koin" }
-koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
+koinCoreViewmodel = { module = "io.insert-koin:koin-core-viewmodel", version.ref = "koin" }
+koinComposeViewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+koinCompose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koinAndroidxNavigation = { module = "io.insert-koin:koin-androidx-navigation", version.ref = "koin" }
+koinAndroidxWorkmanager = { module = "io.insert-koin:koin-androidx-workmanager", version.ref = "koin" }
+koinAndroidxStartup = { module = "io.insert-koin:koin-androidx-startup", version.ref = "koin" }
 koinTest = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 koinTestJunit4 = { module = "io.insert-koin:koin-test-junit4", version.ref = "koin" }
 
@@ -179,7 +182,7 @@ coil = ["coilCompose", "coilVideo"]
 extractors = ["newPipeExtractor", "youtubedlAndroidLibrary", "youtubedlAndroidFfmpeg"]
 testing = ["junit", "androidxTestJunit", "androidxTestRunner", "androidxRoomTesting", "androidxComposeUiTestJunit4", "androidxComposeUiTestManifest"]
 composeTest = ["androidxComposeUiTestJunit4", "androidxComposeUiTestManifest"]
-koin = ["koinCore", "koinAndroid", "koinAndroidxViewmodel", "koinAndroidxScope", "koinAndroidxCompose"]
+koin = ["koinCore", "koinAndroid", "koinCoreViewmodel", "koinComposeViewmodel", "koinCompose"]
 koinTest = ["koinTest", "koinTestJunit4"]
 mockk = ["mockk", "mockkAndroid"]
 testUtils = ["turbine", "mockk", "mockkAndroid"]
