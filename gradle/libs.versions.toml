@@ -32,6 +32,10 @@ androidxComposeFoundation = "1.6.7"
 androidxComposeMaterial3 = "1.2.1"
 androidxComposeMaterial = "1.6.7"
 androidxComposeMaterialIconsExtended = "1.6.7"
+androidxNavigationCompose = "2.8.7"
+androidxDataStorePreferences = "1.1.4"
+androidxPaging = "3.3.0"
+accompanistPermissions = "0.32.0"
 
 # Kotlin Coroutines
 kotlinxCoroutinesAndroid = "1.9.0"
@@ -99,6 +103,19 @@ androidxLifecycleViewmodelCompose = { module = "androidx.lifecycle:lifecycle-vie
 
 # Activity
 androidxActivityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
+
+# Navigation
+androidxNavigationCompose = { module = "androidx.navigation:navigation-compose", version.ref = "androidxNavigationCompose" }
+
+# DataStore
+androidxDataStorePreferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidxDataStorePreferences" }
+
+# Paging
+androidxPagingRuntime = { module = "androidx.paging:paging-runtime", version.ref = "androidxPaging" }
+androidxPagingCompose = { module = "androidx.paging:paging-compose", version.ref = "androidxPaging" }
+
+# Accompanist
+accompanistPermissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 
 # Coroutines
 kotlinxCoroutinesAndroid = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
@@ -186,6 +203,10 @@ koin = ["koinCore", "koinAndroid", "koinCoreViewmodel", "koinComposeViewmodel", 
 koinTest = ["koinTest", "koinTestJunit4"]
 mockk = ["mockk", "mockkAndroid"]
 testUtils = ["turbine", "mockk", "mockkAndroid"]
+androidxNavigation = ["androidxNavigationCompose"]
+androidxDataStore = ["androidxDataStorePreferences"]
+androidxPaging = ["androidxPagingRuntime", "androidxPagingCompose"]
+accompanist = ["accompanistPermissions"]
 
 [plugins]
 agp = { id = "com.android.application", version.ref = "agp" }

@@ -11,6 +11,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -146,6 +149,9 @@ import com.tikitoki.downloader.ui.DeleteConfirmDialog
 import com.tikitoki.downloader.ui.FinishedBatchDialog
 import com.tikitoki.downloader.ui.PlayerChoiceDialog
 import com.tikitoki.downloader.MainNavigationBar
+import com.tikitoki.downloader.ui.NavRoutes
+import com.tikitoki.downloader.ui.AppNavHost
+import com.tikitoki.downloader.ui.rememberAppNavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -298,10 +304,16 @@ private fun TikitokiApp(
     val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
     val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
-    var tab by rememberSaveable { mutableStateOf(0) }
+    val navController = rememberAppNavController()
     var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
     var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-    BackHandler(enabled = tab == 6) { tab = 2 }
+    // Back handler for Music tab - navigate back to Library
+    BackHandler(enabled = navController.currentDestination?.route == NavRoutes.MUSIC) {
+        navController.navigate(NavRoutes.LIBRARY) {
+            popUpTo(NavRoutes.LIBRARY) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
     var monitorRevision by remember { mutableStateOf(0) }
     var message by remember { mutableStateOf("") }
@@ -330,8 +342,8 @@ private fun TikitokiApp(
         if (showPlayerChoice) {
             PlayerChoiceDialog(
                 onDismiss = { showPlayerChoice = false },
-                onVideosClick = { showPlayerChoice = false; libraryKind = "Videos"; tab = 2 },
-                onMusicClick = { showPlayerChoice = false; tab = 6 },
+                onVideosClick = { showPlayerChoice = false; libraryKind = "Videos"; navController.navigate(NavRoutes.LIBRARY) },
+                onMusicClick = { showPlayerChoice = false; navController.navigate(NavRoutes.MUSIC) },
             )
         }
         // Finished batches dialog
@@ -389,345 +401,252 @@ private fun TikitokiApp(
             contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.safeDrawing,
             topBar = { SafeAreaTopBar { } },
             bottomBar = {
-                MainNavigationBar(
-                    selectedTab = tab,
-                    onMusic = { tab = 6 },
-                    onNavigate = { target ->
-                        focusManager.clearFocus()
-                        keyboard?.hide()
-                        tab = target
-                    },
+                BottomNavigationBar(
+                    navController = navController,
+                    focusManager = focusManager,
+                    keyboard = keyboard,
+                    musicRequestUri = musicRequestUri,
+                    musicRequestTitle = musicRequestTitle,
+                    onMusicRequestConsumed = { musicRequestUri = null },
                 )
             },
         ) { insets ->
-            when (tab) {
-                0 -> {
-                    AnalysisScreen(
-                        incomingLink = incomingLink,
-                        shareRevision = shareRevision,
-                        onNavigateToDownloads = { tab = 1 },
-                        onNavigateToSettings = { tab = 5 },
-                        onShowQualitySheet = { /* handled internally */ },
-                        onShowClearTemp = { showClearTemp = true },
-                        onShowAbout = { showAbout = true },
-                        themeChoice = themeChoice,
-                        preferredQuality = preferredQuality,
-                        onSettingsChanged = { /* settings are shared via SharedPreferences */ },
-                        insets = insets,
-                    )
-                }
-                1 -> {
-                    DownloadQueueScreen(
-                        records = records,
-                        themeChoice = themeChoice,
-                        insets = insets,
-                        message = message,
-                        thumbnailResolver = thumbnailResolver,
-                        downloadSpeeds = downloadSpeeds,
-                        onSettings = { tab = 5 },
-                        onPause = {
-                            scope.launch {
-                                downloadsViewModel.pauseQueue()
-                                message = "Cola pausada."
-                            }
-                        },
-                        onResume = {
-                            scope.launch {
-                                downloadsViewModel.resumeQueue()
-                                message = "Cola reanudada."
-                            }
-                        },
-                        onCancel = { id ->
-                            scope.launch {
-                                downloadsViewModel.cancelDownload(id)
-                                message = "Descarga cancelada."
-                            }
-                        },
-                    )
-                }
-                2 -> {
-                    LibraryScreen(
-                        records = records,
-                        themeChoice = themeChoice,
-                        insets = insets,
-                        libraryKind = libraryKind,
-                        message = message,
-                        thumbnailResolver = thumbnailResolver,
-                        galleryImageLoader = galleryImageLoader,
-                        onSettings = { tab = 5 },
-                        onKindChange = { libraryKind = it },
-                        onMusic = { tab = 6 },
-                        onOpen = { record ->
-                            val saved = record.savedUri
-                            if (saved.isNullOrBlank()) {
-                                message = "No se encontró la ubicación del archivo."
-                            } else {
-                                scope.launch {
-                                    try {
-                                        val uri = Uri.parse(saved)
-                                        val (mime, name) =
-                                            withContext(Dispatchers.IO) {
-                                                if (uri.scheme == "content") {
-                                                    val type = runCatching { context.contentResolver.getType(uri) }.getOrNull()
-                                                    val displayName =
-                                                        runCatching {
-                                                            context.contentResolver
-                                                                .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-                                                                ?.use { if (it.moveToFirst()) it.getString(0) else null }
-                                                        }.getOrNull()
-                                                    type to (displayName ?: uri.lastPathSegment)
-                                                } else {
-                                                    null to uri.lastPathSegment
-                                                }
-                                            }
-                                        if (PlaybackKind.isAudio(record.formatId, mime, name)) {
-                                            musicRequestUri = saved
-                                            musicRequestTitle = record.title
-                                            tab = 6
-                                        } else {
-                                            context.startActivity(
-                                                Intent(context, PlayerActivity::class.java).apply {
-                                                    data = uri
-                                                    putExtra("title", record.title)
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                },
-                                            )
-                                        }
-                                    } catch (
-                                        e: kotlinx.coroutines.CancellationException,
-                                    ) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        if (e is kotlinx.coroutines.CancellationException) throw e
-                                        runCatching { DiagnosticHistory.record(context, e.message) }
-                                        message = "No se pudo abrir el reproductor."
-                                    }
-                                }
-                            }
-                        },
-                        onDelete = { deleteCandidate = it },
-                    )
-                }
-                3 -> {
-                    val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
-                    ToolsScreen(
-                        monitored = monitored,
-                        failedCount = records.count { it.status == DownloadState.FAILED },
-                        currentUrl = url,
-                        profileImage = profileState.profileImage,
-                        avatarResolver = avatarResolver,
-                        message = message,
-                        onRetryFailed = {
-                            scope.launch {
-                                DownloadQueue.retryFailed(context)
-                                tab = 1
-                                message = "Reintentando descargas."
-                            }
-                        },
-                        onClearErrors = { scope.launch { dao.clearFailed() } },
-                        onOpenPlayer = { showPlayerChoice = true },
-                        onFollowProfile = {
-                            if (ProfileMonitor.add(context, url.trim())) {
-                                if (Build.VERSION.SDK_INT >= 33 &&
-                                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                    PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                                monitorRevision++
-                                message = "Perfil agregado al monitoreo."
-                            } else {
-                                message = "Pega un enlace válido de perfil en Buscar."
-                            }
-                        },
-                        onUnfollowProfile = { profile ->
-                            ProfileMonitor.remove(context, profile)
-                            monitorRevision++
-                        },
-                    )
-                }
-                4 -> {
-                    FilesScreen(
-                        themeChoice = themeChoice,
-                        folderDescription = folderDescription,
-                        downloadFolder = downloadFolder,
-                        message = message,
-                        onSettingsClick = { tab = 5 },
-                        onChooseFolder = { folderPicker.launch(null) },
-                        onResetFolder = {
-                            settings.edit().remove("download_tree").apply()
-                            downloadFolder = null
-                        },
-                        onOpenFolder = {
+            AppNavHost(
+                navController = navController,
+                startDestination = NavRoutes.HOME,
+                onNavigateToDownloads = { navController.navigate(NavRoutes.DOWNLOADS) },
+                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                onShowClearTemp = { showClearTemp = true },
+                onShowAbout = { showAbout = true },
+                themeChoice = themeChoice,
+                preferredQuality = preferredQuality,
+                // Shared state
+                settings = settings,
+                folderDescription = folderDescription,
+                downloadFolder = downloadFolder,
+                records = records,
+                message = message,
+                libraryKind = libraryKind,
+                url = url,
+                monitorRevision = monitorRevision,
+                musicRequestUri = musicRequestUri,
+                musicRequestTitle = musicRequestTitle,
+                // Dependencies
+                context = context,
+                source = source,
+                thumbnailResolver = thumbnailResolver,
+                avatarResolver = avatarResolver,
+                galleryImageLoader = galleryImageLoader,
+                universalSource = universalSource,
+                profileViewModel = profileViewModel,
+                profileState = profileState,
+                dao = dao,
+                downloadsViewModel = downloadsViewModel,
+                downloadSpeeds = downloadSpeeds,
+                finishedBatches = finishedBatches,
+                scope = scope,
+                folderPicker = folderPicker,
+                networkSettingsBusy = networkSettingsBusy,
+                wifiParallel = wifiParallel,
+                meteredParallel = meteredParallel,
+                allowMetered = allowMetered,
+                rateKiB = rateKiB,
+                showProgressNotice = showProgressNotice,
+                completionNotice = completionNotice,
+                monitorHours = monitorHours,
+                monitorPages = monitorPages,
+                inspecting = inspecting,
+                storagePermission = storagePermission,
+                notificationsPermission = notificationsPermission,
+                diagnosticPicker = diagnosticPicker,
+                deleteCandidate = deleteCandidate,
+                showClearTemp = showClearTemp,
+                showPlayerChoice = showPlayerChoice,
+                showAbout = showAbout,
+                onMusicRequestConsumed = { musicRequestUri = null },
+                onOpenFile = { record ->
+                    val saved = record.savedUri
+                    if (saved.isNullOrBlank()) {
+                        message = "No se encontró la ubicación del archivo."
+                    } else {
+                        scope.launch {
                             try {
-                                val folder =
-                                    downloadFolder?.let { tree ->
-                                        val treeUri = Uri.parse(tree)
-                                        DocumentsContract.buildDocumentUriUsingTree(
-                                            treeUri,
-                                            DocumentsContract.getTreeDocumentId(treeUri),
-                                        )
+                                val uri = Uri.parse(saved)
+                                val (mime, name) =
+                                    withContext(Dispatchers.IO) {
+                                        if (uri.scheme == "content") {
+                                            val type = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+                                            val displayName =
+                                                runCatching {
+                                                    context.contentResolver
+                                                        .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                                                        ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                                                }.getOrNull()
+                                            type to (displayName ?: uri.lastPathSegment)
+                                        } else {
+                                            null to uri.lastPathSegment
+                                        }
                                     }
-                                        ?: DocumentsContract.buildDocumentUri(
-                                            "com.android.externalstorage.documents",
-                                            "primary:Download/TikitokiDownloader",
-                                        )
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(folder, DocumentsContract.Document.MIME_TYPE_DIR)
-                                        addFlags(
-                                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-                                        )
-                                    },
-                                )
+                                if (PlaybackKind.isAudio(record.formatId, mime, name)) {
+                                    musicRequestUri = saved
+                                    musicRequestTitle = record.title
+                                    navController.navigate(NavRoutes.MUSIC)
+                                } else {
+                                    context.startActivity(
+                                        Intent(context, PlayerActivity::class.java).apply {
+                                            data = uri
+                                            putExtra("title", record.title)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        },
+                                    )
+                                }
                             } catch (
-                                e: Exception,
+                                e: kotlinx.coroutines.CancellationException,
                             ) {
+                                throw e
+                            } catch (e: Exception) {
                                 if (e is kotlinx.coroutines.CancellationException) throw e
-                                DiagnosticHistory.record(context, e.message)
-                                message =
-                                    "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos."
+                                runCatching { DiagnosticHistory.record(context, e.message) }
+                                message = "No se pudo abrir el reproductor."
                             }
-                        },
-                        completedCount = records.count { it.status == DownloadState.COMPLETED },
-                        settings = settings,
-                    )
-                }
-                5 -> {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(
-                                    if (themeChoice == "Negro AMOLED") {
-                                        Color.Black
-                                    } else {
-                                        TechBackground
-                                    },
-                                )
-                                .padding(insets)
-                                .consumeWindowInsets(insets)
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
-                    ) {
-                        TechHeader(onSettings = { tab = 5 })
-                        SettingsGeneralSection(
-                            monitorHours = monitorHours,
-                            monitorPages = monitorPages,
-                            folderDescription = folderDescription,
-                            hasCustomFolder = downloadFolder != null,
-                            message = message,
-                            onAbout = { showAbout = true },
-                            onExportDiagnostic = { diagnosticPicker.launch(context.getString(R.string.diagnostic_filename)) },
-                            onMonitorHoursChange = { hours ->
-                                monitorHours = hours
-                                ProfileMonitor.setInterval(context, hours)
-                            },
-                            onMonitorPagesChange = { pages ->
-                                monitorPages = pages
-                                ProfileMonitor.setPageLimit(context, pages)
-                            },
-                            onUpdateExtractor = {
-                                ExtractorUpdateWorker.updateNow(context)
-                                message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
-                            },
-                            onChooseFolder = { folderPicker.launch(null) },
-                            onResetFolder = {
-                                settings.edit().remove("download_tree").apply()
-                                downloadFolder = null
-                            },
-                        )
-                        SettingsAppearanceSection(
-                            themeChoice = themeChoice,
-                            preferredQuality = preferredQuality,
-                            onThemeChange = { option ->
-                                themeChoice = option
-                                settings.edit().putString("theme", option).apply()
-                            },
-                            onQualityChange = { option ->
-                                preferredQuality = option
-                                settings.edit().putString("quality", option).apply()
-                            },
-                        )
-                        DownloadSettingsSection(
-                            wifiParallel = wifiParallel,
-                            meteredParallel = meteredParallel,
-                            allowMetered = allowMetered,
-                            networkSettingsBusy = networkSettingsBusy,
-                            rateKiB = rateKiB,
-                            showProgressNotice = showProgressNotice,
-                            completionNotice = completionNotice,
-                            onWifiChange = {
-                                wifiParallel = it.roundToInt().coerceIn(1, 8)
-                                settings.edit().putInt("wifi_parallel", wifiParallel).apply()
-                            },
-                            onMeteredChange = {
-                                meteredParallel = it.roundToInt().coerceIn(1, 8)
-                                settings.edit().putInt("metered_parallel", meteredParallel).apply()
-                            },
-                            onAllowMeteredChange = { allowed ->
-                                networkSettingsBusy = true
-                                scope.launch {
-                                    try {
-                                        val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
-                                        allowMetered = allowed
-                                        message =
-                                            if (pending) {
-                                                "Cola pausada para cambiar la red. Pulsa Continuar en Descargas."
-                                            } else {
-                                                "Preferencia de red actualizada."
-                                            }
-                                    } catch (e: Exception) {
-                                        if (e is kotlinx.coroutines.CancellationException) throw e
-                                        DiagnosticHistory.record(context, e.message)
-                                        message = "No se pudo cambiar la preferencia de red."
-                                    } finally {
-                                        networkSettingsBusy = false
-                                    }
-                                }
-                            },
-                            onRateChange = { rate ->
-                                rateKiB = rate
-                                settings.edit().putInt("rate_kib", rate).apply()
-                            },
-                            onProgressNoticeChange = {
-                                showProgressNotice = it
-                                settings.edit().putBoolean("notify_progress_detail", it).apply()
-                                if (it &&
-                                    Build.VERSION.SDK_INT >= 33 &&
-                                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                    PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
-                            onCompletionNoticeChange = {
-                                completionNotice = it
-                                settings.edit().putBoolean("notify_completion", it).apply()
-                                if (it &&
-                                    Build.VERSION.SDK_INT >= 33 &&
-                                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                    PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
-                        )
-                        SettingsStorageSection(
-                            message = message,
-                            onClearTemporary = { showClearTemp = true },
-                        )
+                        }
                     }
-                }
-                6 -> {
-                    MusicScreen(
-                        requestedUri = musicRequestUri,
-                        requestedTitle = musicRequestTitle,
-                        onRequestConsumed = { musicRequestUri = null },
-                    )
-                }
-            }
+                },
+                onDelete = { deleteCandidate = it },
+                onKindChange = { libraryKind = it },
+                onRetryFailed = {
+                    scope.launch {
+                        DownloadQueue.retryFailed(context)
+                        navController.navigate(NavRoutes.DOWNLOADS)
+                        message = "Reintentando descargas."
+                    }
+                },
+                onClearErrors = { scope.launch { dao.clearFailed() } },
+                onOpenPlayer = { showPlayerChoice = true },
+                onFollowProfile = {
+                    if (ProfileMonitor.add(context, url.value.trim())) {
+                        if (Build.VERSION.SDK_INT >= 33 &&
+                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                            PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        monitorRevision.value++
+                        message = "Perfil agregado al monitoreo."
+                    } else {
+                        message = "Pega un enlace válido de perfil en Buscar."
+                    }
+                },
+                onUnfollowProfile = { profile ->
+                    ProfileMonitor.remove(context, profile)
+                    monitorRevision.value++
+                },
+                onUpdateExtractor = {
+                    ExtractorUpdateWorker.updateNow(context)
+                    message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
+                },
+                onChooseFolder = { folderPicker.launch(null) },
+                onResetFolder = {
+                    settings.edit().remove("download_tree").apply()
+                    downloadFolder = null
+                },
+                onMonitorHoursChange = { hours ->
+                    monitorHours.value = hours
+                    ProfileMonitor.setInterval(context, hours)
+                },
+                onMonitorPagesChange = { pages ->
+                    monitorPages.value = pages
+                    ProfileMonitor.setPageLimit(context, pages)
+                },
+                onWifiChange = { value ->
+                    wifiParallel.value = value.coerceIn(1, 8)
+                    settings.edit().putInt("wifi_parallel", wifiParallel.value).apply()
+                },
+                onMeteredChange = { value ->
+                    meteredParallel.value = value.coerceIn(1, 8)
+                    settings.edit().putInt("metered_parallel", meteredParallel.value).apply()
+                },
+                onAllowMeteredChange = { allowed ->
+                    networkSettingsBusy.value = true
+                    scope.launch {
+                        try {
+                            val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
+                            allowMetered.value = allowed
+                            message =
+                                if (pending) {
+                                    "Cola pausada para cambiar la red. Pulsa Continuar en Descargas."
+                                } else {
+                                    "Preferencia de red actualizada."
+                                }
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            DiagnosticHistory.record(context, e.message)
+                            message = "No se pudo cambiar la preferencia de red."
+                        } finally {
+                            networkSettingsBusy.value = false
+                        }
+                    }
+                },
+                onRateChange = { rate ->
+                    rateKiB.value = rate
+                    settings.edit().putInt("rate_kib", rate).apply()
+                },
+                onProgressNoticeChange = { value ->
+                    showProgressNotice.value = value
+                    settings.edit().putBoolean("notify_progress_detail", value).apply()
+                    if (value &&
+                        Build.VERSION.SDK_INT >= 33 &&
+                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                onCompletionNoticeChange = { value ->
+                    completionNotice.value = value
+                    settings.edit().putBoolean("notify_completion", value).apply()
+                    if (value &&
+                        Build.VERSION.SDK_INT >= 33 &&
+                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                onThemeChange = { option ->
+                    themeChoice = option
+                    settings.edit().putString("theme", option).apply()
+                },
+                onQualityChange = { option ->
+                    preferredQuality = option
+                    settings.edit().putString("quality", option).apply()
+                },
+                onSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                onPause = {
+                    scope.launch {
+                        downloadsViewModel.pauseQueue()
+                        message = "Cola pausada."
+                    }
+                },
+                onResume = {
+                    scope.launch {
+                        downloadsViewModel.resumeQueue()
+                        message = "Cola reanudada."
+                    }
+                },
+                onCancel = { id ->
+                    scope.launch {
+                        downloadsViewModel.cancelDownload(id)
+                        message = "Descarga cancelada."
+                    }
+                },
+                insets = insets,
+                focusManager = focusManager,
+                keyboard = keyboard,
+                clipboard = clipboard,
+                incomingLink = incomingLink,
+                shareRevision = shareRevision,
+            )
         }
     }
 }
@@ -773,3 +692,59 @@ private fun SummaryTile(title: String, value: Int, modifier: Modifier) {
         Text(title, style = MaterialTheme.typography.bodySmall, color = TechMuted)
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BottomNavigationBar(
+    navController: androidx.navigation.NavHostController,
+    focusManager: androidx.compose.ui.focus.FocusManager,
+    keyboard: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    musicRequestUri: String?,
+    musicRequestTitle: String,
+    onMusicRequestConsumed: () -> Unit,
+) {
+    val items = listOf(
+        BottomNavItem(NavRoutes.HOME, R.string.nav_home, R.drawable.ic_home),
+        BottomNavItem(NavRoutes.DOWNLOADS, R.string.nav_downloads, R.drawable.ic_downloads),
+        BottomNavItem(NavRoutes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
+        BottomNavItem(NavRoutes.TOOLS, R.string.nav_tools, R.drawable.ic_tools),
+        BottomNavItem(NavRoutes.FILES, R.string.nav_files, R.drawable.ic_files),
+        BottomNavItem(NavRoutes.SETTINGS, R.string.nav_settings, R.drawable.ic_settings),
+        BottomNavItem(NavRoutes.MUSIC, R.string.nav_music, R.drawable.ic_music),
+    )
+
+    val context = LocalContext.current
+    BottomNavigation(
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        items.forEach { item ->
+            val isSelected = navController.currentDestination?.route == item.route
+            BottomNavigationItem(
+                icon = { Icon(painterResource(item.icon), contentDescription = null) },
+                label = { Text(stringResource(item.label)) },
+                selected = isSelected,
+                onClick = {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                    if (item.route == NavRoutes.MUSIC && musicRequestUri != null) {
+                        onMusicRequestConsumed()
+                    }
+                    navController.navigate(item.route) {
+                        // Avoid multiple copies of the same destination
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                alwaysShowLabel = false,
+            )
+        }
+    }
+}
+
+private data class BottomNavItem(
+    val route: String,
+    val label: Int,
+    val icon: Int,
+)
