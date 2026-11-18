@@ -11,22 +11,24 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tikitoki.downloader.R
-import com.tikitoki.downloader.data.DeleteCompletedResult
+import com.tikitoki.downloader.data.BatchSummary
 import com.tikitoki.downloader.data.DownloadDatabase
 
 @Composable
 fun FinishedBatchDialog(
-    batch: com.tikitoki.downloader.data.DownloadQueue.BatchResult,
+    batch: BatchSummary,
     onDismiss: () -> Unit,
     dao: DownloadDatabase.DownloadsDao
 ) {
+    val scope = rememberCoroutineScope()
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onDismiss,
         title = { Text("Descargas terminadas") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

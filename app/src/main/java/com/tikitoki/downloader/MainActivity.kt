@@ -103,6 +103,7 @@ import com.tikitoki.downloader.domain.PlaybackKind
 import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.AnalysisScreen
 import com.tikitoki.downloader.ui.DownloadsViewModel
+import com.tikitoki.downloader.ui.FinishedBatchDialog
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.ProfileViewModel
 import com.tikitoki.downloader.ui.ProfileUiState
@@ -888,25 +889,10 @@ private fun MainNavHost(
             }
         }
         finishedBatches.firstOrNull()?.let { batch ->
-            AlertDialog(
-                onDismissRequest = {},
-                title = { Text("Descargas terminadas") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            SummaryTile("Total", batch.total, Modifier.weight(1f))
-                            SummaryTile("Éxitos", batch.completed, Modifier.weight(1f))
-                            SummaryTile("Errores", batch.failed, Modifier.weight(1f))
-                        }
-                        if (batch.cancelled > 0) {
-                            Text("Cancelados: ${batch.cancelled}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (batch.duplicates > 0) {
-                            Text("Duplicados omitidos: ${batch.duplicates}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                },
-                confirmButton = { Button(onClick = { scope.launch { dao.acknowledgeBatch(batch.batchId) } }) { Text("Aceptar") } },
+            FinishedBatchDialog(
+                batch = batch,
+                onDismiss = {},
+                dao = dao,
             )
         }
         if (showClearTemp) {
