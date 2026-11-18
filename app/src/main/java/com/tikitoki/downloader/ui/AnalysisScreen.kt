@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -371,7 +372,7 @@ fun AnalysisScreen(
                         TechBackground
                     },
                 )
-                .padding(insets)
+                .windowInsetsPadding(insets)
                 .consumeWindowInsets(insets),
         contentPadding =
             androidx.compose.foundation.layout
@@ -561,7 +562,7 @@ fun AnalysisScreen(
                             enabled = selected.isNotEmpty() && !queueBusy && !profileState.loading,
                             onClick = chooseQuality,
                         ) {
-                            Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.Download.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Descargar ${selected.size}", maxLines = 1)
                         }

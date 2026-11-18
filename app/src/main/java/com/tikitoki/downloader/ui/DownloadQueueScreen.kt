@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -98,7 +99,7 @@ fun DownloadQueueScreen(
             .background(
                 if (themeChoice == "Negro AMOLED") Color.Black else TechBackground
             )
-            .padding(insets)
+            .windowInsetsPadding(insets)
             .consumeWindowInsets(insets)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -113,10 +114,10 @@ fun DownloadQueueScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(Icons.Default.Download, contentDescription = null, tint = TechMuted, modifier = Modifier.size(64.dp))
+                Icon(Icons.Default.Download.imageVector, contentDescription = null, tint = TechMuted, modifier = Modifier.size(64.dp))
                 Text("La cola está vacía", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Añade videos desde Buscar o analiza un perfil.", color = TechMuted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                TechPrimaryButton("Ir a Buscar", icon = Icons.Default.Search) {
+                TechPrimaryButton("Ir a Buscar", icon = Icons.Default.Search.imageVector) {
                     // Navigation handled by parent
                 }
             }
@@ -177,17 +178,17 @@ fun DownloadQueueScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (records.any { it.status == DownloadState.DOWNLOADING }) {
-                        TechPrimaryButton("Pausar cola", icon = Icons.Default.Pause, modifier = Modifier.weight(1f), onClick = onPause)
+                        TechPrimaryButton("Pausar cola", icon = Icons.Default.Pause.imageVector, modifier = Modifier.weight(1f), onClick = onPause)
                     }
                     if (records.any { it.status == DownloadState.PAUSED }) {
-                        TechPrimaryButton("Reanudar cola", icon = Icons.Default.PlayArrow, modifier = Modifier.weight(1f), onClick = onResume)
+                        TechPrimaryButton("Reanudar cola", icon = Icons.Default.PlayArrow.imageVector, modifier = Modifier.weight(1f), onClick = onResume)
                     }
                     if (showRetryAll) {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
                             onClick = { scope.launch { DownloadQueue.retryFailed(context) } },
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Refresh.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Reintentar fallidos")
                         }
@@ -242,14 +243,14 @@ private fun DownloadQueueItem(
                             )
                         }
                         DownloadState.PAUSED -> {
-                            Icon(Icons.Default.PauseCircle, contentDescription = "Pausado", tint = TechPink, modifier = Modifier
+                            Icon(Icons.Default.PauseCircle.imageVector, contentDescription = "Pausado", tint = TechPink, modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                 .align(Alignment.Center)
                                 .size(48.dp))
                         }
                         DownloadState.FAILED -> {
-                            Icon(Icons.Outlined.Error, contentDescription = "Error", tint = MaterialTheme.colorScheme.error, modifier = Modifier
+                            Icon(Icons.Outlined.Error.imageVector, contentDescription = "Error", tint = MaterialTheme.colorScheme.error, modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                 .align(Alignment.Center)
@@ -265,7 +266,7 @@ private fun DownloadQueueItem(
                             )
                         }
                         DownloadState.COMPLETED -> {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "Completado", tint = Color(0xFF43E6A1), modifier = Modifier
+                            Icon(Icons.Default.CheckCircle.imageVector, contentDescription = "Completado", tint = Color(0xFF43E6A1), modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                 .align(Alignment.Center)
@@ -284,12 +285,12 @@ private fun DownloadQueueItem(
                     when (record.status) {
                         DownloadState.DOWNLOADING -> {
                             IconButton(onClick = onPause) {
-                                Icon(Icons.Default.Pause, contentDescription = "Pausar", tint = TechPink)
+                                Icon(Icons.Default.Pause.imageVector, contentDescription = "Pausar", tint = TechPink)
                             }
                         }
                         DownloadState.PAUSED -> {
                             IconButton(onClick = onResume) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Reanudar", tint = TechPink)
+                                Icon(Icons.Default.PlayArrow.imageVector, contentDescription = "Reanudar", tint = TechPink)
                             }
                         }
                         DownloadState.FAILED -> {
@@ -298,7 +299,7 @@ private fun DownloadQueueItem(
                     }
                     if (record.status != DownloadState.COMPLETED) {
                         IconButton(onClick = onCancel) {
-                            Icon(Delete, contentDescription = "Cancelar", tint = MaterialTheme.colorScheme.error)
+                            Icon(Delete.imageVector, contentDescription = "Cancelar", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -358,7 +359,7 @@ private fun CompletedQueueItem(
                     .aspectRatio(if (isTikTok) 9f / 16f else 16f / 9f)
             ) {
                 VideoThumbnail(record, thumbnailResolver, Modifier.fillMaxSize())
-                Icon(Icons.Default.CheckCircle, contentDescription = "Completado", tint = Color(0xFF43E6A1), modifier = Modifier
+                Icon(Icons.Default.CheckCircle.imageVector, contentDescription = "Completado", tint = Color(0xFF43E6A1), modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                     .align(Alignment.Center)

@@ -94,7 +94,7 @@ fun VideoThumbnail(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.PlayCircle, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(48.dp))
+                Icon(Icons.Outlined.PlayCircle.imageVector, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(48.dp))
             }
         }
 

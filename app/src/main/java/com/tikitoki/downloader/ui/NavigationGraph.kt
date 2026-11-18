@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.LayoutDirection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.AlertDialog
@@ -229,6 +232,14 @@ fun AppNavHost(
     onCancel: (String) -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
+    // ZeroWindowInsets workaround for Compose 1.6.x compatibility (WindowInsets.Companion.zero doesn't exist)
+    val zeroInsets = object : WindowInsets {
+        override fun getBottom(density: Density): Int = 0
+        override fun getLeft(density: Density, layoutDirection: LayoutDirection): Int = 0
+        override fun getRight(density: Density, layoutDirection: LayoutDirection): Int = 0
+        override fun getTop(density: Density): Int = 0
+    }
+
     NavHost(navController, startDestination) {
         composable(NavRoutes.HOME) {
             AnalysisScreen(
@@ -242,14 +253,14 @@ fun AppNavHost(
                 themeChoice = themeChoice,
                 preferredQuality = preferredQuality,
                 onSettingsChanged = { /* settings are shared via SharedPreferences */ },
-                insets = androidx.compose.foundation.layout.WindowInsets.Companion.zero,
+                insets = zeroInsets,
             )
         }
         composable(NavRoutes.DOWNLOADS) {
             DownloadQueueScreen(
                 records = records.value,
                 themeChoice = themeChoice,
-                insets = androidx.compose.foundation.layout.WindowInsets.Companion.zero,
+                insets = zeroInsets,
                 message = message.value,
                 thumbnailResolver = thumbnailResolver,
                 downloadSpeeds = downloadSpeeds.value,
@@ -263,7 +274,7 @@ fun AppNavHost(
             LibraryScreen(
                 records = records.value,
                 themeChoice = themeChoice,
-                insets = androidx.compose.foundation.layout.WindowInsets.Companion.zero,
+                insets = zeroInsets,
                 libraryKind = libraryKind.value,
                 message = message.value,
                 thumbnailResolver = thumbnailResolver,

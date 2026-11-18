@@ -112,7 +112,7 @@ fun HomeLinkInput(
         Spacer(Modifier.weight(1f))
 
         IconButton(onClick = onPaste) {
-            Icon(Icons.Outlined.Paste, contentDescription = stringResource(R.string.paste), tint = Color.White)
+            Icon(Icons.Outlined.Paste.imageVector, contentDescription = stringResource(R.string.paste), tint = Color.White)
         }
     }
 

@@ -256,7 +256,7 @@ fun QualitySheet(
             }
             TechPrimaryButton(
                 "Descargar",
-                icon = Icons.Outlined.Download,
+                icon = Icons.Outlined.Download.imageVector,
                 enabled = !formatsBusy && !formatError,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {

@@ -62,7 +62,7 @@ fun TechPlatformStrip(selected: String?, onSelect: (String) -> Unit) {
                 Column(Modifier.padding(vertical = 12.dp, horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (platform == "Auto") Icon(Icons.Outlined.Public, contentDescription = "Web", tint = Color(0xFF46C8FF), modifier = Modifier.size(31.dp)) else PlatformLogo(platform, Modifier.size(31.dp))
+                    if (platform == "Auto") Icon(Icons.Outlined.Public.imageVector, contentDescription = "Web", tint = Color(0xFF46C8FF), modifier = Modifier.size(31.dp)) else PlatformLogo(platform, Modifier.size(31.dp))
                 }
             }
         }

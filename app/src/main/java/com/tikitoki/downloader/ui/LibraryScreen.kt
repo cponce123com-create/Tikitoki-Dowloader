@@ -7,7 +7,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -75,7 +75,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 fun LibraryScreen(
     records: List<DownloadRecord>,
     themeChoice: String,
-    insets: PaddingValues,
+    insets: androidx.compose.foundation.layout.WindowInsets,
     libraryKind: String,
     message: String,
     thumbnailResolver: VideoThumbnailResolver,
@@ -139,7 +139,7 @@ fun LibraryScreen(
                     } else {
                         TechBackground
                     },
-                ).padding(insets)
+                ).windowInsetsPadding(insets)
                 .consumeWindowInsets(insets),
         contentPadding =
             androidx.compose.foundation.layout
