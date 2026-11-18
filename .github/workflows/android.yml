@@ -30,7 +30,7 @@ jobs:
           packages: 'platforms;android-36 build-tools;36.0.0'
           accept-android-sdk-licenses: true
       - name: Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Build debug APK
@@ -82,7 +82,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v4
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Run Detekt
@@ -122,7 +122,7 @@ jobs:
         with:
           accept-android-sdk-licenses: true
       - name: Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Enable KVM acceleration
@@ -188,7 +188,7 @@ jobs:
       - uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Generar SBOM CycloneDX
@@ -212,7 +212,7 @@ jobs:
       - uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Verificar estilo con línea base
@@ -241,7 +241,7 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0'
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.3.1'
       - name: Crear clave temporal de prueba
