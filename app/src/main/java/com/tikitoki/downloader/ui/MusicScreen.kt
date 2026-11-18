@@ -200,7 +200,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             Row(Modifier.fillMaxWidth().background(Color(0xFF041C13), RoundedCornerShape(12.dp)).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
                     artwork.bitmap?.let { Image(it, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                        ?: Icon(Icons.Default.MusicNote.imageVector, contentDescription = null, tint = Mint, modifier = Modifier.size(34.dp))
+                        ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint, modifier = Modifier.size(34.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -225,9 +225,9 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 onValueChange = { seeking = true; position = (it * duration).toLong() }, onValueChangeFinished = { if (duration > 0) controller?.seekTo(position); seeking = false },
                 enabled = duration > 0, colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                DeckButton(Icons.Default.Shuffle.imageVector, "Aleatorio", shuffle, Modifier.weight(1f)) { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled; shuffle = it.shuffleModeEnabled } }
-                DeckButton(Icons.Default.SkipPrevious.imageVector, "Anterior", false, Modifier.weight(1f)) { controller?.seekToPreviousMediaItem() }
-                DeckButton(if (playing) Icons.Default.Pause.imageVector else Icons.Default.PlayArrow.imageVector, if (playing) "Pausar" else "Reproducir", true, Modifier.weight(1.2f)) {
+                DeckButton(Icons.Default.Shuffle, "Aleatorio", shuffle, Modifier.weight(1f)) { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled; shuffle = it.shuffleModeEnabled } }
+                DeckButton(Icons.Default.SkipPrevious, "Anterior", false, Modifier.weight(1f)) { controller?.seekToPreviousMediaItem() }
+                DeckButton(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pausar" else "Reproducir", true, Modifier.weight(1.2f)) {
                     val p = controller
                     when {
                         p == null -> message = "Conectando el reproductor…"
@@ -236,26 +236,26 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                         else -> p.play()
                     }
                 }
-                DeckButton(Icons.Default.SkipNext.imageVector, "Siguiente", false, Modifier.weight(1f)) { controller?.seekToNextMediaItem() }
-                DeckButton(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne.imageVector else Icons.Default.Repeat.imageVector, "Repetir", repeat != Player.REPEAT_MODE_OFF, Modifier.weight(1f)) {
+                DeckButton(Icons.Default.SkipNext, "Siguiente", false, Modifier.weight(1f)) { controller?.seekToNextMediaItem() }
+                DeckButton(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repetir", repeat != Player.REPEAT_MODE_OFF, Modifier.weight(1f)) {
                     controller?.let { p -> p.repeatMode = when (p.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF }; repeat = p.repeatMode }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.VolumeDown.imageVector, contentDescription = "Volumen", tint = Muted)
+                Icon(Icons.Default.VolumeDown, contentDescription = "Volumen", tint = Muted)
                 ClassicSlider(value = volume.coerceIn(0f, maxVolume), onValueChange = { volume = it; audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0) }, valueRange = 0f..maxVolume, modifier = Modifier.weight(1f), colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20)))
-                Icon(Icons.Default.VolumeUp.imageVector, contentDescription = null, tint = Muted)
+                Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Muted)
             }
         }
         Column(Modifier.fillMaxWidth().background(Color(0xFF0B1D17), RoundedCornerShape(14.dp)).border(1.dp, Color(0xFF526B5E), RoundedCornerShape(14.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (!compact) {
-                    Icon(Icons.Default.QueueMusic.imageVector, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(6.dp))
                 }
                 Text("Lista de reproducción", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 IconButton(onClick = { favoritesOnly = !favoritesOnly }, modifier = Modifier.size(40.dp)) {
-                    Icon(if (favoritesOnly) Icons.Default.Favorite.imageVector else Icons.Default.FavoriteBorder.imageVector,
+                    Icon(if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (favoritesOnly) "Ver todas" else "Ver favoritos", tint = Mint)
                 }
                 OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp, maxLines = 1) }
@@ -273,7 +273,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(tracks.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
                         trackArtwork.bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                            ?: Icon(Icons.Default.MusicNote.imageVector, contentDescription = null, tint = Mint)
+                            ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -281,7 +281,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                         trackArtwork.artist?.let { Text(it, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                     var menu by remember(track.uri) { mutableStateOf(false) }
-                    Box { IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert.imageVector, contentDescription = "Opciones de canción", tint = Color.White) }
+                    Box { IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Opciones de canción", tint = Color.White) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(if (track.uri in favorites) "Quitar de favoritos" else "Añadir a favoritos") }, onClick = {
                                 menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()
