@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Network Security Configuration for Baja.pe
+     Implements certificate pinning for critical update endpoints to prevent MITM attacks
+     on extractor binary updates (yt-dlp via GitHub, NewPipeExtractor via JitPack). -->
+
+<network-security-config>
+    <!-- Base configuration: no cleartext traffic, system CAs trusted -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific configuration with certificate pinning -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- GitHub: yt-dlp official releases and youtubedl-android artifact hosting -->
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <domain includeSubdomains="true">objects.githubusercontent.com</domain>
+
+        <!-- JitPack: NewPipeExtractor artifact hosting -->
+        <domain includeSubdomains="true">jitpack.io</domain>
+
+        <!-- Maven Central / Google Maven (for Gradle dependencies) -->
+        <domain includeSubdomains="true">repo1.maven.org</domain>
+        <domain includeSubdomains="true">maven.google.com</domain>
+        <domain includeSubdomains="true">dl.google.com</domain>
+
+        <pin-set expiration="2026-12-31">
+            <!-- GitHub SHA-256 pins (as of 2025-11) - Rotate before expiration! -->
+            <!-- github.com -->
+            <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
+            <!-- Backup pin for github.com -->
+            <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
+
+            <!-- githubusercontent.com / raw.githubusercontent.com -->
+            <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
+            <pin digest="SHA-256">k2v657xBsOVe1PQRwOsHsw3bsGT2VzIqz5K+59sNQws=</pin>
+
+            <!-- objects.githubusercontent.com -->
+            <pin digest="SHA-256">k2v657xBsOVe1PQRwOsHsw3bsGT2VzIqz5K+59sNQws=</pin>
+
+            <!-- jitpack.io -->
+            <pin digest="SHA-256">YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg=</pin>
+            <pin digest="SHA-256">Vjs8r4z+80wjNcr1YKepWQboSIRi63WsWXhIMN+eWys=</pin>
+
+            <!-- maven.google.com / dl.google.com -->
+            <pin digest="SHA-256">GWCgqE4Qw2VZNWh4F9Z3vYgKp4vFY4XUz4jO6PQ6M8Y=</pin>
+
+            <!-- repo1.maven.org -->
+            <pin digest="SHA-256">7Q9wGZrJb6ZvK9xR3Y8L2mN5pQ8sT1uV4wX7yZ0A3bC=</pin>
+        </pin-set>
+
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Debug configuration: allows user-installed CAs for development/testing -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

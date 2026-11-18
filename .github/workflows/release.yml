@@ -1,0 +1,81 @@
+# Secretos de GitHub necesarios para publicar:
+# KEYSTORE_BASE64: contenido completo del keystore codificado en base64.
+# KEYSTORE_PASSWORD: contraseña del keystore.
+# KEY_ALIAS: alias de la clave de firma.
+# KEY_PASSWORD: contraseña de la clave de firma.
+name: Release Android
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Preparar firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/baja-release.keystore"
+          test -s "$RUNNER_TEMP/baja-release.keystore"
+          chmod 600 "$RUNNER_TEMP/baja-release.keystore"
+      - name: Pruebas y release firmado
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/baja-release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD"
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease
+      - name: Verificar APK y calcular sumas
+        run: |
+          mkdir -p release-artifacts
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          test "${#apks[@]}" -eq 2
+          for apk in "${apks[@]}"; do
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$apk"
+            cp "$apk" release-artifacts/
+          done
+          cd release-artifacts
+          sha256sum *.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-apks
+          path: release-artifacts/
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-release-apks
+          path: release-artifacts
+      - name: Publicar GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" release-artifacts/*.apk release-artifacts/SHA256SUMS.txt --verify-tag --generate-notes

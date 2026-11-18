@@ -1,5 +1,6 @@
 package com.tikitoki.downloader
 
+import com.tikitoki.downloader.data.DiagnosticHistory
 import android.content.ComponentName
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -192,12 +193,12 @@ class MusicActivity : ComponentActivity() {
                 if (index >= 0) startAt(index)
             }
             updateUi()
-        } catch (_: Exception) { Toast.makeText(this, "No se pudo conectar el reproductor.", Toast.LENGTH_LONG).show() } }, ContextCompat.getMainExecutor(this))
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); Toast.makeText(this, "No se pudo conectar el reproductor.", Toast.LENGTH_LONG).show() } }, ContextCompat.getMainExecutor(this))
         handler.post(refresh)
     }
     private fun displayName(uri: Uri): String = try {
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "Canción"
-    } catch (_: Exception) { "Canción" }
+    } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); "Canción" }
     private fun renderList() {
         list.removeAllViews()
         tracks.forEachIndexed { index, track ->
@@ -223,7 +224,7 @@ class MusicActivity : ComponentActivity() {
         val player = controller ?: return
         val items = tracks.map(::mediaItem)
         try { player.setMediaItems(items, index, 0L); player.prepare(); player.play() }
-        catch (_: Exception) { Toast.makeText(this, "No se pudo abrir el audio.", Toast.LENGTH_LONG).show() }
+        catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); Toast.makeText(this, "No se pudo abrir el audio.", Toast.LENGTH_LONG).show() }
     }
     private fun mediaItem(track: Track): MediaItem = MediaItem.Builder().setUri(track.uri)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(track.title).build()).build()
@@ -236,7 +237,7 @@ class MusicActivity : ComponentActivity() {
             artwork.setImageResource(android.R.drawable.ic_media_play)
             if (current != null) lifecycleScope.launch {
                 val bytes = withContext(Dispatchers.IO) {
-                    try { MediaMetadataRetriever().let { retriever -> try { retriever.setDataSource(this@MusicActivity, Uri.parse(current)); retriever.embeddedPicture } finally { retriever.release() } } } catch (_: Exception) { null }
+                    try { MediaMetadataRetriever().let { retriever -> try { retriever.setDataSource(this@MusicActivity, Uri.parse(current)); retriever.embeddedPicture } finally { retriever.release() } } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); null }
                 }
                 if (current == artworkUri && bytes != null) artwork.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
             }
@@ -256,7 +257,7 @@ class MusicActivity : ComponentActivity() {
     }
     private fun load() {
         favorites.addAll(prefs.getStringSet("favorites", emptySet()).orEmpty())
-        try { val array = JSONArray(prefs.getString("tracks", "[]")); for (i in 0 until array.length()) { val t = array.getJSONObject(i); tracks.add(Track(t.getString("uri"), t.getString("title"))) } } catch (_: Exception) { }
+        try { val array = JSONArray(prefs.getString("tracks", "[]")); for (i in 0 until array.length()) { val t = array.getJSONObject(i); tracks.add(Track(t.getString("uri"), t.getString("title"))) } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@MusicActivity, e.message); }
     }
     override fun onDestroy() { handler.removeCallbacks(refresh); future?.let { MediaController.releaseFuture(it) }; controller = null; super.onDestroy() }
 }

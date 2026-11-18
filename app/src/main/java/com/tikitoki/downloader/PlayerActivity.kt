@@ -1,5 +1,6 @@
 package com.tikitoki.downloader
 
+import com.tikitoki.downloader.data.DiagnosticHistory
 import android.content.ComponentName
 import android.content.pm.ActivityInfo
 import android.widget.Button
@@ -137,7 +138,7 @@ class PlayerActivity : ComponentActivity() {
                         if (position > 0) controller.seekTo(position)
                         controller.play()
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@PlayerActivity, e.message);
                     Toast.makeText(this, "No se pudo abrir el reproductor.", Toast.LENGTH_LONG).show()
                 }
             }

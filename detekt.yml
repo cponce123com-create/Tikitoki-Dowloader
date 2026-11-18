@@ -1,0 +1,4 @@
+# Configuración mínima compatible con Detekt 1.23.
+# Las reglas restantes usan sus valores predeterminados.
+config:
+  validation: true

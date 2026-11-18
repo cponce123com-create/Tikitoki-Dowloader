@@ -1,10 +1,141 @@
+# Dependabot configuration for Tikitoki-Downloader
+# Automatically updates dependencies and creates PRs
+
 version: 2
 updates:
-  - package-ecosystem: gradle
-    directory: /
+  # Gradle dependencies (Android, Kotlin, libraries)
+  - package-ecosystem: "gradle"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: github-actions
-    directory: /
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Lima"
+    labels:
+      - "dependencies"
+      - "gradle"
+    groups:
+      android-gradle-plugin:
+        patterns:
+          - "com.android.tools.build:gradle*"
+        update-types:
+          - "minor"
+          - "patch"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin:*"
+        update-types:
+          - "minor"
+          - "patch"
+      androidx:
+        patterns:
+          - "androidx.*"
+        update-types:
+          - "minor"
+          - "patch"
+      compose:
+        patterns:
+          - "androidx.compose*"
+          - "org.jetbrains.kotlin:kotlin-compose"
+        update-types:
+          - "minor"
+          - "patch"
+      coroutines:
+        patterns:
+          - "org.jetbrains.kotlinx:kotlinx-coroutines*"
+        update-types:
+          - "minor"
+          - "patch"
+      coil:
+        patterns:
+          - "io.coil-kt:*"
+        update-types:
+          - "minor"
+          - "patch"
+      room:
+        patterns:
+          - "androidx.room*"
+        update-types:
+          - "minor"
+          - "patch"
+      workmanager:
+        patterns:
+          - "androidx.work*"
+        update-types:
+          - "minor"
+          - "patch"
+      media3:
+        patterns:
+          - "androidx.media3*"
+        update-types:
+          - "minor"
+          - "patch"
+      extractors:
+        patterns:
+          - "com.github.TeamNewPipe:NewPipeExtractor*"
+          - "io.github.junkfood02.youtubedl-android*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing:
+        patterns:
+          - "junit:*"
+          - "androidx.test*"
+          - "androidx.compose.ui:ui-test*"
+        update-types:
+          - "minor"
+          - "patch"
+      code-quality:
+        patterns:
+          - "org.jlleitschuh.gradle:ktlint-gradle*"
+          - "io.gitlab.arturbosch.detekt:detekt-gradle-plugin*"
+        update-types:
+          - "minor"
+          - "patch"
+      cyclonedx:
+        patterns:
+          - "org.cyclonedx:cyclonedx-gradle-plugin*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major versions for stability (require manual review)
+    ignore:
+      - dependency-type: "direct"
+        update-type: "version-update:semver-major"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Lima"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-type: "direct"
+        update-type: "version-update:semver-major"
+    open-pull-requests-limit: 5
+
+  # Docker (if applicable)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Lima"
+    labels:
+      - "dependencies"
+      - "docker"
+    open-pull-requests-limit: 3

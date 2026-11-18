@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +22,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MusicIntegratedScreenTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Before fun acknowledgeNotice() { compose.acceptFirstRunNoticeIfShown() }
 
     @Test fun musicUsesAppNavigationAndFunctionalControls() {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Biblioteca").fetchSemanticsNodes().isNotEmpty() }
@@ -35,15 +38,22 @@ class MusicIntegratedScreenTest {
         compose.onNodeWithContentDescription("Repetir").assertIsDisplayed()
         compose.onNodeWithText("Biblioteca").assertIsDisplayed()
 
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "music-layout.png")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
-        }
-        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
-        context.contentResolver.openOutputStream(uri)!!.use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val values =
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "music-layout.png")
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+                }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+            context.contentResolver.openOutputStream(uri)!!.use {
+                compose
+                    .onRoot()
+                    .captureToImage()
+                    .asAndroidBitmap()
+                    .compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
         }
     }
 }

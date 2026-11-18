@@ -1,0 +1,220 @@
+# License Compliance Check
+# Verifies GPL-3.0 obligations for transitive dependencies:
+# - youtubedl-android (GPL-3.0) - includes yt-dlp (Unlicense) + FFmpeg (LGPL-2.1/GPL-2.0)
+# - NewPipeExtractor (GPL-3.0)
+#
+# Required by GPL-3.0 Section 6:
+# 1. Provide corresponding source code
+# 2. Preserve license notices
+# 3. Provide installation instructions
+
+name: License Compliance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # --- Checkout ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --- Setup Java & Android ---
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          accept-android-sdk-licenses: true
+
+      - name: Install Android 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      # --- 1. Verify NOTICE.md exists and is complete ---
+      - name: Verify NOTICE.md
+        run: |
+          echo "=== Checking NOTICE.md ==="
+          test -f NOTICE.md || { echo "❌ NOTICE.md not found"; exit 1; }
+
+          # Check required sections
+          grep -q "youtubedl-android" NOTICE.md || { echo "❌ NOTICE.md missing youtubedl-android"; exit 1; }
+          grep -q "NewPipeExtractor" NOTICE.md || { echo "❌ NOTICE.md missing NewPipeExtractor"; exit 1; }
+          grep -q "FFmpeg" NOTICE.md || { echo "❌ NOTICE.md missing FFmpeg"; exit 1; }
+          grep -q "yt-dlp" NOTICE.md || { echo "❌ NOTICE.md missing yt-dlp"; exit 1; }
+          grep -q "GPL-3.0" NOTICE.md || { echo "❌ NOTICE.md missing GPL-3.0"; exit 1; }
+          grep -q "LGPL-2.1" NOTICE.md || { echo "❌ NOTICE.md missing LGPL-2.1"; exit 1; }
+
+          echo "✅ NOTICE.md structure verified"
+
+      # --- 2. Verify source availability for GPL dependencies ---
+      - name: Verify GPL source availability
+        run: |
+          echo "=== Checking GPL source availability ==="
+
+          # youtubedl-android 0.18.1 - GPL-3.0
+          echo "Checking youtubedl-android source..."
+          YTDL_VERSION="0.18.1"
+          YTDL_SOURCE_URL="https://github.com/junkfood02/youtubedl-android/archive/refs/tags/v${YTDL_VERSION}.tar.gz"
+          curl -sfI "$YTDL_SOURCE_URL" >/dev/null || { echo "❌ youtubedl-android source not available at $YTDL_SOURCE_URL"; exit 1; }
+          echo "✅ youtubedl-android v${YTDL_VERSION} source available"
+
+          # NewPipeExtractor v0.27.1 - GPL-3.0
+          echo "Checking NewPipeExtractor source..."
+          NPE_VERSION="v0.27.1"
+          NPE_SOURCE_URL="https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/${NPE_VERSION}.tar.gz"
+          curl -sfI "$NPE_SOURCE_URL" >/dev/null || { echo "❌ NewPipeExtractor source not available at $NPE_SOURCE_URL"; exit 1; }
+          echo "✅ NewPipeExtractor ${NPE_VERSION} source available"
+
+          # FFmpeg - LGPL-2.1/GPL-2.0 (bundled in youtubedl-android)
+          echo "Note: FFmpeg source bundled in youtubedl-android artifact"
+
+      # --- 3. Verify network_security_config.xml ---
+      - name: Verify network_security_config.xml
+        run: |
+          echo "=== Checking network_security_config.xml ==="
+          test -f app/src/main/res/xml/network_security_config.xml || { echo "❌ network_security_config.xml not found"; exit 1; }
+
+          # Verify it has pinning for critical domains
+          grep -q "github.com" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing github.com pinning"; exit 1; }
+          grep -q "jitpack.io" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing jitpack.io pinning"; exit 1; }
+          grep -q "pin-set" app/src/main/res/xml/network_security_config.xml || { echo "❌ Missing pin-set"; exit 1; }
+          grep -q "networkSecurityConfig" app/src/main/AndroidManifest.xml || { echo "❌ AndroidManifest.xml missing networkSecurityConfig reference"; exit 1; }
+
+          echo "✅ network_security_config.xml verified with pinning"
+
+      # --- 4. Build debug APK and verify NOTICE is included ---
+      - name: Build debug APK
+        run: |
+          ./gradlew --no-daemon --max-workers=2 \
+            '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' \
+            assembleDebug
+
+      - name: Verify NOTICE and LICENSE in APK assets
+        run: |
+          echo "=== Verifying NOTICE.md and LICENSE in APK assets ==="
+
+          # Find the universal debug APK
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*universal*debug*.apk" | head -1)
+          test -n "$APK_PATH" || { echo "❌ No universal debug APK found"; exit 1; }
+
+          # Extract APK and check for NOTICE.md in assets
+          unzip -l "$APK_PATH" | grep -i "assets/NOTICE.md" || {
+            echo "❌ assets/NOTICE.md not found in APK"
+            echo "APK contents (assets/):"
+            unzip -l "$APK_PATH" | grep "assets/" | head -20
+            exit 1
+          }
+
+          echo "✅ assets/NOTICE.md found in APK"
+
+          # Check for LICENSE in assets
+          unzip -l "$APK_PATH" | grep -i "assets/LICENSE" || {
+            echo "❌ assets/LICENSE not found in APK"
+            exit 1
+          }
+
+          echo "✅ assets/LICENSE found in APK"
+
+      # --- 4. Verify build/installation instructions exist ---
+      - name: Verify build instructions
+        run: |
+          echo "=== Checking build/installation instructions ==="
+
+          # Check README has build instructions
+          test -f README.md || { echo "❌ README.md not found"; exit 1; }
+
+          grep -q -i "gradlew\|build.*apk\|compile\|assemble" README.md || {
+            echo "❌ README.md missing build instructions"
+            exit 1
+          }
+
+          # Check for JDK/Android SDK requirements
+          grep -q -i "JDK 17\|Java 17\|Android SDK" README.md || {
+            echo "⚠️ README.md should mention JDK 17 and Android SDK requirements"
+          }
+
+          echo "✅ Build instructions found in README.md"
+
+      # --- 5. Generate SBOM for license scanning ---
+      - name: Generate CycloneDX SBOM
+        run: ./gradlew --no-daemon cyclonedxBom
+
+      - name: Verify SBOM contains GPL components
+        run: |
+          echo "=== Checking SBOM for GPL components ==="
+          SBOM_PATH=$(find build/reports/cyclonedx -name "*.json" | head -1)
+          test -f "$SBOM_PATH" || { echo "❌ SBOM not generated"; exit 1; }
+
+          # Check for key components
+          jq -e '.components[]? | select(.group=="io.github.junkfood02.youtubedl-android" and .name=="library")' "$SBOM_PATH" >/dev/null || {
+            echo "❌ youtubedl-android not in SBOM"
+            exit 1
+          }
+          echo "✅ youtubedl-android in SBOM"
+
+          jq -e '.components[]? | select(.name=="NewPipeExtractor")' "$SBOM_PATH" >/dev/null || {
+            echo "❌ NewPipeExtractor not in SBOM"
+            exit 1
+          }
+          echo "✅ NewPipeExtractor in SBOM"
+
+          # Check licenses in SBOM
+          jq -r '.components[].licenses[].license.id' "$SBOM_PATH" 2>/dev/null | sort -u | grep -E "GPL-3.0|LGPL-2.1|GPL-2.0" || {
+            echo "⚠️ GPL/LGPL licenses not explicitly declared in SBOM components"
+          }
+
+      # --- 6. Summary ---
+      - name: Compliance Summary
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "LICENSE COMPLIANCE CHECK SUMMARY"
+          echo "=========================================="
+          echo "✅ NOTICE.md verified"
+          echo "✅ GPL source availability confirmed"
+          echo "✅ network_security_config.xml with pinning verified"
+          echo "✅ NOTICE.md and LICENSE included in APK assets"
+          echo "✅ Build instructions in README.md"
+          echo "✅ SBOM generated and contains GPL components"
+          echo "=========================================="
+          echo "All license compliance checks passed!"
+          echo "=========================================="
+
+  # Optional: Run on release tags as well
+  release-check:
+    name: Release License Check
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: license-check
+    steps:
+      - name: Verify release artifacts
+        run: |
+          echo "Release tag detected: ${{ github.ref_name }}"
+          echo "License compliance verified in license-check job"
+          echo "Proceeding with release..."
