@@ -15,10 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -250,7 +247,7 @@ private fun DownloadQueueItem(
                                 .size(48.dp))
                         }
                         DownloadState.FAILED -> {
-                            Icon(Icons.Outlined.Error.imageVector, contentDescription = "Error", tint = MaterialTheme.colorScheme.error, modifier = Modifier
+                            Icon(Icons.Default.Error.imageVector, contentDescription = "Error", tint = MaterialTheme.colorScheme.error, modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                 .align(Alignment.Center)
@@ -299,7 +296,7 @@ private fun DownloadQueueItem(
                     }
                     if (record.status != DownloadState.COMPLETED) {
                         IconButton(onClick = onCancel) {
-                            Icon(Delete.imageVector, contentDescription = "Cancelar", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete.imageVector, contentDescription = "Cancelar", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
