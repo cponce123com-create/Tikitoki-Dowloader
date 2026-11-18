@@ -30,6 +30,8 @@ internal data class CatalogResult(
 internal object CollectionsCatalog {
     const val MAX_PLAYLISTS = 1000
     private const val MAX_BYTES = 2 * 1024 * 1024
+    private const val MAX_TITLE_LENGTH = 150
+    private val playlistId = Regex("PL[A-Za-z0-9_-]{5,198}")
     private const val PREFS = "collections_catalog"
 
     suspend fun load(context: Context): CatalogResult =
@@ -53,7 +55,7 @@ internal object CollectionsCatalog {
                 if (lists != null) {
                     classify(lists, true, lists.size >= MAX_PLAYLISTS)
                 } else {
-                    throw IllegalStateException("catalog_unavailable")
+                    error("catalog_unavailable")
                 }
             }
         }
@@ -62,14 +64,19 @@ internal object CollectionsCatalog {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES)
         val items = JSONObject(raw).getJSONArray("entries")
         require(items.length() <= MAX_PLAYLISTS)
-        val unique = linkedMapOf<String, CatalogPlaylist>()
-        for (index in 0 until items.length()) {
-            val entry = items.optJSONObject(index) ?: continue
-            val id = entry.optString("id").takeIf { it.matches(Regex("PL[A-Za-z0-9_-]{5,198}")) } ?: continue
-            val title = entry.optString("title").takeIf { it.isNotBlank() && it != "null" } ?: continue
-            unique.putIfAbsent(id, CatalogPlaylist(MetadataSanitizer.title(title).take(150), "https://www.youtube.com/playlist?list=$id"))
-        }
-        return unique.values.toList()
+        return (0 until items.length())
+            .mapNotNull { index -> items.optJSONObject(index)?.let(::parsePlaylist) }
+            .distinctBy { it.url }
+    }
+
+    private fun parsePlaylist(entry: JSONObject): CatalogPlaylist? {
+        val id = entry.optString("id")
+        val title = entry.optString("title")
+        if (!playlistId.matches(id) || title.isBlank() || title == "null") return null
+        return CatalogPlaylist(
+            title = MetadataSanitizer.title(title).take(MAX_TITLE_LENGTH),
+            url = "https://www.youtube.com/playlist?list=$id",
+        )
     }
 
     private fun parseCache(raw: String): List<CatalogPlaylist> {

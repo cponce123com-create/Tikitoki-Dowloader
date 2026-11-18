@@ -298,7 +298,7 @@ private fun TikitokiApp(
     var tab by rememberSaveable { mutableStateOf(0) }
     var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
     var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-    BackHandler(enabled = tab == 6 || tab == 7) { tab = 2 }
+    BackHandler(enabled = tab == 6 || tab == COLLECTIONS_TAB) { tab = 2 }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
@@ -1242,11 +1242,11 @@ private fun TikitokiApp(
                     onSettings = { tab = 5 },
                     onKindChange = { libraryKind = it },
                     onMusic = { tab = 6 },
-                    onCollections = { tab = 7 },
+                    onCollections = { tab = COLLECTIONS_TAB },
                     onOpen = { openPlayback(it) },
                     onDelete = { deleteCandidate = it },
                 )
-            } else if (tab == 7) {
+            } else if (tab == COLLECTIONS_TAB) {
                 CollectionsScreen(
                     modifier = Modifier.padding(insets).consumeWindowInsets(insets),
                     onBack = { tab = 2 },
