@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.tikitoki.downloader.R
-import com.tikitoki.downloader.data.ProfileVideo
+import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -51,7 +51,7 @@ import com.tikitoki.downloader.domain.MediaPlatform
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoThumbnail(
-    video: ProfileVideo,
+    video: VideoEntry,
     thumbnailResolver: VideoThumbnailResolver,
     modifier: Modifier = Modifier,
     deferLookup: Boolean = false,

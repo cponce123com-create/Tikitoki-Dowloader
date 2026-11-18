@@ -45,6 +45,7 @@ import com.tikitoki.downloader.data.FormatOptions
 import com.tikitoki.downloader.data.FormatAvailability
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
+import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -54,7 +55,7 @@ import kotlinx.coroutines.CancellationException
 fun QualitySheet(
     context: Context,
     selectedVideoIds: Map<String, Boolean>,
-    videos: List<com.tikitoki.downloader.data.ProfileVideo>,
+    videos: List<VideoEntry>,
     defaultFormat: FormatChoice,
     onFormatSelected: (FormatChoice) -> Unit,
     onDismissRequest: () -> Unit,
