@@ -131,7 +131,6 @@ dependencies {
     implementation(libs.youtubedlAndroidLibrary)
     implementation(libs.youtubedlAndroidFfmpeg)
 
-
     debugImplementation(libs.androidxComposeUiTooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinxCoroutinesTest)
