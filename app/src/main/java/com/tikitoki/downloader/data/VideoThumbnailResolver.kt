@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Flat playlist entries often omit thumbnails. Resolve only cards that are actually
@@ -19,17 +18,14 @@ class VideoThumbnailResolver(
 ) {
     private val appContext = context.applicationContext
     private val slots = Semaphore(2)
-    private val cache = ConcurrentHashMap<String, String>()
-    private val failed = ConcurrentHashMap.newKeySet<String>()
+    private val cache = android.util.LruCache<String, CachedThumbnail>(MAX_CACHED_THUMBNAILS)
 
     suspend fun resolve(video: VideoEntry): String? {
         if (!video.thumbnail.isNullOrBlank()) return video.thumbnail
         ThumbnailUrls.youtube(video.id, video.url)?.let { return it }
-        cache[video.url]?.let { return it }
-        if (video.url in failed) return null
+        cache.get(video.url)?.let { return it.url }
         return slots.withPermit {
-            cache[video.url]?.let { return@withPermit it }
-            if (video.url in failed) return@withPermit null
+            cache.get(video.url)?.let { return@withPermit it.url }
             withContext(Dispatchers.IO) {
                 val result =
                     runCatching {
@@ -41,9 +37,15 @@ class VideoThumbnailResolver(
                             YoutubeDL.getInstance().getInfo(safeUrl).thumbnail
                         }
                     }.getOrNull()?.takeIf { it.startsWith("https://") }
-                if (result == null) failed.add(video.url) else cache[video.url] = result
+                cache.put(video.url, CachedThumbnail(result))
                 result
             }
         }
     }
 }
+
+private const val MAX_CACHED_THUMBNAILS = 512
+
+private data class CachedThumbnail(
+    val url: String?,
+)
