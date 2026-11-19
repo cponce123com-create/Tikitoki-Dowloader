@@ -105,6 +105,10 @@ graph TB
 - **Extraction Verification**: SHA-256 del ejecutable empaquetado fijado por versión; versiones desconocidas se rechazan y activan rollback
 - **Rollback Automático**: Si verificación falla → `ExtractorRollback` restaura versión anterior
 
+### Presentación
+- `MainActivity` se limita al ciclo de vida, intents compartidos, splash y arranque de workers.
+- `AppContent` contiene la composición raíz de Compose; las pantallas y ViewModels permanecen desacoplados del Activity.
+
 ---
 
 ## Patrones de Arquitectura
