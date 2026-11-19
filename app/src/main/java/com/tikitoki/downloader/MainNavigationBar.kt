@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -27,6 +28,7 @@ import com.tikitoki.downloader.ui.TechPurple
 internal fun MainNavigationBar(
     selectedTab: Int,
     onMusic: () -> Unit,
+    onRockola: () -> Unit,
     onNavigate: (Int) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().background(Color(0xFF09231B))) {
@@ -39,6 +41,7 @@ internal fun MainNavigationBar(
                     stringResource(R.string.navigation_library),
                     stringResource(R.string.navigation_tools),
                     stringResource(R.string.navigation_files),
+                    stringResource(R.string.navigation_rockola),
                 )
             val icons =
                 listOf(
@@ -47,14 +50,16 @@ internal fun MainNavigationBar(
                     Icons.Outlined.VideoLibrary,
                     Icons.Outlined.Build,
                     Icons.Outlined.Folder,
+                    Icons.Outlined.LibraryMusic,
                 )
             names.forEachIndexed { index, name ->
                 NavigationBarItem(
                     selected =
-                        selectedTab == index ||
+                            selectedTab == index ||
                             (selectedTab == 6 && index == 3) ||
-                            (selectedTab == COLLECTIONS_TAB && index == 2),
-                    onClick = { onNavigate(index) },
+                            (selectedTab == COLLECTIONS_TAB && index == 2) ||
+                            (selectedTab == ROCKOLA_TAB && index == 5),
+                    onClick = { if (index == 5) onRockola() else onNavigate(index) },
                     icon = { Icon(icons[index], contentDescription = name) },
                     label = {
                         Text(
@@ -78,3 +83,4 @@ internal fun MainNavigationBar(
 }
 
 internal const val COLLECTIONS_TAB = 7
+internal const val ROCKOLA_TAB = 8

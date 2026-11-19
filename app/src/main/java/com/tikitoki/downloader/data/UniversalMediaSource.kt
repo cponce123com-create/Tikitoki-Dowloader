@@ -53,6 +53,46 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
     override suspend fun inspect(link: MediaLink, start: Int, count: Int): List<VideoEntry> =
         inspectWithStatus(link, start, count).items
 
+    /** Searches public YouTube results through the bundled extractor. */
+    suspend fun searchYouTube(query: String, limit: Int = 30): List<VideoEntry> =
+        withContext(Dispatchers.IO) {
+            val cleanQuery = query.trim().replace(Regex("\\s+"), " ").take(180)
+            require(cleanQuery.isNotBlank()) { "Escribe algo para buscar." }
+            require(limit in 1..30)
+            ready()
+            val response = ExtractorAccess.useEngine {
+                YoutubeDL.getInstance().execute(
+                    YoutubeDLRequest("ytsearch$limit:$cleanQuery")
+                        .addOption("--flat-playlist")
+                        .addOption("--dump-single-json")
+                        .addOption("--ignore-errors")
+                        .addOption("--no-warnings")
+                        .addOption("--skip-download"),
+                    "rockola_search",
+                )
+            }
+            if (response.out.isBlank()) {
+                throw IllegalStateException(response.err.take(300).ifBlank { "YouTube no devolvió resultados." })
+            }
+            val root = JSONObject(response.out.trim())
+            val entries = root.optJSONArray("entries") ?: return@withContext emptyList()
+            buildList {
+                for (index in 0 until entries.length()) {
+                    val entry = entries.optJSONObject(index) ?: continue
+                    val id = entry.optString("id").takeIf { it.isNotBlank() } ?: continue
+                    add(
+                        VideoEntry(
+                            id = "youtube:$id",
+                            url = "https://www.youtube.com/watch?v=$id",
+                            title = MetadataSanitizer.title(entry.optString("title").ifBlank { "Video de YouTube" }),
+                            thumbnail = thumbnailFromInfo(entry),
+                            durationSeconds = entry.optInt("duration").coerceAtLeast(0),
+                        ),
+                    )
+                }
+            }.distinctBy { it.url }
+        }
+
     suspend fun inspectWithStatus(link: MediaLink, start: Int = 1, count: Int = 60): ScanPage =
         withContext(Dispatchers.IO) {
             require(start >= 1 && count in 1..100)

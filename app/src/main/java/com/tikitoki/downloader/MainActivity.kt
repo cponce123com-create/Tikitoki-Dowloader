@@ -120,6 +120,7 @@ import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.DownloadsViewModel
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.ProfileViewModel
+import com.tikitoki.downloader.ui.RockolaScreen
 import com.tikitoki.downloader.ui.SafeAreaTopBar
 import com.tikitoki.downloader.ui.TechBackground
 import com.tikitoki.downloader.ui.TechBorder
@@ -284,7 +285,7 @@ private fun TikitokiApp(
     var tab by rememberSaveable { mutableStateOf(0) }
     var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
     var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-    BackHandler(enabled = tab == 6 || tab == COLLECTIONS_TAB) { tab = 2 }
+    BackHandler(enabled = tab == 6 || tab == COLLECTIONS_TAB || tab == ROCKOLA_TAB) { tab = 2 }
     var gridMode by rememberSaveable { mutableStateOf(true) }
     var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
     var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
@@ -634,6 +635,7 @@ private fun TikitokiApp(
                 MainNavigationBar(
                     selectedTab = tab,
                     onMusic = { tab = 6 },
+                    onRockola = { tab = ROCKOLA_TAB },
                     onNavigate = { target ->
                         focusManager.clearFocus()
                         keyboard?.hide()
@@ -1078,6 +1080,17 @@ private fun TikitokiApp(
                                 requestedUri = musicRequestUri,
                                 requestedTitle = musicRequestTitle,
                                 onRequestConsumed = { musicRequestUri = null },
+                            )
+                        ROCKOLA_TAB ->
+                            RockolaScreen(
+                                source = universalSource,
+                                thumbnailResolver = thumbnailResolver,
+                                onDownload = { video -> qualityVideos = listOf(video) },
+                                onOpenYouTube = { video ->
+                                    runCatching {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(video.url)))
+                                    }.onFailure { message = "No se pudo abrir YouTube." }
+                                },
                             )
                         3 -> {
                             val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }

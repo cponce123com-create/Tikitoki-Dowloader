@@ -78,6 +78,7 @@
     <string name="navigation_library">Biblioteca</string>
     <string name="navigation_tools">Herramientas</string>
     <string name="navigation_files">Archivos</string>
+    <string name="navigation_rockola">Rockola</string>
     <string name="tools_title">Herramientas</string>
     <string name="tools_subtitle">Reproducción y seguimiento en un solo lugar</string>
     <string name="tools_failed_count">Descargas con errores: %1$d</string>
@@ -162,7 +163,6 @@
     <string name="collections_limit">Se muestran hasta 1000 listas del canal.</string>
     <string name="collections_classification">Las secciones se organizan automáticamente según los nombres de las listas. Busca por autor, género o tema en Todas las listas.</string>
 </resources>
-
 
 
 
