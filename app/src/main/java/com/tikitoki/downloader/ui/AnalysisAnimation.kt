@@ -21,8 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
@@ -33,66 +35,105 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
-private data class NeuralNode(
+private const val NODES_PER_HEMISPHERE = 28
+private const val GOLDEN_ANGLE = 2.3999631f
+private const val ROTATION_DURATION_MS = 7800
+
+private data class BrainNode(
     val x: Float,
     val y: Float,
+    val z: Float,
     val phase: Float,
+    val hemisphere: Int,
+    val isCore: Boolean = false,
+)
+
+private data class BrainConnection(
+    val start: Int,
+    val end: Int,
+)
+
+private data class BrainPose(
+    val yaw: Float,
+    val pitch: Float,
+    val roll: Float,
+)
+
+private data class ProjectedPoint(
+    val position: Offset,
+    val depth: Float,
 )
 
 @Suppress("MagicNumber")
-private val neuralNodes =
-    listOf(
-        NeuralNode(0f, 0f, 0f),
-        NeuralNode(-0.82f, -0.38f, 0.4f),
-        NeuralNode(-0.68f, 0.42f, 1.1f),
-        NeuralNode(-0.42f, -0.68f, 2.1f),
-        NeuralNode(-0.18f, 0.66f, 2.8f),
-        NeuralNode(0.18f, -0.72f, 1.6f),
-        NeuralNode(0.44f, 0.62f, 0.8f),
-        NeuralNode(0.76f, -0.42f, 2.4f),
-        NeuralNode(0.84f, 0.30f, 1.9f),
-        NeuralNode(-0.40f, -0.18f, 3.1f),
-        NeuralNode(-0.46f, 0.20f, 1.4f),
-        NeuralNode(0.36f, -0.20f, 2.7f),
-        NeuralNode(0.40f, 0.20f, 0.6f),
-    )
+private val brainNodes =
+    buildList {
+        repeat(2) { hemisphere ->
+            val side = if (hemisphere == 0) -1f else 1f
+            repeat(NODES_PER_HEMISPHERE) { index ->
+                val vertical = 1f - 2f * ((index + 0.5f) / NODES_PER_HEMISPHERE)
+                val ring = sqrt(1f - vertical * vertical)
+                val angle = index * GOLDEN_ANGLE + hemisphere * 0.37f
+                val folds =
+                    1f +
+                        0.07f * sin(angle * 4f + vertical * 5f) +
+                        0.03f * cos(angle * 7f - vertical * 4f)
+                add(
+                    BrainNode(
+                        x = side * 0.19f + side * ring * cos(angle) * 0.34f * folds,
+                        y = vertical * 0.58f * folds,
+                        z = ring * sin(angle) * 0.43f * folds,
+                        phase = index * 0.37f + hemisphere * 0.42f,
+                        hemisphere = hemisphere,
+                    ),
+                )
+            }
+        }
+        add(BrainNode(0f, 0f, 0f, 0f, hemisphere = 2, isCore = true))
+    }
 
 @Suppress("MagicNumber")
-private val neuralConnections =
-    listOf(
-        0 to 1,
-        0 to 2,
-        0 to 3,
-        0 to 4,
-        0 to 5,
-        0 to 6,
-        0 to 7,
-        0 to 8,
-        1 to 3,
-        1 to 9,
-        1 to 10,
-        2 to 4,
-        2 to 10,
-        2 to 9,
-        3 to 5,
-        3 to 9,
-        4 to 6,
-        4 to 10,
-        5 to 7,
-        5 to 11,
-        6 to 8,
-        6 to 12,
-        7 to 8,
-        7 to 11,
-        8 to 12,
-        9 to 10,
-        9 to 11,
-        10 to 12,
-        11 to 12,
-    )
+private fun buildBrainConnections(nodes: List<BrainNode>): List<BrainConnection> {
+    val edgeIndices = linkedSetOf<Pair<Int, Int>>()
+    nodes.indices
+        .filter { nodes[it].hemisphere < 2 }
+        .forEach { sourceIndex ->
+            val source = nodes[sourceIndex]
+            nodes.indices
+                .filter { it != sourceIndex && nodes[it].hemisphere == source.hemisphere }
+                .sortedBy { candidateIndex ->
+                    val candidate = nodes[candidateIndex]
+                    val dx = source.x - candidate.x
+                    val dy = source.y - candidate.y
+                    val dz = source.z - candidate.z
+                    dx * dx + dy * dy + dz * dz
+                }.take(3)
+                .forEach { candidateIndex ->
+                    edgeIndices.add(minOf(sourceIndex, candidateIndex) to maxOf(sourceIndex, candidateIndex))
+                }
+        }
 
-/** A lightweight neural-network scan visualization, rendered only while analysis is active. */
+    for (index in 0 until NODES_PER_HEMISPHERE step 4) {
+        val rightIndex = NODES_PER_HEMISPHERE + index
+        edgeIndices.add(index to rightIndex)
+    }
+
+    val coreIndex = nodes.lastIndex
+    nodes.indices
+        .filter { it != coreIndex }
+        .sortedBy { candidateIndex ->
+            val node = nodes[candidateIndex]
+            node.x * node.x + node.y * node.y + node.z * node.z
+        }.take(10)
+        .forEach { edgeIndices.add(minOf(it, coreIndex) to maxOf(it, coreIndex)) }
+
+    return edgeIndices.map { (start, end) -> BrainConnection(start, end) }
+}
+
+private val brainConnections = buildBrainConnections(brainNodes)
+
+/** A volumetric artificial-brain scan visualization, rendered only while analysis is active. */
 @Suppress("FunctionNaming", "ktlint:standard:function-naming")
 @Composable
 fun AnalysisAnimation(
@@ -105,10 +146,10 @@ fun AnalysisAnimation(
         targetValue = 1f,
         animationSpec =
             infiniteRepeatable(
-                animation = tween(4200, easing = LinearEasing),
+                animation = tween(ROTATION_DURATION_MS, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart,
             ),
-        label = "neural-signal",
+        label = "neural-brain-rotation",
     )
 
     Card(
@@ -127,15 +168,15 @@ fun AnalysisAnimation(
         ) {
             Canvas(
                 modifier =
-                    Modifier.fillMaxWidth().height(120.dp).background(
+                    Modifier.fillMaxWidth().height(150.dp).background(
                         Brush.radialGradient(
                             listOf(Color(0xFF15563C), Color(0xFF071F17)),
-                            radius = 300f,
+                            radius = 340f,
                         ),
                         RoundedCornerShape(14.dp),
                     ),
             ) {
-                drawNeuralNetwork(phase)
+                drawArtificialBrain(phase)
             }
             Text(
                 text = if (scanning && found > 0) "Buscando más videos" else "Analizando enlace",
@@ -158,129 +199,241 @@ fun AnalysisAnimation(
 }
 
 @Suppress("MagicNumber")
-private fun DrawScope.drawNeuralNetwork(phase: Float) {
+private fun DrawScope.drawArtificialBrain(phase: Float) {
     val center = Offset(size.width / 2f, size.height / 2f)
-    val radians = phase * 2f * PI.toFloat()
-    val nodePositions =
-        neuralNodes.map { node ->
+    val rotation = phase * 2f * PI.toFloat()
+    val pose =
+        BrainPose(
+            yaw = rotation,
+            pitch = 0.24f + 0.08f * sin(rotation * 0.55f),
+            roll = 0.035f * sin(rotation * 0.5f),
+        )
+    val projected = brainNodes.map { node -> projectPoint(node.x, node.y, node.z, center, pose) }
+
+    drawBrainAura(center)
+    drawBrainHemispheres(center, pose)
+    drawBrainOrbits(center, pose, rotation)
+    drawBrainConnections(projected, phase)
+    drawBrainNodes(projected)
+    drawOrbitingSignals(center, pose, rotation)
+}
+
+@Suppress("MagicNumber")
+private fun DrawScope.projectPoint(
+    x: Float,
+    y: Float,
+    z: Float,
+    center: Offset,
+    pose: BrainPose,
+): ProjectedPoint {
+    val yawX = x * cos(pose.yaw) - z * sin(pose.yaw)
+    val yawZ = x * sin(pose.yaw) + z * cos(pose.yaw)
+    val pitchY = y * cos(pose.pitch) - yawZ * sin(pose.pitch)
+    val pitchZ = y * sin(pose.pitch) + yawZ * cos(pose.pitch)
+    val screenX = yawX * cos(pose.roll) - pitchY * sin(pose.roll)
+    val screenY = yawX * sin(pose.roll) + pitchY * cos(pose.roll)
+    val perspective = 3.2f / (3.2f - pitchZ)
+
+    return ProjectedPoint(
+        position =
             Offset(
-                x = center.x + (node.x + 0.035f * sin(radians + node.phase)) * size.width * 0.36f,
-                y = center.y + (node.y + 0.075f * cos(radians + node.phase)) * size.height * 0.43f,
-            )
+                x = center.x + screenX * size.width * 0.68f * perspective,
+                y = center.y + screenY * size.height * 0.72f * perspective,
+            ),
+        depth = pitchZ,
+    )
+}
+
+@Suppress("MagicNumber")
+private fun DrawScope.drawBrainAura(center: Offset) {
+    drawCircle(
+        brush =
+            Brush.radialGradient(
+                colors =
+                    listOf(
+                        Color(0xFF51F0B4).copy(alpha = 0.19f),
+                        Color(0xFF42CFF5).copy(alpha = 0.05f),
+                        Color.Transparent,
+                    ),
+                center = center,
+                radius = size.height * 0.68f,
+            ),
+        radius = size.height * 0.68f,
+        center = center,
+    )
+}
+
+@Suppress("MagicNumber")
+private fun DrawScope.drawBrainHemispheres(
+    center: Offset,
+    pose: BrainPose,
+) {
+    val hemisphereGlow = Color(0xFF4AE9B1).copy(alpha = 0.16f)
+    listOf(-0.22f, 0.22f).forEach { x ->
+        val projectedCenter = projectPoint(x, 0f, 0f, center, pose).position
+        drawOval(
+            brush =
+                Brush.radialGradient(
+                    colors =
+                        listOf(
+                            hemisphereGlow,
+                            Color(0xFF138B70).copy(alpha = 0.04f),
+                            Color.Transparent,
+                        ),
+                    center = projectedCenter,
+                    radius = size.height * 0.44f,
+                ),
+            topLeft = Offset(projectedCenter.x - size.height * 0.33f, projectedCenter.y - size.height * 0.43f),
+            size = Size(size.height * 0.66f, size.height * 0.86f),
+        )
+    }
+    drawLine(
+        color = Color(0xFF9DFFE1).copy(alpha = 0.24f),
+        start = projectPoint(0f, -0.54f, 0f, center, pose).position,
+        end = projectPoint(0f, 0.54f, 0f, center, pose).position,
+        strokeWidth = 0.8.dp.toPx(),
+    )
+}
+
+@Suppress("MagicNumber")
+private fun DrawScope.drawBrainOrbits(
+    center: Offset,
+    pose: BrainPose,
+    rotation: Float,
+) {
+    repeat(2) { orbitIndex ->
+        val path = Path()
+        val steps = 64
+        for (step in 0..steps) {
+            val angle = step.toFloat() / steps * 2f * PI.toFloat()
+            val orbitPoint =
+                if (orbitIndex == 0) {
+                    Triple(0.82f * cos(angle), 0.28f * sin(angle), 0.72f * sin(angle))
+                } else {
+                    Triple(0.58f * cos(angle), 0.70f * sin(angle), 0.16f * cos(angle + rotation))
+                }
+            val point = projectPoint(orbitPoint.first, orbitPoint.second, orbitPoint.third, center, pose).position
+            if (step == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
         }
-
-    drawScanRings(center)
-    drawNeuralConnections(nodePositions, phase)
-    drawNeuralNodes(nodePositions)
-    drawNeuralSatellites(center, radians)
+        val orbitColor =
+            if (orbitIndex == 0) {
+                Color(0xFF76EFD0).copy(alpha = 0.22f)
+            } else {
+                Color(0xFF57CFF4).copy(alpha = 0.14f)
+            }
+        drawPath(
+            path = path,
+            color = orbitColor,
+            style = Stroke(if (orbitIndex == 0) 0.9.dp.toPx() else 0.65.dp.toPx()),
+        )
+    }
 }
 
 @Suppress("MagicNumber")
-private fun DrawScope.drawScanRings(center: Offset) {
-    drawCircle(
-        color = Color(0xFF47D99A).copy(alpha = 0.08f),
-        radius = size.height * 0.48f,
-        center = center,
-    )
-    drawCircle(
-        color = Color(0xFF47D99A).copy(alpha = 0.2f),
-        radius = size.height * 0.40f,
-        center = center,
-        style = Stroke(1.dp.toPx()),
-    )
-    drawCircle(
-        color = Color(0xFF47D99A).copy(alpha = 0.12f),
-        radius = size.height * 0.31f,
-        center = center,
-        style = Stroke(1.dp.toPx()),
-    )
-}
-
-@Suppress("MagicNumber")
-private fun DrawScope.drawNeuralConnections(
-    nodePositions: List<Offset>,
+private fun DrawScope.drawBrainConnections(
+    projected: List<ProjectedPoint>,
     phase: Float,
 ) {
-    val signalColor = Color(0xFF67F5BA)
-    neuralConnections.forEachIndexed { index, (startIndex, endIndex) ->
-        val start = nodePositions[startIndex]
-        val end = nodePositions[endIndex]
-        val pulse = (phase + index * 0.137f) % 1f
-        val lineAlpha = 0.13f + 0.22f * (0.5f + 0.5f * sin((pulse * 2f * PI).toFloat()))
-        val signalPosition =
-            Offset(
-                x = start.x + (end.x - start.x) * pulse,
-                y = start.y + (end.y - start.y) * pulse,
+    val mint = Color(0xFF5CF0B7)
+    val cyan = Color(0xFF83DFFF)
+    brainConnections
+        .sortedBy { (projected[it.start].depth + projected[it.end].depth) / 2f }
+        .forEachIndexed { index, connection ->
+            val start = projected[connection.start]
+            val end = projected[connection.end]
+            val depth = ((start.depth + end.depth) / 2f + 0.55f).coerceIn(0f, 1f)
+            val pulse = (phase * 1.7f + index * 0.137f) % 1f
+            val brightness = (0.10f + depth * 0.22f) + 0.16f * (0.5f + 0.5f * sin(pulse * 2f * PI.toFloat()))
+            val signal =
+                Offset(
+                    x = start.position.x + (end.position.x - start.position.x) * pulse,
+                    y = start.position.y + (end.position.y - start.position.y) * pulse,
+                )
+            val edgeColor = if (index % 7 == 0) cyan else mint
+
+            drawLine(
+                color = edgeColor.copy(alpha = brightness * 0.22f),
+                start = start.position,
+                end = end.position,
+                strokeWidth = 2.2.dp.toPx(),
             )
-
-        drawLine(
-            color = signalColor.copy(alpha = lineAlpha * 0.28f),
-            start = start,
-            end = end,
-            strokeWidth = 3.dp.toPx(),
-        )
-        drawLine(
-            color = signalColor.copy(alpha = lineAlpha),
-            start = start,
-            end = end,
-            strokeWidth = 0.8.dp.toPx(),
-        )
-        drawCircle(
-            color = signalColor.copy(alpha = 0.16f),
-            radius = 4.dp.toPx(),
-            center = signalPosition,
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.92f),
-            radius = 1.35.dp.toPx(),
-            center = signalPosition,
-        )
-    }
+            drawLine(
+                color = edgeColor.copy(alpha = brightness),
+                start = start.position,
+                end = end.position,
+                strokeWidth = (0.45f + depth * 0.65f).dp.toPx(),
+            )
+            drawCircle(
+                color = cyan.copy(alpha = 0.22f),
+                radius = (2.8f + depth * 1.8f).dp.toPx(),
+                center = signal,
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.92f),
+                radius = 1.1.dp.toPx(),
+                center = signal,
+            )
+        }
 }
 
 @Suppress("MagicNumber")
-private fun DrawScope.drawNeuralNodes(nodePositions: List<Offset>) {
-    val signalColor = Color(0xFF67F5BA)
-    nodePositions.forEachIndexed { index, position ->
-        val isHub = index == 0
-        val nodeRadius = if (isHub) 3.8.dp.toPx() else 2.5.dp.toPx()
-        val glowRadius = nodeRadius * if (isHub) 3.4f else 2.7f
+private fun DrawScope.drawBrainNodes(projected: List<ProjectedPoint>) {
+    projected.indices
+        .sortedBy { projected[it].depth }
+        .forEach { index ->
+            val node = projected[index]
+            val depthScale = (0.72f + (node.depth + 0.55f).coerceIn(0f, 1f) * 0.58f)
+            val isCore = brainNodes[index].isCore
+            val radius = (if (isCore) 4.2f else 1.7f + depthScale * 1.25f).dp.toPx()
+            val glow = if (isCore) Color(0xFFB8FFF0) else Color(0xFF62F3C1)
 
-        drawCircle(
-            color = signalColor.copy(alpha = if (isHub) 0.18f else 0.12f),
-            radius = glowRadius,
-            center = position,
-        )
-        drawCircle(
-            color = if (isHub) Color.White else signalColor,
-            radius = nodeRadius,
-            center = position,
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.65f),
-            radius = nodeRadius * 1.7f,
-            center = position,
-            style = Stroke(0.7.dp.toPx()),
-        )
-    }
+            drawCircle(
+                color = glow.copy(alpha = if (isCore) 0.23f else 0.13f + depthScale * 0.08f),
+                radius = radius * if (isCore) 3.8f else 2.6f,
+                center = node.position,
+            )
+            drawCircle(
+                color = if (isCore) Color.White else glow.copy(alpha = 0.76f + depthScale * 0.2f),
+                radius = radius,
+                center = node.position,
+            )
+            if (isCore) {
+                drawCircle(
+                    color = Color(0xFF76EFD0).copy(alpha = 0.55f),
+                    radius = radius * 1.9f,
+                    center = node.position,
+                    style = Stroke(0.75.dp.toPx()),
+                )
+            }
+        }
 }
 
 @Suppress("MagicNumber")
-private fun DrawScope.drawNeuralSatellites(
+private fun DrawScope.drawOrbitingSignals(
     center: Offset,
-    radians: Float,
+    pose: BrainPose,
+    rotation: Float,
 ) {
-    repeat(3) { index ->
-        val satelliteAngle = radians + index * (2f * PI.toFloat() / 3f)
-        val satellite =
-            Offset(
-                x = center.x + cos(satelliteAngle) * size.width * 0.43f,
-                y = center.y + sin(satelliteAngle) * size.height * 0.34f,
+    repeat(9) { index ->
+        val angle = rotation * 1.3f + index * (2f * PI.toFloat() / 9f)
+        val point =
+            projectPoint(
+                x = 0.91f * cos(angle),
+                y = 0.39f * sin(angle * 1.2f),
+                z = 0.78f * sin(angle),
+                center = center,
+                pose = pose,
             )
+        val radius = if (index % 3 == 0) 2.4.dp.toPx() else 1.5.dp.toPx()
         drawCircle(
-            color = Color(0xFF67F5BA).copy(alpha = 0.72f),
-            radius = 1.7.dp.toPx(),
-            center = satellite,
+            color = Color(0xFF83DFFF).copy(alpha = 0.2f),
+            radius = radius * 3.2f,
+            center = point.position,
+        )
+        drawCircle(
+            color = if (index % 3 == 0) Color(0xFFBDF6FF) else Color(0xFF73F1C3),
+            radius = radius,
+            center = point.position,
         )
     }
 }
