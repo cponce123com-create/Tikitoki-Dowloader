@@ -43,6 +43,13 @@ internal object ActiveDownloadProcesses {
     val workerLock = Mutex()
 }
 
+/** Persist only changed percentages, except that completion bypasses the time interval. */
+internal fun shouldPersistDownloadProgress(
+    lastPersistedProgress: Int?,
+    progress: Int,
+    intervalElapsed: Boolean,
+): Boolean = lastPersistedProgress != progress && (intervalElapsed || progress == 100)
+
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     companion object { private val documentFolderLock = Any() }
     private val dao = DownloadDatabase.get(context).downloads()
@@ -50,6 +57,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeIds = ActiveDownloadProcesses.ids
     private val lastDbUpdates = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val lastDbProgress = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val activeProgress = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val lastNotification = java.util.concurrent.atomic.AtomicLong(0)
 
@@ -100,7 +108,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     for (progress in progressUpdates) {
                         try { dao.setProgress(item.videoId, progress) }
                         catch (e: CancellationException) { throw e }
-                        catch (e: Exception) { DiagnosticHistory.record(applicationContext, e.message) }
+                        catch (e: Exception) {
+                            lastDbProgress.remove(item.videoId, progress)
+                            DiagnosticHistory.record(applicationContext, e.message)
+                        }
                     }
                 }
                 try {
@@ -130,8 +141,17 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         if (!isStopped) {
                             activeProgress[item.videoId] = percent
                             val timestamp = System.currentTimeMillis()
-                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= PROGRESS_DB_INTERVAL_MS || percent == 100) {
+                            val intervalElapsed =
+                                timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= PROGRESS_DB_INTERVAL_MS
+                            if (
+                                shouldPersistDownloadProgress(
+                                    lastDbProgress[item.videoId],
+                                    percent,
+                                    intervalElapsed,
+                                )
+                            ) {
                                 lastDbUpdates[item.videoId] = timestamp
+                                lastDbProgress[item.videoId] = percent
                                 // A single consumer persists progress without blocking the extractor callback.
                                 progressUpdates.trySend(percent)
                             }
@@ -189,6 +209,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         } catch (_: SecurityException) { /* Notification permission can be revoked at any time. */ }
                     }
                     lastDbUpdates.remove(item.videoId)
+                    lastDbProgress.remove(item.videoId)
                     stopMonitor?.cancel()
                 }
     }

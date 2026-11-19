@@ -11,6 +11,7 @@ class DownloadProgressParserTest {
         assertEquals(5, DownloadProgressParser.percent("[download]   5.1% of ~30MiB (frag 5/100)"))
         assertEquals(37, DownloadProgressParser.percent("[#abc123 2.0MiB/5.4MiB(37%) CN:4 DL:1MiB]"))
     }
+
     @Test fun ignoresMetadataAndPostProcessing() {
         assertNull(DownloadProgressParser.percent("[Merger] Merging formats into file"))
         assertNull(DownloadProgressParser.percent("[youtube] Extracting URL"))

@@ -141,7 +141,13 @@ interface DownloadDao {
         error: String? = null
     )
 
-    @Query("UPDATE downloads SET progress = :progress, updatedAt = :now WHERE videoId = :id AND status = 'DOWNLOADING'")
+    @Query(
+        """
+        UPDATE downloads
+        SET progress = :progress, updatedAt = :now
+        WHERE videoId = :id AND status = 'DOWNLOADING' AND progress != :progress
+        """,
+    )
     suspend fun setProgress(id: String, progress: Int, now: Long = System.currentTimeMillis())
 
     @Query("UPDATE downloads SET status = 'COMPLETED', progress = 100, savedUri = :uri, error = NULL, updatedAt = :now WHERE videoId = :id")
