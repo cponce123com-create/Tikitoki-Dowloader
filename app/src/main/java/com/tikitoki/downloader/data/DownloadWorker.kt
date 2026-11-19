@@ -130,7 +130,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         if (!isStopped) {
                             activeProgress[item.videoId] = percent
                             val timestamp = System.currentTimeMillis()
-                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= 400 || percent == 100) {
+                            if (timestamp - (lastDbUpdates[item.videoId] ?: 0L) >= PROGRESS_DB_INTERVAL_MS || percent == 100) {
                                 lastDbUpdates[item.videoId] = timestamp
                                 // A single consumer persists progress without blocking the extractor callback.
                                 progressUpdates.trySend(percent)
@@ -244,7 +244,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             }
             try {
                 context.contentResolver.openOutputStream(target.uri, "w")?.use { output ->
-                    file.inputStream().use { input -> input.copyTo(output) }
+                    file.copyToOutput(output)
                 } ?: error("No se pudo escribir en la carpeta seleccionada.")
                 return target.uri
             } catch (e: Exception) {
@@ -264,7 +264,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 ?: throw IllegalStateException("No se pudo crear el archivo en Descargas.")
             try {
                 resolver.openOutputStream(uri)?.use { output ->
-                    file.inputStream().use { input -> input.copyTo(output) }
+                    file.copyToOutput(output)
                 } ?: throw IllegalStateException("No se pudo escribir el archivo.")
                 resolver.update(uri, ContentValues().apply {
                     put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -286,7 +286,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         if (!folder.exists() && !folder.mkdirs()) throw IllegalStateException("No se pudo crear Descargas.")
         val destination = reserveUniqueFile(folder, displayName)
         try {
-            file.inputStream().use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
+            destination.outputStream().use { output -> file.copyToOutput(output) }
         } catch (e: Exception) {
             destination.delete()
             throw e
@@ -301,3 +301,12 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
 
 
+private const val DOWNLOAD_COPY_BUFFER_SIZE_BYTES = 64 * 1024
+
+private fun File.copyToOutput(output: java.io.OutputStream) {
+    inputStream().use { input ->
+        input.copyTo(output, bufferSize = DOWNLOAD_COPY_BUFFER_SIZE_BYTES)
+    }
+}
+
+private const val PROGRESS_DB_INTERVAL_MS = 1_000L
