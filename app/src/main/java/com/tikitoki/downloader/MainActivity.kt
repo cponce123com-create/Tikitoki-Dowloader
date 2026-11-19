@@ -106,6 +106,7 @@ import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
+import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.data.rethrowIfFatal
 import com.tikitoki.downloader.domain.DownloadFormatPreference
