@@ -18,6 +18,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,6 +26,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.Slider as ClassicSlider
 import androidx.compose.material.SliderDefaults as ClassicSliderDefaults
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -103,6 +105,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     }
     var customPlaylists by remember { mutableStateOf(prefs.getStringSet("playlists", emptySet()).orEmpty().toSet()) }
     var selectedPlaylist by rememberSaveable { mutableStateOf("Todas") }
+    val playlistNames = (listOf("General") + customPlaylists.sorted()).distinct()
     var newPlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet()).orEmpty().toSet()) }
@@ -132,10 +135,10 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     fun currentItemUri(player: Player): String? = player.currentMediaItem?.let { item ->
         item.localConfiguration?.uri?.toString() ?: item.mediaId.takeIf { it.isNotEmpty() }
     }
-    fun start(index: Int) {
+    fun start(queue: List<MusicTrack>, index: Int) {
         val player = controller
         if (player == null) { message = "Conectando el reproductor…"; return }
-        try { player.setMediaItems(visibleTracks().map(::item), index, 0L); player.prepare(); player.play(); message = "" }
+        try { player.setMediaItems(queue.map(::item), index, 0L); player.prepare(); player.play(); message = "" }
         catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo abrir el audio. Comprueba que el archivo esté disponible." }
     }
     LaunchedEffect(requestedUri, controller) {
@@ -150,8 +153,13 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             save()
         }
         if (controller != null) {
-            val index = tracks.indexOfFirst { it.uri == uri }
-            if (index >= 0) start(index)
+            val queue = visibleTracks()
+            val index = queue.indexOfFirst { it.uri == uri }
+            if (index >= 0) {
+                start(queue, index)
+            } else {
+                tracks.firstOrNull { it.uri == uri }?.let { track -> start(listOf(track), 0) }
+            }
             onRequestConsumed()
         }
     }
@@ -237,7 +245,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            (listOf("Todas", "General") + customPlaylists).distinct().forEach { playlist ->
+            (listOf("Todas") + playlistNames).forEach { playlist ->
                 FilterChip(
                     selected = selectedPlaylist == playlist,
                     onClick = { selectedPlaylist = playlist; favoritesOnly = false },
@@ -281,7 +289,17 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     val p = controller
                     when {
                         p == null -> message = "Conectando el reproductor…"
-                        currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> if (tracks.isNotEmpty()) start(0) else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }
+                        currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> {
+                            val queue = visibleTracks()
+                            if (queue.isNotEmpty()) {
+                                start(queue, 0)
+                            } else if (tracks.isEmpty()) {
+                                message = "Agrega canciones para comenzar."
+                                picker.launch(arrayOf("audio/*"))
+                            } else {
+                                message = "No hay canciones en esta lista."
+                            }
+                        }
                         p.isPlaying -> p.pause()
                         else -> p.play()
                     }
@@ -312,7 +330,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             }
             val visible = visibleTracks()
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
-            visible.forEach { track ->
+            visible.forEachIndexed { index, track ->
                 val selected = currentUri == track.uri
                 // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
                 @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
@@ -320,7 +338,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     value = ArtworkInfo(null, null)
                     value = readArtwork(context, track.uri)
                 }
-                Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(visible.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(visible, index) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
                         trackArtwork.bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                             ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
@@ -336,13 +354,18 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                             DropdownMenuItem(text = { Text(if (track.uri in favorites) "Quitar de favoritos" else "Añadir a favoritos") }, onClick = {
                                 menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()
                             })
-                            if (selectedPlaylist != "Todas" && track.playlist != selectedPlaylist) {
-                                DropdownMenuItem(text = { Text("Mover a $selectedPlaylist") }, onClick = {
-                                    menu = false
-                                    val index = tracks.indexOf(track)
-                                    if (index >= 0) tracks[index] = track.copy(playlist = selectedPlaylist)
-                                    save()
-                                })
+                            playlistNames.filterNot { it == track.playlist }.forEach { destination ->
+                                DropdownMenuItem(
+                                    text = { Text("Mover a $destination") },
+                                    onClick = {
+                                        menu = false
+                                        val trackIndex = tracks.indexOf(track)
+                                        if (trackIndex >= 0) {
+                                            tracks[trackIndex] = track.copy(playlist = destination)
+                                            save()
+                                        }
+                                    },
+                                )
                             }
                             DropdownMenuItem(text = { Text("Quitar de la lista") }, onClick = {
                                 menu = false; tracks.remove(track)
