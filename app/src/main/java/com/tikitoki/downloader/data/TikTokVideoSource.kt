@@ -20,6 +20,8 @@ data class VideoEntry(
     val title: String,
     val thumbnail: String? = null,
     val durationSeconds: Int = 0,
+    val uploader: String? = null,
+    val viewCount: Long = 0L,
 )
 
 data class FormatChoice(

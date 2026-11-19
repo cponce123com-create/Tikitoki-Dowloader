@@ -54,7 +54,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         inspectWithStatus(link, start, count).items
 
     /** Searches public YouTube results through the bundled extractor. */
-    suspend fun searchYouTube(query: String, limit: Int = 30): List<VideoEntry> =
+    suspend fun searchYouTube(query: String, limit: Int = 30, sortByViews: Boolean = false): List<VideoEntry> =
         withContext(Dispatchers.IO) {
             val cleanQuery = query.trim().replace(Regex("\\s+"), " ").take(180)
             require(cleanQuery.isNotBlank()) { "Escribe algo para buscar." }
@@ -87,10 +87,14 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
                             title = MetadataSanitizer.title(entry.optString("title").ifBlank { "Video de YouTube" }),
                             thumbnail = thumbnailFromInfo(entry),
                             durationSeconds = entry.optInt("duration").coerceAtLeast(0),
+                            uploader = entry.optString("uploader").ifBlank { entry.optString("channel") }.takeIf { it.isNotBlank() },
+                            viewCount = entry.optLong("view_count", 0L).coerceAtLeast(0L),
                         ),
                     )
                 }
-            }.distinctBy { it.url }
+            }.distinctBy { it.url }.let { found ->
+                if (sortByViews) found.sortedWith(compareByDescending<VideoEntry> { it.viewCount > 0L }.thenByDescending { it.viewCount }) else found
+            }
         }
 
     suspend fun inspectWithStatus(link: MediaLink, start: Int = 1, count: Int = 60): ScanPage =
