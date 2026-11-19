@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -57,7 +58,7 @@ import kotlinx.coroutines.sync.withPermit
 import org.json.JSONArray
 import org.json.JSONObject
 
-private data class MusicTrack(val uri: String, val title: String)
+private data class MusicTrack(val uri: String, val title: String, val playlist: String = "General")
 private val Mint = Color(0xFF43E6A1)
 private val Muted = Color(0xFFADC8BC)
 private val Metal = Brush.verticalGradient(listOf(Color(0xFF7C8982), Color(0xFF3D4A44), Color(0xFF1A2922), Color(0xFF101A16)))
@@ -93,10 +94,17 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
         mutableStateListOf<MusicTrack>().apply {
             runCatching {
                 val a = JSONArray(prefs.getString("tracks", "[]"))
-                for (i in 0 until a.length()) { val o = a.getJSONObject(i); add(MusicTrack(o.getString("uri"), o.getString("title"))) }
+                for (i in 0 until a.length()) {
+                    val o = a.getJSONObject(i)
+                    add(MusicTrack(o.getString("uri"), o.getString("title"), o.optString("playlist", "General").ifBlank { "General" }))
+                }
             }
         }
     }
+    var customPlaylists by remember { mutableStateOf(prefs.getStringSet("playlists", emptySet()).orEmpty().toSet()) }
+    var selectedPlaylist by rememberSaveable { mutableStateOf("Todas") }
+    var newPlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet()).orEmpty().toSet()) }
     var favoritesOnly by remember { mutableStateOf(false) }
     var controller by remember { mutableStateOf<MediaController?>(null) }
@@ -114,9 +122,10 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()) }
     val maxVolume = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1).toFloat() }
     fun save() {
-        val a = JSONArray(); tracks.forEach { a.put(JSONObject().put("uri", it.uri).put("title", it.title)) }
-        prefs.edit().putString("tracks", a.toString()).putStringSet("favorites", favorites).apply()
+        val a = JSONArray(); tracks.forEach { a.put(JSONObject().put("uri", it.uri).put("title", it.title).put("playlist", it.playlist)) }
+        prefs.edit().putString("tracks", a.toString()).putStringSet("favorites", favorites).putStringSet("playlists", customPlaylists).apply()
     }
+    fun visibleTracks(): List<MusicTrack> = tracks.filter { (selectedPlaylist == "Todas" || it.playlist == selectedPlaylist) && (!favoritesOnly || it.uri in favorites) }
     fun item(track: MusicTrack) = MediaItem.Builder().setMediaId(track.uri).setUri(track.uri)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(track.title).build()).build()
     // MediaController may receive an item without its local configuration across the session boundary.
@@ -126,7 +135,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     fun start(index: Int) {
         val player = controller
         if (player == null) { message = "Conectando el reproductor…"; return }
-        try { player.setMediaItems(tracks.map(::item), index, 0L); player.prepare(); player.play(); message = "" }
+        try { player.setMediaItems(visibleTracks().map(::item), index, 0L); player.prepare(); player.play(); message = "" }
         catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(context, e.message); message = "No se pudo abrir el audio. Comprueba que el archivo esté disponible." }
     }
     LaunchedEffect(requestedUri, controller) {
@@ -137,7 +146,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             return@LaunchedEffect
         }
         if (tracks.none { it.uri == uri }) {
-            tracks.add(MusicTrack(uri, requestedTitle.ifBlank { "Canción" }))
+            tracks.add(MusicTrack(uri, requestedTitle.ifBlank { "Canción" }, selectedPlaylist.takeUnless { it == "Todas" } ?: "General"))
             save()
         }
         if (controller != null) {
@@ -154,7 +163,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 try {
                     context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     val name = runCatching { context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } }.getOrNull() ?: "Canción"
-                    val track = MusicTrack(uri.toString(), name); tracks.add(track); added.add(track)
+                    val track = MusicTrack(uri.toString(), name, selectedPlaylist.takeUnless { it == "Todas" } ?: "General"); tracks.add(track); added.add(track)
                 } catch (_: SecurityException) { message = "No se pudo guardar el acceso a una canción." }
             }
         }
@@ -194,8 +203,49 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     }
     fun clock(ms: Long) = "%02d:%02d".format(ms / 60000, ms / 1000 % 60)
     val shape = RoundedCornerShape(18.dp)
+    if (newPlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = { newPlaylistDialog = false },
+            title = { Text("Nueva playlist") },
+            text = {
+                OutlinedTextField(
+                    value = newPlaylistName,
+                    onValueChange = { newPlaylistName = it.take(40) },
+                    singleLine = true,
+                    label = { Text("Nombre") },
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val name = newPlaylistName.trim()
+                    if (name.isNotBlank() && name !in setOf("Todas", "General") && name !in customPlaylists) {
+                        customPlaylists = customPlaylists + name
+                        selectedPlaylist = name
+                        save()
+                    }
+                    newPlaylistName = ""
+                    newPlaylistDialog = false
+                }) { Text("Crear") }
+            },
+            dismissButton = { TextButton(onClick = { newPlaylistDialog = false }) { Text("Cancelar") } },
+        )
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
         Text("Mi música", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            (listOf("Todas", "General") + customPlaylists).distinct().forEach { playlist ->
+                FilterChip(
+                    selected = selectedPlaylist == playlist,
+                    onClick = { selectedPlaylist = playlist; favoritesOnly = false },
+                    label = { Text(playlist, maxLines = 1) },
+                )
+            }
+            OutlinedButton(onClick = { newPlaylistDialog = true }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("+ Playlist") }
+        }
         Column(Modifier.fillMaxWidth().background(Metal, shape).border(1.dp, Color(0xFF798D83), shape).padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth().background(Color(0xFF041C13), RoundedCornerShape(12.dp)).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
@@ -260,7 +310,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                 }
                 OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp, maxLines = 1) }
             }
-            val visible = tracks.filter { !favoritesOnly || it.uri in favorites }
+            val visible = visibleTracks()
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
             visible.forEach { track ->
                 val selected = currentUri == track.uri
@@ -270,7 +320,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                     value = ArtworkInfo(null, null)
                     value = readArtwork(context, track.uri)
                 }
-                Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(tracks.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().background(if (selected) Color(0xFF064B31) else Color.Transparent, RoundedCornerShape(8.dp)).clickable { start(visible.indexOf(track)) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(42.dp).background(Color(0xFF16563C), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
                         trackArtwork.bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                             ?: Icon(Icons.Default.MusicNote, contentDescription = null, tint = Mint)
@@ -286,6 +336,14 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                             DropdownMenuItem(text = { Text(if (track.uri in favorites) "Quitar de favoritos" else "Añadir a favoritos") }, onClick = {
                                 menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()
                             })
+                            if (selectedPlaylist != "Todas" && track.playlist != selectedPlaylist) {
+                                DropdownMenuItem(text = { Text("Mover a $selectedPlaylist") }, onClick = {
+                                    menu = false
+                                    val index = tracks.indexOf(track)
+                                    if (index >= 0) tracks[index] = track.copy(playlist = selectedPlaylist)
+                                    save()
+                                })
+                            }
                             DropdownMenuItem(text = { Text("Quitar de la lista") }, onClick = {
                                 menu = false; tracks.remove(track)
                                 controller?.let { p -> for (i in p.mediaItemCount - 1 downTo 0) if (p.getMediaItemAt(i).localConfiguration?.uri?.toString() == track.uri) p.removeMediaItem(i) }
@@ -308,5 +366,3 @@ private fun DeckButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
         Icon(icon, contentDescription = label, tint = if (active) Mint else Color.White, modifier = Modifier.size(26.dp))
     }
 }
-
-
