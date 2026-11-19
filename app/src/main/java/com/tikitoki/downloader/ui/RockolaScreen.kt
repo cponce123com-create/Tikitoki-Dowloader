@@ -143,18 +143,20 @@ internal fun RockolaScreen(
             try {
                 val found = source.searchYouTube(clean, 30, sortByViews = artist != null)
                 results = found
-                artists = found.mapNotNull { item ->
-                    item.uploader?.takeIf { it.isNotBlank() }?.let { name -> name to item }
-                }.groupBy { it.first }.map { (name, entries) ->
-                    ArtistSummary(name, entries.first().second, entries.size)
-                }.sortedByDescending { it.songCount }
+                if (artist == null) {
+                    artists = found.mapNotNull { item ->
+                        item.uploader?.takeIf { it.isNotBlank() }?.let { name -> name to item }
+                    }.groupBy { it.first }.map { (name, entries) ->
+                        ArtistSummary(name, entries.first().second, entries.size)
+                    }.sortedByDescending { it.songCount }
+                }
                 section = if (artist == null && artists.isNotEmpty()) RockolaSection.ARTISTS else RockolaSection.SONGS
                 if (found.isEmpty()) message = "No se encontraron resultados."
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 results = emptyList()
-                artists = emptyList()
+                if (artist == null) artists = emptyList()
                 message = "No se pudo consultar YouTube. Comprueba tu conexión."
             } finally {
                 loading = false

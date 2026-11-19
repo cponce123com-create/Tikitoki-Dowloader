@@ -105,6 +105,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     }
     var customPlaylists by remember { mutableStateOf(prefs.getStringSet("playlists", emptySet()).orEmpty().toSet()) }
     var selectedPlaylist by rememberSaveable { mutableStateOf("Todas") }
+    val playlistNames = (listOf("General") + customPlaylists.sorted()).distinct()
     var newPlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet()).orEmpty().toSet()) }
@@ -244,7 +245,7 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            (listOf("Todas", "General") + customPlaylists).distinct().forEach { playlist ->
+            (listOf("Todas") + playlistNames).forEach { playlist ->
                 FilterChip(
                     selected = selectedPlaylist == playlist,
                     onClick = { selectedPlaylist = playlist; favoritesOnly = false },
@@ -353,13 +354,18 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                             DropdownMenuItem(text = { Text(if (track.uri in favorites) "Quitar de favoritos" else "Añadir a favoritos") }, onClick = {
                                 menu = false; favorites = if (track.uri in favorites) favorites - track.uri else favorites + track.uri; save()
                             })
-                            if (selectedPlaylist != "Todas" && track.playlist != selectedPlaylist) {
-                                DropdownMenuItem(text = { Text("Mover a $selectedPlaylist") }, onClick = {
-                                    menu = false
-                                    val trackIndex = tracks.indexOf(track)
-                                    if (trackIndex >= 0) tracks[trackIndex] = track.copy(playlist = selectedPlaylist)
-                                    save()
-                                })
+                            playlistNames.filterNot { it == track.playlist }.forEach { destination ->
+                                DropdownMenuItem(
+                                    text = { Text("Mover a $destination") },
+                                    onClick = {
+                                        menu = false
+                                        val trackIndex = tracks.indexOf(track)
+                                        if (trackIndex >= 0) {
+                                            tracks[trackIndex] = track.copy(playlist = destination)
+                                            save()
+                                        }
+                                    },
+                                )
                             }
                             DropdownMenuItem(text = { Text("Quitar de la lista") }, onClick = {
                                 menu = false; tracks.remove(track)

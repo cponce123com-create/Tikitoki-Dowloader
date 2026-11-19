@@ -65,7 +65,7 @@ class YouTubePlayerActivity : ComponentActivity() {
         setContentView(root)
         ViewCompat.requestApplyInsets(root)
         webView.loadDataWithBaseURL(
-            "https://www.youtube.com/",
+            "https://$packageName/",
             embedHtml(videoId),
             "text/html",
             "UTF-8",
