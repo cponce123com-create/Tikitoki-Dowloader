@@ -1,8 +1,11 @@
 package com.tikitoki.downloader.data
 
 import android.content.Context
+import com.tikitoki.downloader.domain.AnalysisFailureClassifier
+import com.tikitoki.downloader.domain.AnalysisFailureKind
 import com.tikitoki.downloader.domain.MetadataSanitizer
 import com.tikitoki.downloader.domain.TikTokLink
+import com.tikitoki.downloader.domain.TikTokLinkParser
 import com.tikitoki.downloader.domain.TikTokLinkType
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
@@ -10,6 +13,7 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 
@@ -36,6 +40,7 @@ class TikTokVideoSource(
     private val context: Context,
 ) {
     private var initialized = false
+    private val profileResolver = ProfileAvatarResolver()
     private var updateAttempted = false
     private val profileCache = context.applicationContext.getSharedPreferences("profile_cache_v1", Context.MODE_PRIVATE)
 
@@ -162,18 +167,34 @@ class TikTokVideoSource(
             inspectProfileWithStatus(link, (page - 1) * pageSize + 1, page * pageSize)
         }
 
-    private fun inspectProfile(link: TikTokLink): List<VideoEntry> = inspectProfileWithStatus(link).items
+    private suspend fun inspectProfile(link: TikTokLink): List<VideoEntry> = inspectProfileWithStatus(link).items
 
-    private fun inspectProfileWithStatus(
+    private suspend fun inspectProfileWithStatus(
         link: TikTokLink,
         start: Int? = null,
         end: Int? = null,
     ): ScanPage {
+        val profileUrl = requireNotNull(TikTokLinkParser.canonicalProfile(link.url))
+        return try {
+            extractProfilePage(link, profileUrl, start, end)
+        } catch (failure: IllegalStateException) {
+            if (AnalysisFailureClassifier.classify(failure) != AnalysisFailureKind.TIKTOK_PROFILE_ID) throw failure
+            val identity = profileResolver.resolveIdentity(profileUrl)
+            val id = identity?.extractorProfileId ?: throw failure
+            val page = extractProfilePage(link, "tiktokuser:$id", start, end)
+            page.copy(profileImage = page.profileImage ?: identity.avatar)
+        }
+    }
+
+    private fun extractProfilePage(
+        link: TikTokLink,
+        extractorUrl: String,
+        start: Int?,
+        end: Int?,
+    ): ScanPage {
         val request =
-            YoutubeDLRequest(
-                com.tikitoki.downloader.domain.DownloadInputPolicy
-                    .canonicalUrl(link.url),
-            ).addOption("--flat-playlist")
+            YoutubeDLRequest(extractorUrl)
+                .addOption("--flat-playlist")
                 .addOption("--dump-single-json")
                 .addOption("--ignore-errors")
                 .addOption("--no-warnings")
@@ -188,25 +209,36 @@ class TikTokVideoSource(
             } catch (
                 e: Exception,
             ) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
+                rethrowIfFatal(e)
                 throw readableError(e)
             }
         if (response.exitCode != 0 && response.out.isBlank()) {
             throw readableError(IllegalStateException(response.err))
         }
+        return parseProfilePage(
+            response.out,
+            response.err,
+            response.exitCode,
+            checkNotNull(link.username) { "No se identificó el usuario." },
+        )
+    }
+
+    private fun parseProfilePage(
+        output: String,
+        errorOutput: String,
+        exitCode: Int,
+        username: String,
+    ): ScanPage {
         val json =
             try {
-                JSONObject(response.out.trim())
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
+                JSONObject(output.trim())
+            } catch (e: JSONException) {
                 DiagnosticHistory.record(context, e.message)
-                throw IllegalStateException("TikTok no devolvió un catálogo válido de publicaciones.")
+                error("TikTok no devolvió un catálogo válido de publicaciones.")
             }
         val entries =
             json.optJSONArray("entries")
                 ?: throw IllegalStateException("No se pudo enumerar el perfil. Puede estar restringido.")
-        val username = link.username ?: throw IllegalStateException("No se identificó el usuario.")
-
         val seen = mutableSetOf<String>()
         val results =
             buildList {
@@ -219,20 +251,14 @@ class TikTokVideoSource(
                             id = id,
                             url = "https://www.tiktok.com/@$username/video/$id",
                             title = MetadataSanitizer.title(entry.optString("title").ifBlank { "Video $id" }),
-                            thumbnail =
-                                entry.optString("thumbnail").takeIf { it.startsWith("https://") }
-                                    ?: entry.optJSONArray("thumbnails")?.let { thumbs ->
-                                        (0 until thumbs.length())
-                                            .mapNotNull { i ->
-                                                thumbs.optJSONObject(i)?.optString("url")?.takeIf { it.startsWith("https://") }
-                                            }.lastOrNull()
-                                    },
+                            thumbnail = thumbnailFromInfo(entry),
                             durationSeconds = entry.optInt("duration"),
                         ),
                     )
                 }
             }
-        val incomplete = response.exitCode != 0 || response.err.contains("ERROR:", ignoreCase = true) || results.size < entries.length()
+        val incomplete =
+            exitCode != 0 || errorOutput.contains("ERROR:", ignoreCase = true) || results.size < entries.length()
         val avatar =
             listOf("uploader_thumbnail", "channel_thumbnail", "avatar")
                 .firstNotNullOfOrNull { key -> json.optString(key).takeIf { it.startsWith("https://") } }

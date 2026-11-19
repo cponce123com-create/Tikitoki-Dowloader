@@ -126,6 +126,7 @@
     <string name="analysis_error_network">No se pudo conectar. Comprueba tu conexión y vuelve a intentarlo.</string>
     <string name="analysis_error_update_requested">TikTok devolvió una respuesta que el motor no pudo interpretar. Se solicitó una actualización; requiere una red sin medición y que no haya descargas pendientes. Cuando termine, vuelve a intentar.</string>
     <string name="analysis_error_update_manual">TikTok devolvió una respuesta que el motor no pudo interpretar. En Ajustes, solicita la actualización del motor con una red sin medición y vuelve a intentar.</string>
+    <string name="analysis_error_tiktok_profile_id">No se pudo listar este perfil porque TikTok no devolvió el identificador de la cuenta. Abre una publicación pública del perfil y pega el enlace del video para buscarlo por separado.</string>
     <string name="analysis_error_tiktok">No se pudo analizar TikTok. Comprueba la conexión y, si el problema continúa, actualiza el motor desde Ajustes con una red sin medición.</string>
     <string name="analysis_error_generic">No se pudo analizar el enlace. Comprueba la conexión y que el contenido esté disponible.</string>
     <string name="collections_explore">Explorar colecciones</string>

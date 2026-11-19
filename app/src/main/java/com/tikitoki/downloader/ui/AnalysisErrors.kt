@@ -20,6 +20,7 @@ internal object AnalysisErrors {
                 AnalysisFailureKind.RATE_LIMIT -> R.string.analysis_error_rate_limit
                 AnalysisFailureKind.ACCESS -> R.string.analysis_error_access
                 AnalysisFailureKind.NETWORK -> R.string.analysis_error_network
+                AnalysisFailureKind.TIKTOK_PROFILE_ID -> R.string.analysis_error_tiktok_profile_id
                 AnalysisFailureKind.EXTRACTOR_RESPONSE ->
                     if (platform == MediaPlatform.TIKTOK) {
                         requestUpdate(app)
