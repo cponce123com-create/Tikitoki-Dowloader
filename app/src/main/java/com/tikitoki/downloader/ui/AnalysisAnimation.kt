@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,64 +33,223 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private data class Vertex(val x: Float, val y: Float, val z: Float)
+private data class NeuralNode(
+    val x: Float,
+    val y: Float,
+    val phase: Float,
+)
 
-/** A lightweight perspective projection, rendered only while analysis is active. */
+private val neuralNodes =
+    listOf(
+        NeuralNode(0f, 0f, 0f),
+        NeuralNode(-0.82f, -0.38f, 0.4f),
+        NeuralNode(-0.68f, 0.42f, 1.1f),
+        NeuralNode(-0.42f, -0.68f, 2.1f),
+        NeuralNode(-0.18f, 0.66f, 2.8f),
+        NeuralNode(0.18f, -0.72f, 1.6f),
+        NeuralNode(0.44f, 0.62f, 0.8f),
+        NeuralNode(0.76f, -0.42f, 2.4f),
+        NeuralNode(0.84f, 0.30f, 1.9f),
+        NeuralNode(-0.40f, -0.18f, 3.1f),
+        NeuralNode(-0.46f, 0.20f, 1.4f),
+        NeuralNode(0.36f, -0.20f, 2.7f),
+        NeuralNode(0.40f, 0.20f, 0.6f),
+    )
+
+private val neuralConnections =
+    listOf(
+        0 to 1,
+        0 to 2,
+        0 to 3,
+        0 to 4,
+        0 to 5,
+        0 to 6,
+        0 to 7,
+        0 to 8,
+        1 to 3,
+        1 to 9,
+        1 to 10,
+        2 to 4,
+        2 to 10,
+        2 to 9,
+        3 to 5,
+        3 to 9,
+        4 to 6,
+        4 to 10,
+        5 to 7,
+        5 to 11,
+        6 to 8,
+        6 to 12,
+        7 to 8,
+        7 to 11,
+        8 to 12,
+        9 to 10,
+        9 to 11,
+        10 to 12,
+        11 to 12,
+    )
+
+/** A lightweight neural-network scan visualization, rendered only while analysis is active. */
+@Suppress("ktlint:standard:function-naming")
 @Composable
-fun AnalysisAnimation(found: Int, scanning: Boolean) {
+fun AnalysisAnimation(
+    found: Int,
+    scanning: Boolean,
+) {
     val transition = rememberInfiniteTransition(label = "analysis")
-    val angle by transition.animateFloat(0f, (2 * PI).toFloat(),
-        infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
-    Card(modifier = Modifier.fillMaxWidth().semantics {
-        contentDescription = if (found > 0) "Buscando más videos. $found encontrados" else "Analizando enlace"
-    }, shape = RoundedCornerShape(20.dp),
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(4200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        label = "neural-signal",
+    )
+
+    Card(
+        modifier =
+            Modifier.fillMaxWidth().semantics {
+                contentDescription = if (found > 0) "Buscando más videos. $found encontrados" else "Analizando enlace"
+            },
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF102B23)),
-        border = BorderStroke(1.dp, Color(0xFF356453))) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Canvas(Modifier.fillMaxWidth().height(120.dp).background(
-                Brush.radialGradient(listOf(Color(0xFF15563C), Color(0xFF071F17))), RoundedCornerShape(14.dp))) {
-                val center = Offset(size.width / 2, size.height / 2)
-                val scale = size.height * .30f
-                drawCircle(Color(0xFF47D99A).copy(alpha = .09f), radius = scale * 1.55f, center = center)
-                drawCircle(Color(0xFF47D99A).copy(alpha = .3f), radius = scale * 1.45f, center = center, style = Stroke(1.dp.toPx()))
-                val points = listOf(
-                    Vertex(-1f,-1f,-1f), Vertex(1f,-1f,-1f), Vertex(1f,1f,-1f), Vertex(-1f,1f,-1f),
-                    Vertex(-1f,-1f,1f), Vertex(1f,-1f,1f), Vertex(1f,1f,1f), Vertex(-1f,1f,1f))
-                val cy = cos(angle); val sy = sin(angle)
-                val cx = cos(.48f); val sx = sin(.48f)
-                val rotated = points.map { p ->
-                    val x = p.x * cy + p.z * sy
-                    val z = -p.x * sy + p.z * cy
-                    Vertex(x, p.y * cx - z * sx, p.y * sx + z * cx)
-                }
-                fun project(p: Vertex): Offset {
-                    val perspective = 4.6f / (4.6f - p.z)
-                    return Offset(center.x + p.x * scale * .62f * perspective, center.y + p.y * scale * .62f * perspective)
-                }
-                val faces = listOf(intArrayOf(0,1,2,3), intArrayOf(4,5,6,7), intArrayOf(0,1,5,4),
-                    intArrayOf(2,3,7,6), intArrayOf(0,3,7,4), intArrayOf(1,2,6,5))
-                val colors = listOf(Color(0xFF0C6042), Color(0xFF19A46B), Color(0xFF38D896), Color(0xFF0F7953), Color(0xFF137A55), Color(0xFF1DB579))
-                faces.indices.sortedBy { face -> faces[face].map { rotated[it].z }.average() }.forEach { face ->
-                    val path = Path().apply {
-                        faces[face].forEachIndexed { index, vertex -> val p = project(rotated[vertex]); if (index == 0) moveTo(p.x,p.y) else lineTo(p.x,p.y) }
-                        close()
+        border = BorderStroke(1.dp, Color(0xFF356453)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Canvas(
+                modifier =
+                    Modifier.fillMaxWidth().height(120.dp).background(
+                        Brush.radialGradient(
+                            listOf(Color(0xFF15563C), Color(0xFF071F17)),
+                            radius = 300f,
+                        ),
+                        RoundedCornerShape(14.dp),
+                    ),
+            ) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val radians = phase * 2f * PI.toFloat()
+                val scaleX = size.width * 0.36f
+                val scaleY = size.height * 0.43f
+                val nodePositions =
+                    neuralNodes.map { node ->
+                        Offset(
+                            x = center.x + (node.x + 0.035f * sin(radians + node.phase)) * scaleX,
+                            y = center.y + (node.y + 0.075f * cos(radians + node.phase)) * scaleY,
+                        )
                     }
-                    drawPath(path, colors[face].copy(alpha = .92f))
-                    drawPath(path, Color(0xFFA7FFDC).copy(alpha = .8f), style = Stroke(1.dp.toPx()))
+                val signalColor = Color(0xFF67F5BA)
+
+                drawCircle(
+                    color = Color(0xFF47D99A).copy(alpha = 0.08f),
+                    radius = size.height * 0.48f,
+                    center = center,
+                )
+                drawCircle(
+                    color = Color(0xFF47D99A).copy(alpha = 0.2f),
+                    radius = size.height * 0.40f,
+                    center = center,
+                    style = Stroke(1.dp.toPx()),
+                )
+                drawCircle(
+                    color = Color(0xFF47D99A).copy(alpha = 0.12f),
+                    radius = size.height * 0.31f,
+                    center = center,
+                    style = Stroke(1.dp.toPx()),
+                )
+
+                neuralConnections.forEachIndexed { index, (startIndex, endIndex) ->
+                    val start = nodePositions[startIndex]
+                    val end = nodePositions[endIndex]
+                    val pulse = (phase + index * 0.137f) % 1f
+                    val lineAlpha = 0.13f + 0.22f * (0.5f + 0.5f * sin((pulse * 2f * PI).toFloat()))
+
+                    drawLine(
+                        color = signalColor.copy(alpha = lineAlpha * 0.28f),
+                        start = start,
+                        end = end,
+                        strokeWidth = 3.dp.toPx(),
+                    )
+                    drawLine(
+                        color = signalColor.copy(alpha = lineAlpha),
+                        start = start,
+                        end = end,
+                        strokeWidth = 0.8.dp.toPx(),
+                    )
+                    val signalPosition =
+                        Offset(
+                            x = start.x + (end.x - start.x) * pulse,
+                            y = start.y + (end.y - start.y) * pulse,
+                        )
+                    drawCircle(
+                        color = signalColor.copy(alpha = 0.16f),
+                        radius = 4.dp.toPx(),
+                        center = signalPosition,
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.92f),
+                        radius = 1.35.dp.toPx(),
+                        center = signalPosition,
+                    )
                 }
-                repeat(3) { i ->
-                    val a = angle + i * 2f * PI.toFloat() / 3f
-                    val dot = Offset(center.x + cos(a) * scale * 2.05f, center.y + sin(a) * scale * .85f)
-                    drawCircle(Color(0xFF80F4C4).copy(alpha = .75f), radius = 2.5.dp.toPx(), center = dot)
+
+                nodePositions.forEachIndexed { index, position ->
+                    val isHub = index == 0
+                    val nodeRadius = if (isHub) 3.8.dp.toPx() else 2.5.dp.toPx()
+                    val glowRadius = nodeRadius * if (isHub) 3.4f else 2.7f
+                    drawCircle(
+                        color = signalColor.copy(alpha = if (isHub) 0.18f else 0.12f),
+                        radius = glowRadius,
+                        center = position,
+                    )
+                    drawCircle(
+                        color = if (isHub) Color.White else signalColor,
+                        radius = nodeRadius,
+                        center = position,
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.65f),
+                        radius = nodeRadius * 1.7f,
+                        center = position,
+                        style = Stroke(0.7.dp.toPx()),
+                    )
+                }
+
+                repeat(3) { index ->
+                    val satelliteAngle = radians + index * (2f * PI.toFloat() / 3f)
+                    val satellite =
+                        Offset(
+                            x = center.x + cos(satelliteAngle) * size.width * 0.43f,
+                            y = center.y + sin(satelliteAngle) * size.height * 0.34f,
+                        )
+                    drawCircle(
+                        color = signalColor.copy(alpha = 0.72f),
+                        radius = 1.7.dp.toPx(),
+                        center = satellite,
+                    )
                 }
             }
-            Text(if (scanning && found > 0) "Buscando más videos" else "Analizando enlace", color = Color.White,
-                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(if (found > 0) "$found videos encontrados hasta ahora" else "Buscando el contenido disponible…",
-                color = TechMuted, fontSize = 12.sp)
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp),
-                color = Color(0xFF43E6A1), trackColor = Color(0xFF21483A))
+            Text(
+                text = if (scanning && found > 0) "Buscando más videos" else "Analizando enlace",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = if (found > 0) "$found videos encontrados hasta ahora" else "Buscando el contenido disponible…",
+                color = TechMuted,
+                fontSize = 12.sp,
+            )
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp),
+                color = Color(0xFF43E6A1),
+                trackColor = Color(0xFF21483A),
+            )
         }
     }
 }
