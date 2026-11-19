@@ -19,7 +19,10 @@ import org.junit.runner.RunWith
 class LaunchTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Before fun acknowledgeNotice() { compose.acceptFirstRunNoticeIfShown() }
+    @Before
+    fun acknowledgeNotice() {
+        compose.acceptFirstRunNoticeIfShown()
+    }
 
     @Test fun applicationStartsAndDisplaysItsHeader() {
         compose.waitUntil(timeoutMillis = 5_000) {
@@ -38,11 +41,12 @@ class LaunchTest {
         for (videoId in 1..3) {
             // HTTP links exercise intent delivery without starting a network analysis.
             val link = "http://www.tiktok.com/@example/video/$videoId"
-            val shareIntent = Intent(Intent.ACTION_SEND)
-                .setComponent(component)
-                .setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT, link)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val shareIntent =
+                Intent(Intent.ACTION_SEND)
+                    .setComponent(component)
+                    .setType("text/plain")
+                    .putExtra(Intent.EXTRA_TEXT, link)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(shareIntent)
 
             compose.waitUntil(timeoutMillis = 5_000) {
