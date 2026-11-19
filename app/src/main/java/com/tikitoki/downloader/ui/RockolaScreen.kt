@@ -53,6 +53,7 @@ import com.tikitoki.downloader.VideoThumbnail
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -90,7 +91,6 @@ internal fun RockolaScreen(
     var message by remember { mutableStateOf("") }
     var favoritesOnly by remember { mutableStateOf(false) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet()).orEmpty().toSet()) }
-    var historyIds by remember { mutableStateOf(prefs.getStringSet("history", emptySet()).orEmpty().toSet()) }
     var favoriteItems by remember { mutableStateOf(loadTracks(prefs, "favorite_items")) }
     var historyItems by remember { mutableStateOf(loadTracks(prefs, "history_items")) }
     var pendingDownload by remember { mutableStateOf<VideoEntry?>(null) }
@@ -124,15 +124,14 @@ internal fun RockolaScreen(
     }
 
     fun rememberHistory(video: VideoEntry) {
-        historyIds = (historyIds + video.id).takeLast(50).toSet()
-        updateSet("history", historyIds)
-        historyItems = historyItems.filterNot { it.id == video.id } + video
+        historyItems = (historyItems.filterNot { it.id == video.id } + video).takeLast(50)
+        updateSet("history", historyItems.map { it.id }.toSet())
         updateItems("history_items", historyItems)
     }
 
     fun search(term: String, artist: String? = null, genre: String? = null) {
         val clean = term.trim()
-        if (clean.isBlank()) return
+        if (clean.isBlank() || loading) return
         query = clean
         activeArtist = artist
         selectedGenre = genre
@@ -151,8 +150,9 @@ internal fun RockolaScreen(
                 }.sortedByDescending { it.songCount }
                 section = if (artist == null && artists.isNotEmpty()) RockolaSection.ARTISTS else RockolaSection.SONGS
                 if (found.isEmpty()) message = "No se encontraron resultados."
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
                 results = emptyList()
                 artists = emptyList()
                 message = "No se pudo consultar YouTube. Comprueba tu conexión."
@@ -220,7 +220,10 @@ internal fun RockolaScreen(
                             when (section) {
                                 RockolaSection.GENRES -> "Elige un género para descubrir artistas."
                                 RockolaSection.ARTISTS -> "Artistas encontrados en ${selectedGenre ?: "YouTube"}."
-                                RockolaSection.SONGS -> "Hasta 30 canciones de ${activeArtist ?: "tu búsqueda"}, ordenadas por vistas cuando están disponibles.",
+                                RockolaSection.SONGS -> {
+                                    val artist = activeArtist ?: "tu búsqueda"
+                                    "Resultados de $artist"
+                                }
                             },
                             color = TechMuted,
                             maxLines = 2,

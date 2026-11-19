@@ -2,6 +2,7 @@ package com.tikitoki.downloader
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -22,7 +23,7 @@ class YouTubePlayerActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val videoId = intent.getStringExtra(EXTRA_VIDEO_ID)?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{6,20}")) }
+        val videoId = intent.getStringExtra(EXTRA_VIDEO_ID)?.takeIf(VIDEO_ID_PATTERN::matches)
         if (videoId == null) {
             finish()
             return
@@ -48,11 +49,10 @@ class YouTubePlayerActivity : ComponentActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
-            settings.userAgentString = "Mozilla/5.0 (Android) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                    request.url.host?.contains("youtube.com") != true && request.url.host?.contains("googlevideo.com") != true
+                    !isYouTubeNavigation(request.url)
             }
         }
         root.addView(heading, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -81,6 +81,14 @@ class YouTubePlayerActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    private fun isYouTubeNavigation(uri: Uri): Boolean {
+        val host = uri.host.orEmpty()
+        return uri.scheme == "https" &&
+            YOUTUBE_DOMAINS.any { domain ->
+                host.equals(domain, ignoreCase = true) || host.endsWith(".$domain", ignoreCase = true)
+            }
+    }
+
     private fun embedHtml(videoId: String): String = """
         <!doctype html>
         <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -96,5 +104,8 @@ class YouTubePlayerActivity : ComponentActivity() {
     companion object {
         const val EXTRA_VIDEO_ID = "video_id"
         const val EXTRA_TITLE = "title"
+
+        private val VIDEO_ID_PATTERN = Regex("[A-Za-z0-9_-]{11}")
+        private val YOUTUBE_DOMAINS = setOf("youtube.com", "googlevideo.com")
     }
 }
