@@ -144,7 +144,7 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
             val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
             val duration = video.durationSeconds.takeIf { it > 0 } ?: info.duration
             if (compact) {
-                CompactDownloadFormats.options(app, info.formats.orEmpty(), duration)
+                CompactDownloadFormats.options(app, info, duration)
             } else {
                 FormatOptions.individual(app, info.formats.orEmpty(), duration)
             }

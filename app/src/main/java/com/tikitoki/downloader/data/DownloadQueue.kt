@@ -33,46 +33,68 @@ object DownloadQueue {
         context: Context,
         videos: List<VideoEntry>,
         formatId: String = TikTokVideoSource.DEFAULT_FORMAT,
-    ): EnqueueSummary = withContext(Dispatchers.IO) { mutationLock.withLock {
-        val db = DownloadDatabase.get(context)
-        val dao = db.downloads()
-        val safeFormat = DownloadInputPolicy.safeFormatId(formatId)
-        // Validate the whole selection before changing persistent state.
-        val safeVideos = videos.distinctBy { it.id }.map { video ->
-            video.copy(url = DownloadInputPolicy.canonicalUrl(video.url), title = MetadataSanitizer.title(video.title))
-        }
-        val summary = db.withTransaction {
-            val audio = PlaybackKind.isAudio(safeFormat, null, null)
-            val keys = safeVideos.flatMap { listOf(it.id, DownloadIdentity.key(it.id, audio)) }
-            val existing = keys.chunked(400).flatMap { dao.findMany(it) }.associateBy { it.videoId }
-            var duplicates = 0
-            val records = safeVideos.mapNotNull { video ->
-                val key = DownloadIdentity.key(video.id, audio)
-                val legacy = existing[video.id]?.takeIf { PlaybackKind.isAudio(it.formatId, null, it.savedUri) == audio }
-                val previous = existing[key] ?: legacy
-                val activeStatuses = listOf(DownloadState.COMPLETED, DownloadState.QUEUED,
-                    DownloadState.DOWNLOADING, DownloadState.PAUSED)
-                if (listOfNotNull(existing[key], legacy).any { it.status in activeStatuses }) {
-                    duplicates++
-                    null
-                } else DownloadRecord(
-                    videoId = key, videoUrl = video.url, title = video.title,
-                    thumbnail = video.thumbnail, formatId = safeFormat,
-                    createdAt = previous?.createdAt ?: System.currentTimeMillis(),
-                )
+    ): EnqueueSummary = enqueue(context, videos.map { DownloadSelection(it, formatId) })
+
+    internal suspend fun enqueue(
+        context: Context,
+        selections: List<DownloadSelection>,
+    ): EnqueueSummary =
+        withContext(Dispatchers.IO) {
+            mutationLock.withLock {
+                val db = DownloadDatabase.get(context)
+                val dao = db.downloads()
+                // Validate the whole selection before changing persistent state.
+                val safe = selections.map { it.validated() }.distinctBy { it.queueKey() }
+                val summary =
+                    db.withTransaction {
+                        val keys = safe.flatMap { listOf(it.video.id, it.queueKey()) }
+                        val existing = keys.chunked(400).flatMap { dao.findMany(it) }.associateBy { it.videoId }
+                        val activeStatuses =
+                            setOf(
+                                DownloadState.COMPLETED,
+                                DownloadState.QUEUED,
+                                DownloadState.DOWNLOADING,
+                                DownloadState.PAUSED,
+                            )
+                        val records =
+                            safe.mapNotNull { item ->
+                                val video = item.video
+                                val key = item.queueKey()
+                                val legacy =
+                                    existing[video.id]?.takeIf {
+                                        PlaybackKind.isAudio(it.formatId, null, it.savedUri) == item.isAudio()
+                                    }
+                                val current = existing[key]
+                                if (current?.status in activeStatuses || legacy?.status in activeStatuses) {
+                                    null
+                                } else {
+                                    DownloadRecord(
+                                        videoId = key,
+                                        videoUrl = video.url,
+                                        title = video.title,
+                                        thumbnail = video.thumbnail,
+                                        formatId = item.formatId,
+                                        createdAt = (current ?: legacy)?.createdAt ?: System.currentTimeMillis(),
+                                    )
+                                }
+                            }
+                        val duplicates = safe.size - records.size
+                        if (records.isNotEmpty()) {
+                            dao.upsertAll(records)
+                            val batchId =
+                                java.util.UUID
+                                    .randomUUID()
+                                    .toString()
+                            dao.insertBatch(DownloadBatch(batchId, System.currentTimeMillis(), duplicates))
+                            dao.insertBatchItems(records.map { DownloadBatchItem(batchId, it.videoId) })
+                        }
+                        EnqueueSummary(records.size, duplicates)
+                    }
+                // Also kick an existing queued selection after a previous interrupted enqueue.
+                if (summary.added > 0 || dao.pendingRecoveryCount() > 0) start(context)
+                summary
             }
-            if (records.isNotEmpty()) {
-                dao.upsertAll(records)
-                val batchId = java.util.UUID.randomUUID().toString()
-                dao.insertBatch(DownloadBatch(batchId, System.currentTimeMillis(), duplicates))
-                dao.insertBatchItems(records.map { DownloadBatchItem(batchId, it.videoId) })
-            }
-            EnqueueSummary(records.size, duplicates)
         }
-        // Also kick an existing queued selection after a previous interrupted enqueue.
-        if (summary.added > 0 || dao.pendingRecoveryCount() > 0) start(context)
-        summary
-    } }
 
     /** Preserve history on permission or provider errors; remove it if the file is already gone. */
     suspend fun deleteCompleted(context: Context, id: String): DeleteCompletedResult = withContext(Dispatchers.IO) {
@@ -84,17 +106,12 @@ object DownloadQueue {
             DeleteCompletedResult.FAILED else outcome
     }
 
-    private fun request(context: Context) = OneTimeWorkRequestBuilder<DownloadWorker>()
-        .setConstraints(Constraints.Builder().setRequiredNetworkType(if (DownloadSettings.allowMetered(context)) NetworkType.CONNECTED else NetworkType.UNMETERED).build())
-        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-        .build()
-
     fun start(context: Context) {
         WorkManager.getInstance(context.applicationContext)
             .enqueueUniqueWork(
                 UNIQUE_WORK,
                 ExistingWorkPolicy.APPEND_OR_REPLACE,
-                request(context),
+                downloadWorkRequest(context),
             )
     }
 
@@ -121,7 +138,7 @@ object DownloadQueue {
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_WORK,
             ExistingWorkPolicy.REPLACE,
-            request(context),
+            downloadWorkRequest(context),
         )
     } }
 
@@ -162,5 +179,28 @@ object DownloadQueue {
     }
 }
 
+private fun DownloadSelection.validated(): DownloadSelection =
+    DownloadSelection(
+        video.copy(
+            url = DownloadInputPolicy.canonicalUrl(video.url),
+            title = MetadataSanitizer.title(video.title),
+        ),
+        DownloadInputPolicy.safeFormatId(formatId),
+    )
 
+private fun DownloadSelection.isAudio(): Boolean = PlaybackKind.isAudio(formatId, null, null)
 
+private fun DownloadSelection.queueKey(): String = DownloadIdentity.key(video.id, isAudio())
+
+private const val RETRY_BACKOFF_SECONDS = 30L
+
+private fun downloadWorkRequest(context: Context) =
+    OneTimeWorkRequestBuilder<DownloadWorker>()
+        .setConstraints(
+            Constraints
+                .Builder()
+                .setRequiredNetworkType(
+                    if (DownloadSettings.allowMetered(context)) NetworkType.CONNECTED else NetworkType.UNMETERED,
+                ).build(),
+        ).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, RETRY_BACKOFF_SECONDS, TimeUnit.SECONDS)
+        .build()
