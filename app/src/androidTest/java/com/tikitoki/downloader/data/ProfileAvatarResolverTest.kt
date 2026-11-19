@@ -24,4 +24,23 @@ class ProfileAvatarResolverTest {
         assertEquals("Carlos", result?.displayName)
         assertEquals("https://p16.tiktokcdn.com/avatar.jpg", result?.avatar)
     }
+
+    @Test fun resolvesOnlyAValidatedPublicProfileId() {
+        val id = "MS4wLjABAAAA" + "A".repeat(64)
+        val html =
+            """
+            <script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">
+            {"__DEFAULT_SCOPE__":{"webapp.user-detail":{"statusCode":0,"userInfo":{"user":
+              {"uniqueId":"carlos","secUid":"$id","privateAccount":false}
+            }}}}
+            </script>
+            """.trimIndent()
+        val resolver = ProfileAvatarResolver()
+        assertEquals(id, resolver.findIdentity(html, "Carlos")?.extractorProfileId)
+        assertNull(resolver.findIdentity(html, "otro")?.extractorProfileId)
+        assertNull(resolver.findIdentity(html.replace("false", "true"), "carlos")?.extractorProfileId)
+        assertNull(resolver.findIdentity(html.replace("false", "null"), "carlos")?.extractorProfileId)
+        assertNull(resolver.findIdentity(html.replace("statusCode\":0", "statusCode\":10222"), "carlos")?.extractorProfileId)
+        assertNull(resolver.findIdentity(html.replace(id, "--config-locations"), "carlos")?.extractorProfileId)
+    }
 }

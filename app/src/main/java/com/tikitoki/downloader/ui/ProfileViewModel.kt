@@ -5,6 +5,8 @@ import com.tikitoki.downloader.R
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tikitoki.downloader.data.*
+import com.tikitoki.downloader.domain.AnalysisFailureClassifier
+import com.tikitoki.downloader.domain.AnalysisFailureKind
 import com.tikitoki.downloader.domain.MediaLink
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -59,13 +61,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 } else universal.inspectWithStatus(media, (page - 1) * PAGE_SIZE + 1, PAGE_SIZE)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (EngineFallback.isAccessDenied(e)) throw e
+                if (!canRetryPage(e)) throw e
                 last = e
                 if (attempt < 3) delay(1500L * (1 shl attempt))
             }
         }
         throw last ?: IllegalStateException("No se pudo recuperar la página")
     }
+
+    private fun canRetryPage(error: Exception): Boolean =
+        when (AnalysisFailureClassifier.classify(error)) {
+            AnalysisFailureKind.NETWORK, AnalysisFailureKind.UNKNOWN -> !EngineFallback.isAccessDenied(error)
+            else -> false
+        }
+
+    private fun canResumePage(error: Exception): Boolean =
+        AnalysisFailureClassifier.classify(error) != AnalysisFailureKind.TIKTOK_PROFILE_ID
 
     fun isCurrentLink(url: String): Boolean {
         val current = activeLink ?: return false
@@ -123,7 +134,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     runCatching { DiagnosticHistory.record(getApplication(), e.message) }
                     mutableState.value =
                         ProfileUiState(
-                            hasMore = media.collection,
+                            hasMore = media.collection && canResumePage(e),
                             nextPage = 1,
                             error = AnalysisErrors.message(getApplication(), e, media.platform),
                         )
@@ -202,7 +213,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     mutableState.value =
                         mutableState.value.copy(
                             countingTotal = false,
-                            hasMore = true,
+                            hasMore = canResumePage(e),
                             error = AnalysisErrors.message(getApplication(), e, media.platform),
                         )
                 }

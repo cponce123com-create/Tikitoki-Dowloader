@@ -14,7 +14,11 @@ import java.util.ArrayDeque
 import java.util.Locale
 
 /** Best-effort public profile metadata lookup; no login or private-profile access. */
-data class ProfileIdentity(val displayName: String?, val avatar: String?)
+data class ProfileIdentity(
+    val displayName: String?,
+    val avatar: String?,
+    internal val extractorProfileId: String? = null,
+)
 
 class ProfileAvatarResolver {
     suspend fun resolve(profileUrl: String): String? = resolveIdentity(profileUrl)?.avatar
@@ -46,8 +50,13 @@ class ProfileAvatarResolver {
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
         var knownName: String? = null
         var knownAvatar: String? = null
-        for (match in script.findAll(html)) {
-            val root = runCatching { JSONObject(match.groupValues[1]) }.getOrNull() ?: continue
+        val roots =
+            script
+                .findAll(html)
+                .mapNotNull { match -> runCatching { JSONObject(match.groupValues[1]) }.getOrNull() }
+                .toList()
+        val extractorProfileId = roots.firstNotNullOfOrNull { publicExtractorId(it, username) }
+        for (root in roots) {
             val pending = ArrayDeque<Any>()
             pending.add(root)
             var visited = 0
@@ -61,7 +70,9 @@ class ProfileAvatarResolver {
                                 ?.let { com.tikitoki.downloader.domain.MetadataSanitizer.title(it) }
                             if (name != null) knownName = name
                             if (avatar != null) knownAvatar = avatar
-                            if (knownName != null && knownAvatar != null) return ProfileIdentity(knownName, knownAvatar)
+                            if (knownName != null && knownAvatar != null) {
+                                return ProfileIdentity(knownName, knownAvatar, extractorProfileId)
+                            }
                         }
                         val keys = node.keys()
                         while (keys.hasNext()) {
@@ -76,7 +87,30 @@ class ProfileAvatarResolver {
                 }
             }
         }
-        return if (knownName != null || knownAvatar != null) ProfileIdentity(knownName, knownAvatar) else null
+        return if (knownName != null || knownAvatar != null || extractorProfileId != null) {
+            ProfileIdentity(knownName, knownAvatar, extractorProfileId)
+        } else {
+            null
+        }
+    }
+
+    private fun publicExtractorId(
+        root: JSONObject,
+        username: String,
+    ): String? {
+        val detail = root.optJSONObject("__DEFAULT_SCOPE__")?.optJSONObject("webapp.user-detail")
+        val user =
+            if (detail != null) {
+                if (detail.optInt("statusCode", -1) != 0) return null
+                detail.optJSONObject("userInfo")?.optJSONObject("user")
+            } else {
+                root.optJSONObject("UserModule")?.optJSONObject("users")?.optJSONObject(username)
+            }
+        return user
+            ?.takeIf {
+                it.optString("uniqueId").equals(username, ignoreCase = true) && it.opt("privateAccount") == false
+            }?.optString("secUid")
+            ?.takeIf(Regex("MS4wLjABAAAA[A-Za-z0-9_-]{64}")::matches)
     }
 
     private fun safeAvatarUrl(raw: String): Boolean = runCatching {

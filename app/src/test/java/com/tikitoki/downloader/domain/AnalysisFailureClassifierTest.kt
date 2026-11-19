@@ -15,7 +15,9 @@ class AnalysisFailureClassifierTest {
                 IllegalStateException("wrapper", RuntimeException("Unexpected response from webpage request")) to
                     AnalysisFailureKind.EXTRACTOR_RESPONSE,
                 IllegalStateException("wrapper", RuntimeException("Unable to extract secondary user ID")) to
-                    AnalysisFailureKind.EXTRACTOR_RESPONSE,
+                    AnalysisFailureKind.TIKTOK_PROFILE_ID,
+                IllegalStateException("This user's account is private. Log into an account that has access") to
+                    AnalysisFailureKind.ACCESS,
                 IllegalStateException("wrapper", RuntimeException("HTTP Error 403")) to AnalysisFailureKind.ACCESS,
                 IllegalStateException("wrapper", UnknownHostException("host")) to AnalysisFailureKind.NETWORK,
                 IllegalStateException("unexpected") to AnalysisFailureKind.UNKNOWN,

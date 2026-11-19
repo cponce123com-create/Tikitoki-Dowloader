@@ -10,6 +10,7 @@ internal enum class AnalysisFailureKind {
     ACCESS,
     NETWORK,
     EXTRACTOR_RESPONSE,
+    TIKTOK_PROFILE_ID,
     UNKNOWN,
 }
 
@@ -28,6 +29,8 @@ internal object AnalysisFailureClassifier {
                 "http error 401",
                 "login required",
                 "private video",
+                "account is private",
+                "log into an account",
                 "requires authentication",
                 "no es público",
                 "autenticación",
@@ -35,10 +38,10 @@ internal object AnalysisFailureClassifier {
             causes.any { it is UnknownHostException || it is ConnectException || it is InterruptedIOException } ||
                 containsAny("timed out", "timeout", "connection", "unable to resolve host", "network is unreachable") ->
                 AnalysisFailureKind.NETWORK
+            containsAny("unable to extract secondary user id") -> AnalysisFailureKind.TIKTOK_PROFILE_ID
             containsAny(
                 "unable to extract webpage video data",
                 "unexpected response from webpage",
-                "secondary user id",
                 "failed to parse json",
                 "tiktok cambió la respuesta",
             ) -> AnalysisFailureKind.EXTRACTOR_RESPONSE
