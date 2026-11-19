@@ -133,11 +133,22 @@ class UniversalMediaSource(context: Context) : PlatformExtractor {
         root.optInt("playlist_count", -1).takeIf { it >= 0 }
     }
 
-    override suspend fun formats(video: VideoEntry): List<FormatChoice> = withContext(Dispatchers.IO) {
-        ready()
-        val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
-        FormatOptions.individual(app, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
-    }
+    override suspend fun formats(video: VideoEntry): List<FormatChoice> = formats(video, compact = false)
+
+    suspend fun formats(
+        video: VideoEntry,
+        compact: Boolean,
+    ): List<FormatChoice> =
+        withContext(Dispatchers.IO) {
+            ready()
+            val info = ExtractorAccess.useEngine { YoutubeDL.getInstance().getInfo(DownloadInputPolicy.canonicalUrl(video.url)) }
+            val duration = video.durationSeconds.takeIf { it > 0 } ?: info.duration
+            if (compact) {
+                CompactDownloadFormats.options(app, info.formats.orEmpty(), duration)
+            } else {
+                FormatOptions.individual(app, info.formats.orEmpty(), duration)
+            }
+        }
 
     /** Consults the public playlist tab; entries are playlists, not individual videos. */
     internal suspend fun channelPlaylistsJson(): String =

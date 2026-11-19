@@ -33,6 +33,12 @@
     <string name="format_video_upto">Video · hasta %1$dp</string>
     <string name="format_video_option">%1$dp · %2$s · %3$s</string>
     <string name="format_video_type">Video</string>
+    <string name="format_video_resolution">%1$dp</string>
+    <string name="format_video_hd">HD (720p)</string>
+    <string name="format_video_fhd">FHD (1080p)</string>
+    <string name="format_audio_mp3">MP3</string>
+    <string name="format_audio_mp3_rate">MP3 · %1$dK</string>
+    <string name="format_audio_original_rate">Audio original · %1$dK</string>
     <string name="format_audio_original">Audio original · mejor calidad disponible</string>
     <string name="format_mp3">MP3 · %1$d kbps · %2$s</string>
     <string name="format_size_approx">aprox. %1$s</string>

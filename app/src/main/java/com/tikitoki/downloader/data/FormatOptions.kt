@@ -3,22 +3,31 @@ package com.tikitoki.downloader.data
 import android.content.Context
 import android.text.format.Formatter
 import com.tikitoki.downloader.R
+import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.DownloadInputPolicy
+import com.tikitoki.downloader.domain.Mp3Preset
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import java.util.Locale
 
 /** Builds options from extractor metadata; batch presets are requests, not guarantees. */
 internal object FormatOptions {
-    val bitrates = listOf(128, 192, 256, 320)
-    fun mp3Bitrate(id: String): Int? = id.removePrefix("bajamp3-").takeIf { id.startsWith("bajamp3-") }
-        ?.toIntOrNull()?.takeIf { it in bitrates }
+    fun mp3Bitrate(id: String): Int? = Mp3Preset.bitrate(id)
 
-    fun mp3Options(context: Context, durationSeconds: Int): List<FormatChoice> = bitrates.map { rate ->
-        val bytes = if (durationSeconds > 0) durationSeconds.toLong() * rate * 1000L / 8L else null
-        val size = bytes?.let { context.getString(R.string.format_size_approx, Formatter.formatShortFileSize(context, it)) }
-            ?: context.getString(R.string.format_size_unknown)
-        FormatChoice("bajamp3-$rate", context.getString(R.string.format_mp3, rate, size), isAudio = true)
-    }
+    fun mp3Options(
+        context: Context,
+        durationSeconds: Int,
+    ): List<FormatChoice> =
+        Mp3Preset.legacyRates.map { rate ->
+            val bytes = if (durationSeconds > 0) durationSeconds.toLong() * rate * 1000L / 8L else null
+            val size =
+                if (bytes != null) {
+                    val readableSize = Formatter.formatShortFileSize(context, bytes)
+                    context.getString(R.string.format_size_approx, readableSize)
+                } else {
+                    context.getString(R.string.format_size_unknown)
+                }
+            FormatChoice("bajamp3-$rate", context.getString(R.string.format_mp3, rate, size), isAudio = true)
+        }
 
     fun batch(context: Context, extraHeights: Set<Int> = emptySet()): List<FormatChoice> {
         val heights = (listOf(240, 360, 480, 720, 1080, 1440, 2160) + extraHeights.filter { it in 1..16384 }).distinct().sorted()
@@ -72,5 +81,23 @@ internal object FormatOptions {
         val audio = originalAudio + if (hasAudio) mp3Options(context, durationSeconds) else emptyList()
         return bestVideo + videoOptions + audio
     }
-}
 
+    fun preferred(
+        options: List<FormatChoice>,
+        saved: String?,
+        compact: Boolean,
+    ): FormatChoice {
+        val exact =
+            options.firstOrNull {
+                DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT, it.height)
+            }
+        if (exact != null) return exact
+        val fallback =
+            when {
+                !compact -> null
+                DownloadFormatPreference.prefersAudio(saved) -> options.firstOrNull { it.isAudio }
+                else -> options.lastOrNull { !it.isAudio }
+            }
+        return fallback ?: options.first()
+    }
+}

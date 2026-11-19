@@ -2,6 +2,7 @@ package com.tikitoki.downloader.data
 
 import android.content.Context
 import com.tikitoki.downloader.domain.MetadataSanitizer
+import com.tikitoki.downloader.domain.Mp3Preset
 import com.tikitoki.downloader.domain.TikTokLink
 import com.tikitoki.downloader.domain.TikTokLinkType
 import com.yausername.ffmpeg.FFmpeg
@@ -239,7 +240,10 @@ class TikTokVideoSource(
         return ScanPage(results, entries.length(), incomplete, avatar)
     }
 
-    suspend fun formats(video: VideoEntry): List<FormatChoice> =
+    suspend fun formats(
+        video: VideoEntry,
+        compact: Boolean = false,
+    ): List<FormatChoice> =
         withContext(Dispatchers.IO) {
             ensureReady()
             val info =
@@ -256,7 +260,12 @@ class TikTokVideoSource(
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     throw readableError(e)
                 }
-            FormatOptions.individual(context, info.formats.orEmpty(), video.durationSeconds.takeIf { it > 0 } ?: info.duration)
+            val duration = video.durationSeconds.takeIf { it > 0 } ?: info.duration
+            if (compact) {
+                CompactDownloadFormats.options(context, info.formats.orEmpty(), duration)
+            } else {
+                FormatOptions.individual(context, info.formats.orEmpty(), duration)
+            }
         }
 
     suspend fun downloadToCache(
@@ -286,7 +295,12 @@ class TikTokVideoSource(
                     com.tikitoki.downloader.domain.DownloadInputPolicy
                         .safeFormatId(formatId),
                 )
-            val sourceAudio = formatId.takeIf { it.startsWith("bajaaudio-") }?.removePrefix("bajaaudio-")
+            val selector =
+                when (mp3Bitrate) {
+                    in Mp3Preset.averageRates -> "bestaudio[abr>=$mp3Bitrate]/best[abr>=$mp3Bitrate]"
+                    null -> formatId.removePrefix("bajaaudio-")
+                    else -> "bestaudio/best"
+                }
             val request =
                 YoutubeDLRequest(
                     com.tikitoki.downloader.domain.DownloadInputPolicy
@@ -301,7 +315,7 @@ class TikTokVideoSource(
                     .addOption("--retries", "3")
                     .addOption("--retry-sleep", "fragment:exp=1:8")
                     .addOption("--socket-timeout", "20")
-                    .addOption("-f", if (mp3Bitrate != null) "bestaudio/best" else sourceAudio ?: formatId)
+                    .addOption("-f", selector)
                     .addOption("--merge-output-format", "mp4")
                     .addOption("-o", File(folder, "$safeId.%(ext)s").absolutePath)
 
@@ -310,6 +324,9 @@ class TikTokVideoSource(
                     .addOption("--extract-audio")
                     .addOption("--audio-format", "mp3")
                     .addOption("--audio-quality", "${mp3Bitrate}K")
+                if (mp3Bitrate in Mp3Preset.averageRates) {
+                    request.addOption("--postprocessor-args", "ExtractAudio+ffmpeg_o:-abr 1")
+                }
             }
             val rate = DownloadSettings.rateKiB(context)
             if (rate > 0) request.addOption("--limit-rate", "${rate}K")
