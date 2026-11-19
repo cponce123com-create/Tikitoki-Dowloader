@@ -189,8 +189,18 @@ abstract class DownloadDatabase : RoomDatabase() {
                     context.applicationContext,
                     DownloadDatabase::class.java,
                     "tikitoki_downloads.db",
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2)
+                    .addCallback(
+                        object : RoomDatabase.Callback() {
+                            override fun onOpen(db: SupportSQLiteDatabase) {
+                                super.onOpen(db)
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS index_downloads_status_createdAt " +
+                                        "ON downloads (status, createdAt)",
+                                )
+                            }
+                        },
+                    ).build().also { INSTANCE = it }
             }
     }
 }
-

@@ -87,7 +87,7 @@ graph TB
 ### Repositorios y Fuentes
 | Componente | Responsabilidad |
 |------------|-----------------|
-| `DownloadDatabase` | Room DAO + entities para descargas, historial, ajustes |
+| `DownloadDatabase` | Room DAO + entities para descargas, historial, ajustes; índice persistente `(status, createdAt)` para la cola |
 | `DownloadQueue` | Cola en memoria con persistencia, prioridades, reintentos |
 | `EngineRegistry` | Registro de extractores disponibles (NewPipe, yt-dlp) |
 | `ExtractorAccess` | Facade para acceso a extractores con recuperación automática |
