@@ -51,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,7 +75,6 @@ import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.DownloadDao
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DownloadRecord
-import com.tikitoki.downloader.data.DownloadState
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileMonitor
@@ -101,6 +101,8 @@ import com.tikitoki.downloader.ui.TechMuted
 import com.tikitoki.downloader.ui.TechPanel
 import com.tikitoki.downloader.ui.TechPink
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.properties.ReadWriteProperty
@@ -166,7 +168,6 @@ internal data class AppNavigationState(
     val profileState: ProfileUiState,
     val dao: DownloadDao,
     val downloadsViewModel: DownloadsViewModel,
-    val records: List<DownloadRecord>,
     val downloadSpeeds: Map<String, String>,
     val galleryImageLoader: ImageLoader,
     val thumbnailResolver: VideoThumbnailResolver,
@@ -229,7 +230,21 @@ internal fun AppNavigationContent(state: AppNavigationState) {
     val profileState = state.profileState
     val dao = state.dao
     val downloadsViewModel = state.downloadsViewModel
-    val records = state.records
+    val queueRecordsFlow: Flow<List<DownloadRecord>> =
+        remember(downloadsViewModel, tab) {
+            if (tab == 1) downloadsViewModel.queueRecords else flowOf(emptyList())
+        }
+    val queueRecords by queueRecordsFlow.collectAsState(initial = emptyList())
+    val completedRecordsFlow: Flow<List<DownloadRecord>> =
+        remember(downloadsViewModel, tab) {
+            if (tab == 0 || tab == 2 || tab == 5) downloadsViewModel.completedRecords else flowOf(emptyList())
+        }
+    val completedRecords by completedRecordsFlow.collectAsState(initial = emptyList())
+    val failedCountFlow: Flow<Int> =
+        remember(downloadsViewModel, tab) {
+            if (tab == 3) downloadsViewModel.failedCount else flowOf(0)
+        }
+    val failedCount by failedCountFlow.collectAsState(initial = 0)
     val downloadSpeeds = state.downloadSpeeds
     val galleryImageLoader = state.galleryImageLoader
     val thumbnailResolver = state.thumbnailResolver
@@ -264,11 +279,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
         },
     ) { insets ->
         val completedKinds =
-            remember(records) {
-                records
-                    .filter { it.status == DownloadState.COMPLETED }
-                    .groupBy { DownloadIdentity.sourceId(it.videoId) }
-            }
+            remember(completedRecords) { completedRecords.groupBy { DownloadIdentity.sourceId(it.videoId) } }
         val downloadedIds =
             remember(completedKinds) {
                 completedKinds
@@ -618,7 +629,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
             }
         } else if (tab == 1) {
             DownloadQueueScreen(
-                records = records,
+                records = queueRecords,
                 themeChoice = themeChoice,
                 insets = insets,
                 message = message,
@@ -646,7 +657,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
             )
         } else if (tab == 2) {
             LibraryScreen(
-                records = records,
+                records = completedRecords,
                 themeChoice = themeChoice,
                 insets = insets,
                 libraryKind = libraryKind,
@@ -722,7 +733,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
                         ToolsScreen(
                             monitored = monitored,
-                            failedCount = records.count { it.status == DownloadState.FAILED },
+                            failedCount = failedCount,
                             currentUrl = url,
                             profileImage = profileState.profileImage,
                             avatarResolver = avatarResolver,
@@ -917,7 +928,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             }
                         }
                         Text(
-                            "${records.count { it.status == DownloadState.COMPLETED }} archivos guardados",
+                            "${completedRecords.size} archivos guardados",
                             color = TechMuted,
                             style = MaterialTheme.typography.bodySmall,
                         )

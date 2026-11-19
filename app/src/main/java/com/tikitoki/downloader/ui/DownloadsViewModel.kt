@@ -19,13 +19,25 @@ class DownloadsViewModel(
 ) : AndroidViewModel(application) {
     constructor(application: Application) : this(application, AndroidDownloadQueueActions(application))
 
-    val records =
-        DownloadDatabase
-            .get(application)
-            .downloads()
-            .observeAll()
+    private val dao = DownloadDatabase.get(application).downloads()
+
+    val queueRecords =
+        dao
+            .observeQueue()
             .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<DownloadRecord>())
+
+    val completedRecords =
+        dao
+            .observeCompleted()
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<DownloadRecord>())
+
+    val failedCount =
+        dao
+            .observeFailedCount()
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     suspend fun pauseQueue() = queueActions.pause()
 

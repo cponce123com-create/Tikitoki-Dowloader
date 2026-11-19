@@ -157,7 +157,6 @@ internal fun AppContent(
     val profileState by profileViewModel.state.collectAsState()
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val downloadsViewModel: DownloadsViewModel = viewModel()
-    val records by downloadsViewModel.records.collectAsState()
     val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
     val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
@@ -426,7 +425,6 @@ internal fun AppContent(
                     profileState = profileState,
                     dao = dao,
                     downloadsViewModel = downloadsViewModel,
-                    records = records,
                     downloadSpeeds = downloadSpeeds,
                     galleryImageLoader = galleryImageLoader,
                     thumbnailResolver = thumbnailResolver,

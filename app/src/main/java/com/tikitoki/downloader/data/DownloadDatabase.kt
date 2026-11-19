@@ -49,8 +49,14 @@ data class BatchSummary(val batchId: String, val total: Int, val completed: Int,
 
 @Dao
 interface DownloadDao {
-    @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
-    fun observeAll(): Flow<List<DownloadRecord>>
+    @Query("SELECT * FROM downloads WHERE status IN ('QUEUED', 'DOWNLOADING', 'PAUSED') ORDER BY createdAt DESC")
+    fun observeQueue(): Flow<List<DownloadRecord>>
+
+    @Query("SELECT * FROM downloads WHERE status = 'COMPLETED' ORDER BY createdAt DESC")
+    fun observeCompleted(): Flow<List<DownloadRecord>>
+
+    @Query("SELECT COUNT(*) FROM downloads WHERE status = 'FAILED'")
+    fun observeFailedCount(): Flow<Int>
 
     @Query("SELECT * FROM downloads WHERE videoId = :id LIMIT 1")
     suspend fun find(id: String): DownloadRecord?
