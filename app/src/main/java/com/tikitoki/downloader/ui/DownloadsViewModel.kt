@@ -8,6 +8,7 @@ import com.tikitoki.downloader.data.DownloadDatabase
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.domain.DownloadQueueActions
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,7 @@ class DownloadsViewModel(
             .get(application)
             .downloads()
             .observeAll()
+            .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<DownloadRecord>())
 
     suspend fun pauseQueue() = queueActions.pause()
