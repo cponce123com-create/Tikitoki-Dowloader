@@ -38,23 +38,29 @@ class LaunchTest {
         val component = ComponentName(context, MainActivity::class.java)
         val activityManager = checkNotNull(context.getSystemService(ActivityManager::class.java))
 
-        for (videoId in 1..3) {
-            // HTTP links exercise intent delivery without starting a network analysis.
-            val link = "http://www.tiktok.com/@example/video/$videoId"
-            val shareIntent =
-                Intent(Intent.ACTION_SEND)
-                    .setComponent(component)
-                    .setType("text/plain")
-                    .putExtra(Intent.EXTRA_TEXT, link)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(shareIntent)
+        val launcherIntent = compose.runOnUiThread { openActivity.intent }
+        try {
+            for (videoId in 1..3) {
+                // HTTP links exercise intent delivery without starting a network analysis.
+                val link = "http://www.tiktok.com/@example/video/$videoId"
+                val shareIntent =
+                    Intent(Intent.ACTION_SEND)
+                        .setComponent(component)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, link)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(shareIntent)
 
-            compose.waitUntil(timeoutMillis = 5_000) {
-                compose.runOnUiThread { openActivity.intent.getStringExtra(Intent.EXTRA_TEXT) == link }
+                compose.waitUntil(timeoutMillis = 5_000) {
+                    compose.runOnUiThread { openActivity.intent.getStringExtra(Intent.EXTRA_TEXT) == link }
+                }
             }
-        }
 
-        val mainTasks = activityManager.appTasks.count { it.taskInfo?.baseIntent?.component == component }
-        assertEquals(1, mainTasks)
+            val mainTasks = activityManager.appTasks.count { it.taskInfo?.baseIntent?.component == component }
+            assertEquals(1, mainTasks)
+        } finally {
+            // ActivityScenario matches lifecycle events against the original intent.
+            compose.runOnUiThread { openActivity.setIntent(launcherIntent) }
+        }
     }
 }
