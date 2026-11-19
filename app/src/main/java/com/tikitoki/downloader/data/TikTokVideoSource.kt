@@ -27,6 +27,7 @@ data class FormatChoice(
     val label: String,
     val height: Int? = null,
     val isAudio: Boolean = false,
+    val shortLabel: String = label,
 )
 
 /**
@@ -262,7 +263,7 @@ class TikTokVideoSource(
                 }
             val duration = video.durationSeconds.takeIf { it > 0 } ?: info.duration
             if (compact) {
-                CompactDownloadFormats.options(context, info.formats.orEmpty(), duration)
+                CompactDownloadFormats.options(context, info, duration)
             } else {
                 FormatOptions.individual(context, info.formats.orEmpty(), duration)
             }

@@ -4,6 +4,7 @@ import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.PlaybackKind
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,6 +52,14 @@ class CompactDownloadFormatsTest {
         assertEquals(hd, FormatOptions.preferred(options, saved, compact = true))
         assertEquals(fhd, FormatOptions.preferred(options, "video", compact = true))
         assertEquals(mp3, FormatOptions.preferred(options, "bajamp3-240", compact = true))
+    }
+
+    @Test
+    fun recognizesAudioWithoutCodecNameWhenMetadataIdentifiesATrack() {
+        assertTrue(format("ext" to "m4a").hasAudio())
+        assertTrue(format("abr" to 180).hasAudio())
+        assertFalse(format("acodec" to "none", "ext" to "mp4").hasAudio())
+        assertFalse(format("ext" to "mp4").hasAudio())
     }
 
     private fun video(

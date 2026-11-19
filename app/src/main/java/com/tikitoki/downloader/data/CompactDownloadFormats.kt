@@ -6,8 +6,9 @@ import com.tikitoki.downloader.R
 import com.tikitoki.downloader.domain.DownloadInputPolicy
 import com.tikitoki.downloader.domain.Mp3Preset
 import com.yausername.youtubedl_android.mapper.VideoFormat
+import com.yausername.youtubedl_android.mapper.VideoInfo
 
-/** User-facing choices for one item. The batch checker still uses all extractor formats. */
+/** User-facing qualities available for an inspected item. */
 internal object CompactDownloadFormats {
     private const val LOW_QUALITY = 240
     private const val STANDARD_QUALITY = 360
@@ -19,15 +20,16 @@ internal object CompactDownloadFormats {
 
     fun options(
         context: Context,
-        formats: List<VideoFormat>,
+        info: VideoInfo,
         duration: Int,
     ): List<FormatChoice> {
+        val formats = info.formats.orEmpty().ifEmpty { info.requestedFormats.orEmpty() }
         val streams = formats.filter { it.safeId() != null }
-        return videoChoices(context, streams) + audioChoices(context, streams, duration)
+        return videoChoices(context, streams) + audioChoices(context, streams, duration, info.ext in audioExtensions)
     }
 
     internal fun videoTracks(streams: List<VideoFormat>): Map<Int, VideoFormat> {
-        val hasSeparateAudio = streams.any { it.hasAudio() && it.vcodec == "none" }
+        val hasSeparateAudio = streams.any { it.hasAudio() && (it.vcodec == "none" || it.ext in audioExtensions) }
         val candidates = streams.filter { it.hasVideo() && (it.hasAudio() || hasSeparateAudio) }
         val ranking = compareBy<VideoFormat>({ it.ext == "mp4" }, { it.hasAudio() }, { it.tbr })
         return videoHeights
@@ -56,6 +58,7 @@ internal object CompactDownloadFormats {
                 selector,
                 withSize(label, if (video.hasAudio()) streamSize(context, video) else null),
                 height = height,
+                shortLabel = label,
             )
         }
 
@@ -68,20 +71,21 @@ internal object CompactDownloadFormats {
         context: Context,
         streams: List<VideoFormat>,
         duration: Int,
+        directAudio: Boolean,
     ): List<FormatChoice> {
-        if (streams.none { it.hasAudio() }) return emptyList()
+        if (!directAudio && streams.none { it.hasAudio() }) return emptyList()
         return buildList {
             add(FormatChoice(Mp3Preset.DEFAULT_ID, context.getString(R.string.format_audio_mp3), isAudio = true))
             for (rate in mp3Rates(streams)) {
                 val label = context.getString(R.string.format_audio_mp3_rate, rate)
                 val bytes = duration.toLong() * rate * BYTES_PER_KILOBIT
                 val size = bytes.takeIf { it > 0 }?.let { approximateSize(context, it) }
-                add(FormatChoice("bajamp3-$rate", withSize(label, size), isAudio = true))
+                add(FormatChoice("bajamp3-$rate", withSize(label, size), isAudio = true, shortLabel = label))
             }
             originalTrack(streams)?.let { track ->
                 val label = context.getString(R.string.format_audio_original_rate, ORIGINAL_AUDIO_RATE)
                 val id = safeSelector("bajaaudio-${track.formatId}") ?: return@let
-                add(FormatChoice(id, withSize(label, streamSize(context, track)), isAudio = true))
+                add(FormatChoice(id, withSize(label, streamSize(context, track)), isAudio = true, shortLabel = label))
             }
         }
     }
@@ -117,7 +121,14 @@ internal object CompactDownloadFormats {
 
 private fun VideoFormat.hasVideo(): Boolean = height > 0 && !vcodec.isNullOrBlank() && vcodec != "none"
 
-private fun VideoFormat.hasAudio(): Boolean = !acodec.isNullOrBlank() && acodec != "none"
+private val audioExtensions = setOf("aac", "flac", "m4a", "mp3", "ogg", "opus", "wav")
+
+internal fun VideoFormat.hasAudio(): Boolean =
+    when {
+        acodec == "none" -> false
+        !acodec.isNullOrBlank() -> true
+        else -> abr > 0 || ext in audioExtensions
+    }
 
 private fun VideoFormat.shortSide(): Int = minOf(width.takeIf { it > 0 } ?: height, height)
 
