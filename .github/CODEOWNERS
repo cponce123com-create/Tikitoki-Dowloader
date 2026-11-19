@@ -1,0 +1,5 @@
+# Protect the CI/release and build supply chain.
+.github/workflows/ @cponce123com-create
+gradle/ @cponce123com-create
+app/build.gradle.kts @cponce123com-create
+gradle/libs.versions.toml @cponce123com-create
