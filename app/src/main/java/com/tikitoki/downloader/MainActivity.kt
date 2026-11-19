@@ -1087,9 +1087,16 @@ private fun TikitokiApp(
                                 thumbnailResolver = thumbnailResolver,
                                 onDownload = { video -> qualityVideos = listOf(video) },
                                 onOpenYouTube = { video ->
-                                    runCatching {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(video.url)))
-                                    }.onFailure { message = "No se pudo abrir YouTube." }
+                                    val videoId = video.id.removePrefix("youtube:")
+                                    if (videoId.isBlank()) {
+                                        message = "No se identificó el video de YouTube."
+                                    } else {
+                                        context.startActivity(
+                                            Intent(context, YouTubePlayerActivity::class.java)
+                                                .putExtra(YouTubePlayerActivity.EXTRA_VIDEO_ID, videoId)
+                                                .putExtra(YouTubePlayerActivity.EXTRA_TITLE, video.title),
+                                        )
+                                    }
                                 },
                             )
                         3 -> {
