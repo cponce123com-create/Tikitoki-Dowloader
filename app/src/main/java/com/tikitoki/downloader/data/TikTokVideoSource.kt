@@ -298,7 +298,11 @@ class TikTokVideoSource(
                 )
             val selector =
                 when (mp3Bitrate) {
-                    in Mp3Preset.averageRates -> "bestaudio[abr>=$mp3Bitrate]/best[abr>=$mp3Bitrate]"
+                    // The source metadata does not reliably expose `abr` for TikTok
+                    // streams. Filtering on it can leave yt-dlp with no candidate,
+                    // even though a valid audio stream is available. The requested
+                    // MP3 bitrate is applied by the audio postprocessor below.
+                    in Mp3Preset.averageRates -> "bestaudio/best"
                     null -> formatId.removePrefix("bajaaudio-")
                     else -> "bestaudio/best"
                 }
@@ -325,9 +329,6 @@ class TikTokVideoSource(
                     .addOption("--extract-audio")
                     .addOption("--audio-format", "mp3")
                     .addOption("--audio-quality", "${mp3Bitrate}K")
-                if (mp3Bitrate in Mp3Preset.averageRates) {
-                    request.addOption("--postprocessor-args", "ExtractAudio+ffmpeg_o:-abr 1")
-                }
             }
             val rate = DownloadSettings.rateKiB(context)
             if (rate > 0) request.addOption("--limit-rate", "${rate}K")
