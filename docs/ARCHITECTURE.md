@@ -101,8 +101,8 @@ graph TB
 | `ExtractorUpdateWorker` | Periódico (24h) | Verifica actualizaciones de extractores, smoke test + SHA-256 |
 
 ### Seguridad de Red
-- **Certificate Pinning**: `network_security_config.xml` con pins para `github.com`, `jitpack.io`, `maven-central`, `google-maven`
-- **Extraction Verification**: SHA-256 de yt-dlp verificado contra `https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest`
+- **Certificate Pinning**: `network_security_config.xml` separa los pin-sets por proveedor y mantiene una clave primaria y otra de respaldo por dominio
+- **Extraction Verification**: SHA-256 del ejecutable empaquetado fijado por versión; versiones desconocidas se rechazan y activan rollback
 - **Rollback Automático**: Si verificación falla → `ExtractorRollback` restaura versión anterior
 
 ---

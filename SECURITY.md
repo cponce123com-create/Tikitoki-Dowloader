@@ -16,4 +16,6 @@ Revisar permisos y enlaces entrantes, integridad y origen de dependencias y actu
 
 ## Actualizaciones de yt-dlp
 
-La aplicación no realiza una verificación criptográfica independiente del binario de yt-dlp actualizado; depende del canal de actualización de youtubedl-android y de su transporte. La comprobación de versión y la prueba de humo sin red pueden detectar algunos motores inservibles y activar el rollback, pero no autentican el origen ni garantizan que el motor sea seguro. La restauración también debe comprobarse en dispositivos reales.
+La aplicación verifica el SHA-256 del ejecutable instalado contra un manifiesto versionado en `ExtractorVerifier`. La versión incluida por `youtubedl-android:0.18.1` es `2025.11.12` y su hash aprobado es `89a0d9058ea9018e380b7771898ff46e393a1986dcd13fef331693c87ce1fca4`. Las versiones desconocidas o con hash distinto se rechazan y activan el rollback.
+
+Esta verificación autentica el artefacto que el proyecto ha aprobado, pero no sustituye la revisión del origen de una nueva release. Toda actualización de `youtubedl-android` debe añadir primero el hash exacto del binario empaquetado, sus pruebas de regresión y una revisión de seguridad antes de publicarse.

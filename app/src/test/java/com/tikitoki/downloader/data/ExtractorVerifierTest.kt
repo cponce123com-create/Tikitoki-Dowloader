@@ -1,6 +1,7 @@
 package com.tikitoki.downloader.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -79,6 +80,18 @@ class ExtractorVerifierTest {
         assertTrue(unknown is ExtractorVerifier.VerificationResult.UnknownVersion)
         assertEquals("unknown-version", unknown.version)
         assertEquals("some_hash", unknown.actualHash)
+        assertFalse(ExtractorVerifier.isTrusted(unknown))
+    }
+
+    @Test
+    fun onlyVerifiedResultsAreTrusted() {
+        val verified = ExtractorVerifier.VerificationResult.Verified("2025.11.12", "known-hash")
+        val failed = ExtractorVerifier.VerificationResult.Failed("2025.11.12", "expected", "actual")
+        val error = ExtractorVerifier.VerificationResult.Error("verification error")
+
+        assertTrue(ExtractorVerifier.isTrusted(verified))
+        assertFalse(ExtractorVerifier.isTrusted(failed))
+        assertFalse(ExtractorVerifier.isTrusted(error))
     }
 
     @Test

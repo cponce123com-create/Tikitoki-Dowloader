@@ -25,15 +25,14 @@ internal object ExtractorVerifier {
      * Format: version -> lowercase hex SHA-256 of the linux_x86_64 binary.
      * Source: https://github.com/yt-dlp/yt-dlp/releases
      *
-     * NOTE: These hashes MUST be updated when youtubedl-android upgrades its bundled yt-dlp.
-     * The hashes below are for yt-dlp 2024.xx.xx versions. Check youtubedl-android release notes
-     * or the yt-dlp GitHub releases page for the correct hash for the version being bundled.
+     * These hashes are pinned to the exact binary shipped by the dependency version in the
+     * version catalog. Update this map in the same change that upgrades youtubedl-android.
+     * An unknown version is rejected; it must never silently become trusted.
      */
     private val KNOWN_HASHES =
         mapOf(
-            // yt-dlp 2024.09.17 (example - replace with actual version from youtubedl-android 0.18.1)
-            "2024.09.17" to "TODO_REPLACE_WITH_ACTUAL_SHA256",
-            // Add more versions as needed
+            // youtubedl-android 0.18.1 / library AAR res/raw/ytdlp
+            "2025.11.12" to "89a0d9058ea9018e380b7771898ff46e393a1986dcd13fef331693c87ce1fca4",
         )
 
     /**
@@ -78,6 +77,8 @@ internal object ExtractorVerifier {
             val message: String,
         ) : VerificationResult()
     }
+
+    internal fun isTrusted(result: VerificationResult): Boolean = result is VerificationResult.Verified
 
     /**
      * Verifies the currently installed yt-dlp binary.
@@ -132,9 +133,9 @@ internal object ExtractorVerifier {
                     "⚠️ yt-dlp version UNKNOWN (no reference hash): version=${result.version}, hash=${result.actualHash}. " +
                         "Update KNOWN_HASHES in ExtractorVerifier.kt with the official hash from https://github.com/yt-dlp/yt-dlp/releases/tag/${result.version}",
                 )
-                // Allow unknown versions for now (fail-open) but log prominently
-                // TODO: Consider fail-closed for production: return false
-                true
+                // Fail closed: a new extractor must be explicitly reviewed and pinned
+                // before an update can replace the known-good binary.
+                false
             }
             is VerificationResult.Error -> {
                 Log.e(TAG, "❌ yt-dlp verification ERROR: ${result.message}")
