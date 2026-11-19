@@ -30,7 +30,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,6 +93,8 @@ internal fun RockolaScreen(
     var historyIds by remember { mutableStateOf(prefs.getStringSet("history", emptySet()).orEmpty().toSet()) }
     var favoriteItems by remember { mutableStateOf(loadTracks(prefs, "favorite_items")) }
     var historyItems by remember { mutableStateOf(loadTracks(prefs, "history_items")) }
+    var pendingDownload by remember { mutableStateOf<VideoEntry?>(null) }
+    var downloadConsent by remember { mutableStateOf(false) }
 
     fun updateSet(key: String, values: Set<String>) {
         prefs.edit().putStringSet(key, values).apply()
@@ -161,7 +166,41 @@ internal fun RockolaScreen(
         search(title, artist = title, genre = selectedGenre)
     }
 
+    fun requestDownload(video: VideoEntry) {
+        if (prefs.getBoolean("authorized_downloads_ack", false)) onDownload(video)
+        else {
+            downloadConsent = false
+            pendingDownload = video
+        }
+    }
+
     val visibleResults = results.filter { !favoritesOnly || it.id in favoriteIds }
+    pendingDownload?.let { video ->
+        AlertDialog(
+            onDismissRequest = { pendingDownload = null },
+            title = { Text("Descarga autorizada") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Descarga solo contenido propio, de dominio público o para el que tengas autorización. La aplicación no puede verificar los derechos de cada video de YouTube.")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = downloadConsent, onCheckedChange = { downloadConsent = it })
+                        Text("Confirmo que tengo permiso para descargarlo.")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = downloadConsent,
+                    onClick = {
+                        prefs.edit().putBoolean("authorized_downloads_ack", true).apply()
+                        pendingDownload = null
+                        onDownload(video)
+                    },
+                ) { Text("Continuar") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDownload = null }) { Text("Cancelar") } },
+        )
+    }
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -282,7 +321,7 @@ internal fun RockolaScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 IconButton(onClick = { rememberHistory(video); onOpenYouTube(video) }, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.OpenInNew, contentDescription = "Abrir en YouTube", tint = TechPink) }
                                 IconButton(onClick = { toggleFavorite(video) }, modifier = Modifier.size(36.dp)) { Icon(if (video.id in favoriteIds) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Favorito", tint = TechPink) }
-                                IconButton(onClick = { onDownload(video) }, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Download, contentDescription = "Descargar", tint = TechPurple) }
+                                IconButton(onClick = { requestDownload(video) }, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Download, contentDescription = "Descargar", tint = TechPurple) }
                             }
                         }
                     }
@@ -300,7 +339,7 @@ internal fun RockolaScreen(
         }
         if (!loading && section == RockolaSection.ARTISTS && results.isNotEmpty() && artists.isEmpty()) {
             items(results, key = { it.id }) { video ->
-                SimpleSongResult(video, thumbnailResolver, favoriteIds, onOpenYouTube, onDownload, ::toggleFavorite, ::rememberHistory)
+                SimpleSongResult(video, thumbnailResolver, favoriteIds, onOpenYouTube, ::requestDownload, ::toggleFavorite, ::rememberHistory)
             }
         }
     }
