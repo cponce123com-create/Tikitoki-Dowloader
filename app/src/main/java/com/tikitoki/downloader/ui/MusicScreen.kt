@@ -240,20 +240,6 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
         Text("Mi música", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = Color.White)
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            (listOf("Todas") + playlistNames).forEach { playlist ->
-                FilterChip(
-                    selected = selectedPlaylist == playlist,
-                    onClick = { selectedPlaylist = playlist; favoritesOnly = false },
-                    label = { Text(playlist, maxLines = 1) },
-                )
-            }
-            OutlinedButton(onClick = { newPlaylistDialog = true }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("+ Playlist") }
-        }
         Column(Modifier.fillMaxWidth().background(Metal, shape).border(1.dp, Color(0xFF798D83), shape).padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(Modifier.fillMaxWidth().background(Color(0xFF041C13), RoundedCornerShape(12.dp)).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
@@ -327,6 +313,28 @@ fun MusicScreen(requestedUri: String? = null, requestedTitle: String = "", onReq
                         contentDescription = if (favoritesOnly) "Ver todas" else "Ver favoritos", tint = Mint)
                 }
                 OutlinedButton(onClick = { picker.launch(arrayOf("audio/*")) }, contentPadding = PaddingValues(horizontal = 6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Mint)) { Text("+ Agregar", color = Mint, fontSize = 12.sp, maxLines = 1) }
+            }
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                (listOf("Todas") + playlistNames).forEach { playlist ->
+                    FilterChip(
+                        selected = selectedPlaylist == playlist,
+                        onClick = {
+                            selectedPlaylist = playlist
+                            favoritesOnly = false
+                        },
+                        label = { Text(playlist, maxLines = 1) },
+                    )
+                }
+                OutlinedButton(
+                    onClick = { newPlaylistDialog = true },
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                ) {
+                    Text("+ Playlist")
+                }
             }
             val visible = visibleTracks()
             if (visible.isEmpty()) Text(if (favoritesOnly) "Aún no tienes favoritos." else "Agrega canciones para empezar.", color = Muted, modifier = Modifier.padding(8.dp))
