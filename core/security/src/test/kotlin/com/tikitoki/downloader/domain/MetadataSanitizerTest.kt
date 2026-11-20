@@ -90,7 +90,7 @@ class MetadataSanitizerTest {
     fun `error truncates to limit`() {
         val longError = "Error: ".repeat(100)
         val result = MetadataSanitizer.error(longError)
-        assertEquals(350, result.length)
+        assertEquals("Error: ".repeat(49) + "Error:", result)
     }
 
     @Test
@@ -143,10 +143,8 @@ class MetadataSanitizerTest {
     }
 
     @Test
-    fun `title respects character count not byte count`() {
-        // Emoji counts as 2 code units but 1 code point
-        val input = "🎉".repeat(100) // 100 code points, 200 code units
-        val result = MetadataSanitizer.title(input)
-        assertEquals(100, result.length) // Should count code points
+    fun `title truncates by Unicode code point`() {
+        val result = MetadataSanitizer.title("🎉".repeat(181))
+        assertEquals("🎉".repeat(180), result)
     }
 }
