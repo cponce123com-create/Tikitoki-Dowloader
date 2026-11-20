@@ -684,6 +684,38 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                     analysisRevision++
                 },
             )
+        } else if (tab == ROCKOLA_TAB) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (themeChoice == "Negro AMOLED") Color.Black else TechBackground,
+                        ).padding(insets)
+                        .consumeWindowInsets(insets)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                TechHeader(onSettings = { tab = 5 })
+                RockolaScreen(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    source = universalSource,
+                    thumbnailResolver = thumbnailResolver,
+                    onDownload = { video -> qualityVideos = listOf(video) },
+                    onOpenYouTube = { video ->
+                        val videoId = video.id.removePrefix("youtube:")
+                        if (videoId.isBlank()) {
+                            message = "No se identificó el video de YouTube."
+                        } else {
+                            context.startActivity(
+                                Intent(context, YouTubePlayerActivity::class.java)
+                                    .putExtra(YouTubePlayerActivity.EXTRA_VIDEO_ID, videoId)
+                                    .putExtra(YouTubePlayerActivity.EXTRA_TITLE, video.title),
+                            )
+                        }
+                    },
+                )
+            }
         } else {
             Column(
                 modifier =
@@ -710,24 +742,6 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             requestedUri = musicRequestUri,
                             requestedTitle = musicRequestTitle,
                             onRequestConsumed = { musicRequestUri = null },
-                        )
-                    ROCKOLA_TAB ->
-                        RockolaScreen(
-                            source = universalSource,
-                            thumbnailResolver = thumbnailResolver,
-                            onDownload = { video -> qualityVideos = listOf(video) },
-                            onOpenYouTube = { video ->
-                                val videoId = video.id.removePrefix("youtube:")
-                                if (videoId.isBlank()) {
-                                    message = "No se identificó el video de YouTube."
-                                } else {
-                                    context.startActivity(
-                                        Intent(context, YouTubePlayerActivity::class.java)
-                                            .putExtra(YouTubePlayerActivity.EXTRA_VIDEO_ID, videoId)
-                                            .putExtra(YouTubePlayerActivity.EXTRA_TITLE, video.title),
-                                    )
-                                }
-                            },
                         )
                     3 -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
