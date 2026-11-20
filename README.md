@@ -432,7 +432,9 @@ Tikitoki-Dowloader/
 open app/build/reports/jacoco/m1CoverageReport/html/index.html
 ```
 
-**Clases cubiertas**: `IncomingLinkValidator`, `MediaLinkParser`, `TikTokLinkParser`, `IncomingIntentReader`
+**Clases del reporte JaCoCo**: `IncomingLinkValidator`, `MediaLinkParser`, `DownloadInputPolicy`, `MetadataSanitizer`, `TikTokLinkParser`. `IncomingIntentReader` cruza una frontera Android y se valida por separado con pruebas instrumentadas (`connectedDebugAndroidTest`); no forma parte del umbral JaCoCo unitario.
+
+La cobertura global se verifica con `./gradlew verifyGlobalCoverage`. Su piso actual en CI es 10% de líneas, mientras se trabaja hacia la meta de 70%; las pruebas de `:app` y `:core:security` alimentan los reportes JaCoCo.
 
 ### Tests Instrumentados
 

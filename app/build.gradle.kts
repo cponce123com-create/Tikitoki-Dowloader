@@ -143,14 +143,19 @@ dependencies {
     debugImplementation(libs.androidxComposeUiTestManifest)
 }
 
-// M1 coverage gate: pure URL and Intent-boundary validation logic.
-// Android Intent behavior is also covered by androidTest on an emulator.
+// M1 coverage gate: pure URL parsers, input policy, and metadata sanitization.
+// IncomingIntentReader behavior is covered separately by instrumented androidTest.
 tasks.register<JacocoReport>("m1CoverageReport") {
-    dependsOn("testDebugUnitTest")
+    dependsOn("testDebugUnitTest", project(":core:security").tasks.named("test"))
     classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+            include("**/domain/TikTokLinkParser*")
+        },
         fileTree(project(":core:security").layout.buildDirectory.dir("classes/kotlin/main")) {
             include("**/domain/IncomingLinkValidator*")
             include("**/domain/MediaLinkParser*")
+            include("**/domain/DownloadInputPolicy*")
+            include("**/domain/MetadataSanitizer*")
         },
     )
     sourceDirectories.setFrom(files("src/main/java", project(":core:security").file("src/main/kotlin")))
@@ -158,6 +163,9 @@ tasks.register<JacocoReport>("m1CoverageReport") {
         fileTree(layout.buildDirectory) {
             include("jacoco/testDebugUnitTest.exec")
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+        fileTree(project(":core:security").layout.buildDirectory) {
+            include("jacoco/test.exec")
         },
     )
     reports {
@@ -174,6 +182,9 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
             include("jacoco/testDebugUnitTest.exec")
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
         },
+        fileTree(project(":core:security").layout.buildDirectory) {
+            include("jacoco/test.exec")
+        },
     )
     violationRules {
         rule {
@@ -188,7 +199,7 @@ tasks.register<JacocoCoverageVerification>("verifyM1Coverage") {
 
 /** Coverage of compiled application classes; reports only, with no threshold. */
 tasks.register<JacocoReport>("globalCoverageReport") {
-    dependsOn("testDebugUnitTest")
+    dependsOn("testDebugUnitTest", project(":core:security").tasks.named("test"))
     classDirectories.setFrom(
         fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
             exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/*_Impl*")
@@ -200,6 +211,9 @@ tasks.register<JacocoReport>("globalCoverageReport") {
         fileTree(layout.buildDirectory) {
             include("jacoco/testDebugUnitTest.exec")
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+        fileTree(project(":core:security").layout.buildDirectory) {
+            include("jacoco/test.exec")
         },
     )
     reports {
@@ -219,6 +233,9 @@ tasks.register<JacocoCoverageVerification>("verifyGlobalCoverage") {
         fileTree(layout.buildDirectory) {
             include("jacoco/testDebugUnitTest.exec")
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        },
+        fileTree(project(":core:security").layout.buildDirectory) {
+            include("jacoco/test.exec")
         },
     )
     violationRules {

@@ -10,7 +10,7 @@ El proyecto es un módulo Android `:app`. La configuración observada en esta ra
 
 ## Comprobaciones
 
-El job de CI verifica pruebas unitarias, lint, APK debug y cobertura M1. La cobertura M1 se limita a clases seleccionadas y no representa cobertura global. El proyecto incluye pruebas instrumentadas; consulta el resultado del commit correspondiente antes de dar por aprobada una ejecución.
+El job de CI verifica pruebas unitarias, lint, APK debug y cobertura M1. La cobertura M1 se limita a clases seleccionadas y no representa cobertura global. El gate global actual tiene un piso de 10% mientras crece hacia la meta documentada de 70%; no se debe presentar aún esa meta como un requisito de CI. El proyecto incluye pruebas instrumentadas; consulta el resultado del commit correspondiente antes de dar por aprobada una ejecución.
 
 La base de datos está en versión 2 y tiene una migración 1→2. La exportación de esquemas y las pruebas de migración deben verificarse en CI y dispositivo; no se debe usar migración destructiva como sustituto.
 

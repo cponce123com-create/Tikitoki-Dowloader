@@ -10,7 +10,7 @@ Tikitoki-Downloader (Baja.pe) es una aplicación Android para descargar contenid
 
 - **Seguridad**: Validación estricta de entradas, certificate pinning, verificación SHA-256 de binarios
 - **Modularidad**: Separación clara entre UI, dominio, datos y seguridad
-- **Testabilidad**: Cobertura ≥95% en lógica de seguridad (`core:security`), ≥70% global
+- **Testabilidad**: Gate M1 ≥95% para clases seleccionadas de validación, políticas y parsing; cobertura global en crecimiento hacia 70% (el gate CI actual conserva un piso de 10%)
 - **Cumplimiento GPL-3.0**: NOTICE, LICENSE, SBOM, source availability verificados en CI
 
 ---
@@ -73,7 +73,7 @@ graph TB
 ### `:core:security` — Validación y Políticas (Puro Kotlin/JVM)
 - **Responsabilidad**: Lógica de validación de URLs, parsing de metadatos, políticas de entrada
 - **Sin dependencias Android** — Compila como biblioteca JVM estándar
-- **Cobertura obligatoria**: ≥95% (gate `verifyM1Coverage` en CI)
+- **Cobertura M1**: Las clases seleccionadas participan en el gate JaCoCo ≥95%; el reporte combina datos de pruebas JVM de `:core:security` y `:app`. No representa toda la cobertura del módulo.
 - **Componentes**:
   - `IncomingLinkValidator` — Valida intents entrantes y deep links
   - `MediaLinkParser` — Extrae metadatos normalizados de URLs
@@ -173,8 +173,8 @@ sequenceDiagram
 
 | Gate | Comando | Umbral | Ubicación |
 |------|---------|--------|-----------|
-| M1 Security Coverage | `verifyM1Coverage` | ≥95% LINE | `:core:security` |
-| Global Coverage | `verifyGlobalCoverage` | ≥70% LINE | `:app` + `:core:security` |
+| M1 Security Coverage | `verifyM1Coverage` | ≥95% LINE | clases seleccionadas de `:app` + `:core:security` |
+| Global Coverage | `verifyGlobalCoverage` | ≥10% LINE actual; meta ≥70% | `:app` + `:core:security` |
 | Lint | `lintDebug` | 0 errors | `:app` |
 | Ktlint | `ktlintCheck` | Baseline | `:app` |
 | Detekt | `detektCheck` | 0 findings | `:app` |
