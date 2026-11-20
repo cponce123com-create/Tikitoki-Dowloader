@@ -19,7 +19,7 @@ android {
         applicationId = "com.tikitoki.downloader"
         minSdk = Integer.parseInt(libs.versions.minSdk.get())
         targetSdk = Integer.parseInt(libs.versions.targetSdk.get())
-        versionCode = libs.versions.appVersionCode.get().toInt()
+        versionCode = Integer.parseInt(libs.versions.appVersionCode.get())
         versionName = libs.versions.appVersion.get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
