@@ -91,7 +91,7 @@ internal object CollectionsCatalog {
         }
     }
 
-    private fun classify(
+    internal fun classify(
         lists: List<CatalogPlaylist>,
         cached: Boolean,
         capped: Boolean,
