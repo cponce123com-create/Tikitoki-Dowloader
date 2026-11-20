@@ -58,7 +58,7 @@ internal fun RockolaDialogs(
         is RockolaPopup.TrackActions ->
             TrackActionsDialog(
                 title = popup.track.title,
-                favorite = library.favorites.any { it.id == popup.track.id },
+                favorite = popup.track.id in library.favoriteIds,
                 onDismiss = dismiss,
                 onFavorite = {
                     library.toggleFavorite(popup.track)
@@ -123,9 +123,9 @@ private fun TrackActionsDialog(
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
-        containerColor = RockolaSurface,
-        titleContentColor = RockolaText,
-        textContentColor = RockolaText,
+        containerColor = RockolaColors.Surface,
+        titleContentColor = RockolaColors.Text,
+        textContentColor = RockolaColors.Text,
     )
 }
 
@@ -159,9 +159,9 @@ private fun SaveToPlaylistDialog(
             TextButton(onClick = { onSave(name.trim()) }, enabled = name.isNotBlank()) { Text("Guardar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-        containerColor = RockolaSurface,
-        titleContentColor = RockolaText,
-        textContentColor = RockolaText,
+        containerColor = RockolaColors.Surface,
+        titleContentColor = RockolaColors.Text,
+        textContentColor = RockolaColors.Text,
     )
 }
 
@@ -206,6 +206,6 @@ private fun RockolaDialogOption(
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = RockolaText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, color = RockolaColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }

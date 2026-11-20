@@ -23,6 +23,10 @@ internal class RockolaLibrary(
         private set
     var favorites by mutableStateOf(readTracks("favorite_items"))
         private set
+    var favoriteIds by mutableStateOf(
+        preferences.getStringSet("favorites", emptySet()).orEmpty() + favorites.map { it.id },
+    )
+        private set
     var history by mutableStateOf(readTracks("history_items").asReversed())
         private set
     var playlists by mutableStateOf(readPlaylists())
@@ -33,7 +37,7 @@ internal class RockolaLibrary(
     }
 
     fun remove(track: VideoEntry) {
-        updateQueue(queue.filterNot { it.id == track.id })
+        if (queue.any { it.id == track.id }) updateQueue(queue.filterNot { it.id == track.id })
     }
 
     fun moveUp(track: VideoEntry) {
@@ -48,17 +52,26 @@ internal class RockolaLibrary(
 
     fun recordPlayed(track: VideoEntry) {
         history = (listOf(track) + history.filterNot { it.id == track.id }).take(HISTORY_LIMIT)
-        writeLegacyCollection("history", history.asReversed())
+        preferences
+            .edit()
+            .putStringSet("history", history.map { it.id }.toSet())
+            .putString("history_items", RockolaTrackJson.encode(history.asReversed()).toString())
+            .apply()
     }
 
     fun toggleFavorite(track: VideoEntry) {
-        favorites =
-            if (favorites.any { it.id == track.id }) {
-                favorites.filterNot { it.id == track.id }
-            } else {
-                favorites + track
-            }
-        writeLegacyCollection("favorite", favorites)
+        if (track.id in favoriteIds) {
+            favoriteIds = favoriteIds - track.id
+            favorites = favorites.filterNot { it.id == track.id }
+        } else {
+            favoriteIds = favoriteIds + track.id
+            favorites = favorites + track
+        }
+        preferences
+            .edit()
+            .putStringSet("favorites", favoriteIds)
+            .putString("favorite_items", RockolaTrackJson.encode(favorites).toString())
+            .apply()
     }
 
     fun saveToPlaylist(
@@ -86,18 +99,6 @@ internal class RockolaLibrary(
     private fun updateQueue(tracks: List<VideoEntry>) {
         queue = tracks
         preferences.edit().putString("playback_queue", RockolaTrackJson.encode(tracks).toString()).apply()
-    }
-
-    private fun writeLegacyCollection(
-        name: String,
-        tracks: List<VideoEntry>,
-    ) {
-        val idsKey = if (name == "favorite") "favorites" else "history"
-        preferences
-            .edit()
-            .putStringSet(idsKey, tracks.map { it.id }.toSet())
-            .putString("${name}_items", RockolaTrackJson.encode(tracks).toString())
-            .apply()
     }
 
     private fun readTracks(key: String) = RockolaTrackJson.decode(preferences.getString(key, "[]").orEmpty())
@@ -146,8 +147,9 @@ internal object RockolaTrackJson {
         }
 
     private fun decodeTrack(item: JSONObject): VideoEntry? {
-        val id = item.optString("id").takeIf { it.isNotBlank() } ?: return null
-        val url = item.optString("url").takeIf { it.isNotBlank() } ?: return null
+        val id = item.optString("id")
+        val url = item.optString("url")
+        if (id.isBlank() || url.isBlank()) return null
         return VideoEntry(
             id = id,
             url = url,

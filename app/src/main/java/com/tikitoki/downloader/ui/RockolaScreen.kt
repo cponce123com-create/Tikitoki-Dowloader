@@ -3,7 +3,6 @@ package com.tikitoki.downloader.ui
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,28 +25,20 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +55,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tikitoki.downloader.VideoThumbnail
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -72,11 +62,16 @@ import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaPlatform
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val DEFAULT_QUERY = "música popular Perú rock cumbia salsa"
 private const val RECOMMENDATION_LIMIT = 12
 
-private val rockolaGenres = listOf("Salsa", "Cumbia", "Reguetón", "Rock", "Pop", "Bachata", "Criolla", "Huayno", "Electrónica")
+private val rockolaSearchLock = Mutex()
+
+private val rockolaGenres =
+    listOf("Salsa", "Cumbia", "Reguetón", "Rock", "Pop", "Bachata", "Criolla", "Huayno", "Electrónica")
 
 private enum class RockolaTab(
     val label: String,
@@ -164,11 +159,14 @@ internal fun RockolaScreen(
         message = ""
         results = emptyList()
         try {
-            results = findRockolaVideos(source, search).filter { it.rockolaVideoId() != null }.distinctBy { it.id }
+            results =
+                rockolaSearchLock.withLock {
+                    findRockolaVideos(source, search).filter { it.rockolaVideoId() != null }.distinctBy { it.id }
+                }
             if (results.isEmpty()) message = "No se encontraron videos."
         } catch (e: CancellationException) {
             throw e
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             message = "Pega un enlace válido de YouTube."
         } catch (e: Exception) {
             DiagnosticHistory.record(context, e.message)
@@ -178,7 +176,7 @@ internal fun RockolaScreen(
         }
     }
 
-    BoxWithConstraints(modifier.fillMaxSize().background(RockolaBackground)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(RockolaColors.Background)) {
         // Keep the same player instance when landscape or the keyboard reduces the space.
         val compact = maxHeight < 590.dp
         Column(
@@ -242,11 +240,15 @@ internal fun RockolaScreen(
                                     Icon(
                                         Icons.Default.ExpandLess,
                                         contentDescription = "Subir ${track.title}",
-                                        tint = if (index > 0) RockolaText else RockolaEdge,
+                                        tint = if (index > 0) RockolaColors.Text else RockolaColors.Edge,
                                     )
                                 }
                                 IconButton(onClick = { library.remove(track) }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Quitar ${track.title}", tint = RockolaMuted)
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Quitar ${track.title}",
+                                        tint = RockolaColors.Muted,
+                                    )
                                 }
                             }
                         }
@@ -292,22 +294,27 @@ private suspend fun findRockolaVideos(
 private fun RockolaHeader() {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
-            Modifier.size(40.dp).background(RockolaGreen, RoundedCornerShape(12.dp)),
+            Modifier.size(40.dp).background(RockolaColors.Green, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.GraphicEq, contentDescription = null, tint = RockolaInk)
+            Icon(Icons.Default.GraphicEq, contentDescription = null, tint = RockolaColors.Ink)
         }
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
-            Text("Baja.pe", color = RockolaMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            Text("Rockola", color = RockolaText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("Baja.pe", color = RockolaColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text("Rockola", color = RockolaColors.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
         Box(
-            Modifier.size(width = 22.dp, height = 16.dp).background(Color(0xFFFF4261), RoundedCornerShape(4.dp)),
+            Modifier.size(width = 22.dp, height = 16.dp).background(RockolaColors.YouTube, RoundedCornerShape(4.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+            Icon(
+                Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(13.dp),
+            )
         }
-        Text("YouTube", Modifier.padding(start = 6.dp), color = RockolaMuted, fontSize = 12.sp)
+        Text("YouTube", Modifier.padding(start = 6.dp), color = RockolaColors.Muted, fontSize = 12.sp)
     }
 }
 
@@ -327,22 +334,22 @@ private fun RockolaSearchField(
         shape = RoundedCornerShape(12.dp),
         leadingIcon = {
             IconButton(onClick = onSearch, enabled = query.isNotBlank()) {
-                Icon(Icons.Default.Search, contentDescription = "Buscar en YouTube", tint = RockolaMuted)
+                Icon(Icons.Default.Search, contentDescription = "Buscar en YouTube", tint = RockolaColors.Muted)
             }
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
         colors =
             OutlinedTextFieldDefaults.colors(
-                focusedTextColor = RockolaText,
-                unfocusedTextColor = RockolaText,
-                cursorColor = RockolaGreen,
-                focusedPlaceholderColor = RockolaMuted,
-                unfocusedPlaceholderColor = RockolaMuted,
-                focusedBorderColor = RockolaGreen,
-                unfocusedBorderColor = RockolaEdge,
-                focusedContainerColor = RockolaSurface,
-                unfocusedContainerColor = RockolaSurface,
+                focusedTextColor = RockolaColors.Text,
+                unfocusedTextColor = RockolaColors.Text,
+                cursorColor = RockolaColors.Green,
+                focusedPlaceholderColor = RockolaColors.Muted,
+                unfocusedPlaceholderColor = RockolaColors.Muted,
+                focusedBorderColor = RockolaColors.Green,
+                unfocusedBorderColor = RockolaColors.Edge,
+                focusedContainerColor = RockolaColors.Surface,
+                unfocusedContainerColor = RockolaColors.Surface,
             ),
     )
 }
@@ -366,12 +373,12 @@ private fun RockolaTabs(
                 Box(Modifier.heightIn(min = 42.dp).padding(horizontal = 3.dp), contentAlignment = Alignment.Center) {
                     Text(
                         if (tab == RockolaTab.QUEUE) "${tab.label} · $count" else tab.label,
-                        color = if (active) RockolaGreen else RockolaMuted,
+                        color = if (active) RockolaColors.Green else RockolaColors.Muted,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                HorizontalDivider(thickness = 2.dp, color = if (active) RockolaGreen else RockolaEdge)
+                HorizontalDivider(thickness = 2.dp, color = if (active) RockolaColors.Green else RockolaColors.Edge)
             }
         }
     }
@@ -414,168 +421,12 @@ private fun RockolaPill(
     ) {
         Text(
             label,
-            Modifier.background(if (selected) RockolaGreen else RockolaSurface, shape).padding(horizontal = 8.dp, vertical = 5.dp),
-            color = if (selected) RockolaInk else RockolaMuted,
+            Modifier
+                .background(if (selected) RockolaColors.Green else RockolaColors.Surface, shape)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            color = if (selected) RockolaColors.Ink else RockolaColors.Muted,
             fontSize = 12.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
-}
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaSearchResults(
-    loading: Boolean,
-    message: String,
-    results: List<VideoEntry>,
-    onRetry: () -> Unit,
-    trackRow: @Composable (VideoEntry) -> Unit,
-) {
-    when {
-        loading ->
-            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(24.dp), color = RockolaGreen, strokeWidth = 2.dp)
-            }
-        message.isNotBlank() -> {
-            RockolaMessage(message)
-            TextButton(onClick = onRetry) { Text("Reintentar", color = RockolaGreen) }
-        }
-        else ->
-            results.forEach { track ->
-                key(track.id) { trackRow(track) }
-            }
-    }
-}
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaTrackRow(
-    video: VideoEntry,
-    resolver: VideoThumbnailResolver,
-    onPlay: () -> Unit,
-    actions: @Composable () -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp)) {
-        Row(
-            Modifier
-                .weight(1f)
-                .clickable(role = Role.Button, onClickLabel = "Reproducir ${video.title}", onClick = onPlay)
-                .padding(vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            VideoThumbnail(video, resolver, Modifier.size(width = 70.dp, height = 40.dp), deferLookup = true)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    video.title,
-                    color = RockolaText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val duration = video.durationSeconds.takeIf { it > 0 }?.let(::formatRockolaDuration)
-                Text(
-                    listOfNotNull(video.uploader ?: "YouTube", duration).joinToString(" · "),
-                    color = RockolaMuted,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        actions()
-    }
-    HorizontalDivider(color = RockolaEdge)
-}
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaAddButton(
-    track: VideoEntry,
-    library: RockolaLibrary,
-    selection: RockolaSelection?,
-) {
-    val queued = library.queue.any { it.id == track.id }
-    val current = selection?.track?.id == track.id
-    IconButton(onClick = { library.enqueue(track) }, enabled = !queued && !current) {
-        Icon(
-            if (queued || current) Icons.Default.Check else Icons.AutoMirrored.Filled.PlaylistAdd,
-            contentDescription =
-                when {
-                    queued -> "En cola: ${track.title}"
-                    current -> "Video actual: ${track.title}"
-                    else -> "Añadir a la cola: ${track.title}"
-                },
-            tint = if (current) RockolaMuted else RockolaGreen,
-        )
-    }
-}
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaMoreButton(onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = RockolaMuted)
-    }
-}
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaLists(
-    library: RockolaLibrary,
-    openedList: String?,
-    onOpen: (String?) -> Unit,
-    trackRow: @Composable (VideoEntry) -> Unit,
-) {
-    // Private keys for the built-in lists avoid collisions with user-chosen names.
-    val favorites = RockolaPlaylist("", library.favorites.asReversed())
-    val history = RockolaPlaylist("", library.history)
-    val lists = listOf("favorites" to favorites, "history" to history) + library.playlists.map { "custom:${it.name}" to it }
-    if (openedList == null) {
-        lists.forEach { (key, list) ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 54.dp)
-                    .clickable { onOpen(key) }
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = RockolaGreen)
-                Column {
-                    Text(rockolaListName(key, list), color = RockolaText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("${list.tracks.size} videos", color = RockolaMuted, fontSize = 11.sp)
-                }
-            }
-            HorizontalDivider(color = RockolaEdge)
-        }
-    } else {
-        val list = lists.firstOrNull { it.first == openedList }?.second ?: return
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onOpen(null) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver a Mis listas", tint = RockolaGreen)
-            }
-            Text(rockolaListName(openedList, list), color = RockolaText, fontWeight = FontWeight.SemiBold)
-        }
-        if (list.tracks.isEmpty()) RockolaMessage("Todavía no hay videos en esta lista.")
-        list.tracks.forEach { track -> key(track.id) { trackRow(track) } }
-    }
-}
-
-private fun rockolaListName(
-    key: String,
-    list: RockolaPlaylist,
-): String =
-    when (key) {
-        "favorites" -> "Favoritos"
-        "history" -> "Historial"
-        else -> list.name
-    }
-
-@Suppress("ktlint:standard:function-naming")
-@Composable
-private fun RockolaMessage(message: String) {
-    Text(message, Modifier.padding(vertical = 12.dp), color = RockolaMuted, fontSize = 13.sp)
 }

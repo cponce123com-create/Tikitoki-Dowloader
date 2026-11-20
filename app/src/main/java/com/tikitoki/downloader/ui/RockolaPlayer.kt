@@ -59,21 +59,13 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 
+private const val VIDEO_HEIGHT_RATIO = 9f / 16f
 private const val PLAYER_POLL_MS = 500L
 private const val PLAYER_TIMEOUT_POLLS = 30
 private const val YOUTUBE_PLAYING = 1
 private const val YOUTUBE_PAUSED = 2
 private const val YOUTUBE_ENDED = 0
 private const val SECONDS_PER_MINUTE = 60
-
-internal val RockolaBackground = Color(0xFF101714)
-internal val RockolaSurface = Color(0xFF17221C)
-internal val RockolaPanel = Color(0xFF202E26)
-internal val RockolaEdge = Color(0xFF2B3B32)
-internal val RockolaText = Color(0xFFF1F8F2)
-internal val RockolaMuted = Color(0xFFA8BBAF)
-internal val RockolaGreen = Color(0xFF8DF2A5)
-internal val RockolaInk = Color(0xFF112616)
 
 private val youtubeVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
 
@@ -124,7 +116,6 @@ internal fun RockolaPlayer(
     var timedOut by remember(selection) { mutableStateOf(false) }
     val latestEnded by rememberUpdatedState(onEnded)
     val latestStarted by rememberUpdatedState(onStarted)
-    val playing = reading?.isPlaying == true
     val ended = reading?.isEnded == true
     val failed = reading?.failed == true || timedOut
 
@@ -156,35 +147,12 @@ internal fun RockolaPlayer(
     }
 
     Surface(
-        color = RockolaSurface,
+        color = RockolaColors.Surface,
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, RockolaEdge),
+        border = BorderStroke(1.dp, RockolaColors.Edge),
     ) {
         Column {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val videoHeight = (maxWidth * 9 / 16).coerceAtLeast(200.dp)
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(videoHeight),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (selection == null) {
-                        RockolaPlayerPlaceholder()
-                    } else {
-                        AndroidView(
-                            factory = {
-                                RockolaPlayerView(it).also { view -> webView = view }
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            onRelease = { view ->
-                                if (webView === view) webView = null
-                                view.stopLoading()
-                                view.destroy()
-                            },
-                            update = { view -> view.select(selection) },
-                        )
-                    }
-                }
-            }
+            RockolaVideoSurface(selection) { webView = it }
             RockolaPlayerControls(
                 track = selection?.track,
                 reading = reading,
@@ -199,9 +167,40 @@ internal fun RockolaPlayer(
                     Modifier.padding(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = onRetry) { Text("Reintentar", color = RockolaGreen) }
-                    TextButton(onClick = onOpenInYouTube) { Text("Abrir en YouTube", color = RockolaGreen) }
+                    TextButton(onClick = onRetry) { Text("Reintentar", color = RockolaColors.Green) }
+                    TextButton(onClick = onOpenInYouTube) { Text("Abrir en YouTube", color = RockolaColors.Green) }
                 }
+            }
+        }
+    }
+}
+
+@Suppress("ktlint:standard:function-naming")
+@Composable
+private fun RockolaVideoSurface(
+    selection: RockolaSelection?,
+    onViewChanged: (RockolaPlayerView?) -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Keep the embedded player at its minimum height on compact phones.
+        val videoHeight = (maxWidth * VIDEO_HEIGHT_RATIO).coerceAtLeast(200.dp)
+        Box(
+            modifier = Modifier.fillMaxWidth().height(videoHeight),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selection == null) {
+                RockolaPlayerPlaceholder()
+            } else {
+                AndroidView(
+                    factory = { RockolaPlayerView(it).also(onViewChanged) },
+                    modifier = Modifier.fillMaxSize(),
+                    onRelease = { view ->
+                        view.stopLoading()
+                        view.destroy()
+                        onViewChanged(null)
+                    },
+                    update = { view -> view.select(selection) },
+                )
             }
         }
     }
@@ -233,10 +232,15 @@ private fun RockolaPlayerPlaceholder() {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(RockolaPanel, RockolaBackground))),
+            .background(Brush.verticalGradient(listOf(RockolaColors.Panel, RockolaColors.Background))),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.GraphicEq, contentDescription = null, tint = RockolaGreen, modifier = Modifier.size(48.dp))
+        Icon(
+            Icons.Default.GraphicEq,
+            contentDescription = null,
+            tint = RockolaColors.Green,
+            modifier = Modifier.size(48.dp),
+        )
     }
 }
 
@@ -257,7 +261,7 @@ private fun RockolaPlayerControls(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = track?.title ?: "Elige un video",
-                    color = RockolaText,
+                    color = RockolaColors.Text,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                     maxLines = 2,
@@ -267,7 +271,7 @@ private fun RockolaPlayerControls(
                     val status = if (failed) "Video no disponible aquí" else reading?.label ?: "Cargando video…"
                     Text(
                         listOfNotNull(track.uploader, status).joinToString(" · "),
-                        color = RockolaMuted,
+                        color = RockolaColors.Muted,
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -278,16 +282,20 @@ private fun RockolaPlayerControls(
             IconButton(
                 onClick = onToggle,
                 enabled = canPlay,
-                modifier = Modifier.background(if (canPlay) RockolaGreen else RockolaPanel, CircleShape),
+                modifier = Modifier.background(if (canPlay) RockolaColors.Green else RockolaColors.Panel, CircleShape),
             ) {
                 Icon(
                     if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (playing) "Pausar" else "Reproducir",
-                    tint = if (canPlay) RockolaInk else RockolaMuted,
+                    tint = if (canPlay) RockolaColors.Ink else RockolaColors.Muted,
                 )
             }
             IconButton(onClick = onNext, enabled = hasNext) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Siguiente", tint = if (hasNext) RockolaText else RockolaMuted)
+                Icon(
+                    Icons.Default.SkipNext,
+                    contentDescription = "Siguiente",
+                    tint = if (hasNext) RockolaColors.Text else RockolaColors.Muted,
+                )
             }
         }
 
@@ -318,14 +326,14 @@ private fun RockolaSeekBar(
         valueRange = 0f..duration.coerceAtLeast(1f),
         colors =
             SliderDefaults.colors(
-                thumbColor = RockolaGreen,
-                activeTrackColor = RockolaGreen,
-                inactiveTrackColor = RockolaEdge,
+                thumbColor = RockolaColors.Green,
+                activeTrackColor = RockolaColors.Green,
+                inactiveTrackColor = RockolaColors.Edge,
             ),
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(formatRockolaDuration(position.toInt()), color = RockolaMuted, fontSize = 11.sp)
-        Text(formatRockolaDuration(duration.toInt()), color = RockolaMuted, fontSize = 11.sp)
+        Text(formatRockolaDuration(position.toInt()), color = RockolaColors.Muted, fontSize = 11.sp)
+        Text(formatRockolaDuration(duration.toInt()), color = RockolaColors.Muted, fontSize = 11.sp)
     }
 }
 
