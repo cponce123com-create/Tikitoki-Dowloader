@@ -35,7 +35,11 @@ class LaunchTest {
     @Test
     fun rockolaOpensFromBottomNavigation() {
         compose.onNodeWithText("Rockola").performClick()
-        compose.onNodeWithText("Buscar canción, cantante o grupo").assertIsDisplayed()
+        compose.onNodeWithText("Canción, artista o enlace").assertIsDisplayed()
+        compose.onNodeWithText("En cola · 0").performClick()
+        compose.onNodeWithText("Agrega videos desde Explorar o Mis listas.").assertIsDisplayed()
+        compose.onNodeWithText("Mis listas").performClick()
+        compose.onNodeWithText("Favoritos").assertIsDisplayed()
     }
 
     @Test
