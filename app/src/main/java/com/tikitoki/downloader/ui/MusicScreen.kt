@@ -10,6 +10,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -31,46 +34,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.VolumeDown
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.*
+import androidx.compose.material.Slider as ClassicSlider
+import androidx.compose.material.SliderDefaults as ClassicSliderDefaults
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -104,8 +75,6 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import androidx.compose.material.Slider as ClassicSlider
-import androidx.compose.material.SliderDefaults as ClassicSliderDefaults
 
 private data class MusicTrack(
     val uri: String,
@@ -210,6 +179,8 @@ fun MusicScreen(
     var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var seeking by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    // Mini player expanded state - expand when playing, allow manual collapse/expand
+    var miniPlayerExpanded by remember { mutableStateOf(false) }
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()) }
     val maxVolume = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1).toFloat() }
@@ -385,7 +356,10 @@ fun MusicScreen(
                 title = if (isMusic) p.mediaMetadata.title?.toString() ?: "Canción" else "Selecciona una canción"
                 if (!seeking) position = if (isMusic) p.currentPosition.coerceAtLeast(0L) else 0L
                 duration = if (isMusic) p.duration.coerceAtLeast(0L) else 0L
-                playing = isMusic && p.isPlaying
+                val isPlaying = isMusic && p.isPlaying
+                playing = isPlaying
+                // Auto-expand when playback starts, keep expanded while playing
+                if (isPlaying) miniPlayerExpanded = true
                 shuffle = p.shuffleModeEnabled
                 repeat = p.repeatMode
             }
@@ -429,195 +403,160 @@ fun MusicScreen(
             dismissButton = { TextButton(onClick = { newPlaylistDialog = false }) { Text("Cancelar") } },
         )
     }
+    val isPlaying = playing
+    val hasTrack = currentUri != null
+    val shouldShowExpanded = miniPlayerExpanded || isPlaying
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Mi música",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .background(Metal, shape)
-                .border(1.dp, Color(0xFF798D83), shape)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Row(
+        Text("Mi música", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = Color.White)
+
+        // Compact mini-player bar (always visible when there's a track)
+        AnimatedVisibility(visible = hasTrack, enter = expandVertically(), exit = shrinkVertically()) {
+            Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(
-                        Color(0xFF041C13),
-                        RoundedCornerShape(12.dp),
-                    ).border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp))
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .background(Metal, shape)
+                    .border(1.dp, Color(0xFF798D83), shape)
+                    .animateContentSize(animationSpec = tween(250, easing = spring(0f, 0f, 1f)))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                Box(
-                    Modifier.size(68.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    artwork.bitmap?.let {
-                        Image(
-                            it,
-                            contentDescription = "Carátula",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
-                        ?: Icon(
-                            Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = Mint,
-                            modifier = Modifier.size(34.dp),
-                        )
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(artwork.artist ?: "Música local", color = Muted, fontSize = 12.sp, maxLines = 1)
-                    Text("${clock(position)} / ${clock(duration)}", color = Mint, fontSize = 13.sp)
-                }
-                Canvas(
+                // Compact bar - always visible when track exists
+                Row(
                     Modifier
-                        .width(if (compact) 58.dp else 76.dp)
-                        .height(44.dp)
-                        .semantics { contentDescription = "Visualizador de audio" },
-                ) {
-                    val gap = 2.dp.toPx()
-                    val barWidth = ((size.width - gap * (spectrum.size - 1)) / spectrum.size).coerceAtLeast(1f)
-                    spectrum.forEachIndexed { index, level ->
-                        val height = if (playing) (level.coerceIn(0f, 1f) * size.height) else 0f
-                        if (height > 0f) {
-                            drawRect(
-                                color = Mint,
-                                topLeft = Offset(index * (barWidth + gap), size.height - height),
-                                size = Size(barWidth, height),
-                            )
-                        }
-                    }
-                }
-            }
-            ClassicSlider(
-                value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                onValueChange = {
-                    seeking = true
-                    position = (it * duration).toLong()
-                },
-                onValueChangeFinished = {
-                    if (duration >
-                        0
-                    ) {
-                        controller?.seekTo(position)
-                    }
-                    ; seeking = false
-                },
-                enabled = duration > 0,
-                colors =
-                    ClassicSliderDefaults.colors(
-                        thumbColor = Mint,
-                        activeTrackColor = Mint,
-                        inactiveTrackColor = Color(0xFF112C20),
-                    ),
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DeckButton(Icons.Default.Shuffle, "Aleatorio", shuffle, Modifier.weight(1f)) {
-                    controller?.let {
-                        it.shuffleModeEnabled =
-                            !it.shuffleModeEnabled
-                        ; shuffle = it.shuffleModeEnabled
-                    }
-                }
-                DeckButton(
-                    Icons.Default.SkipPrevious,
-                    "Anterior",
-                    false,
-                    Modifier.weight(1f),
-                ) { controller?.seekToPreviousMediaItem() }
-                DeckButton(
-                    if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    if (playing) "Pausar" else "Reproducir",
-                    true,
-                    Modifier.weight(1.2f),
-                ) {
-                    val p = controller
-                    when {
-                        p == null -> message = "Conectando el reproductor…"
-                        currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> {
-                            val queue = visibleTracks()
-                            if (queue.isNotEmpty()) {
-                                start(queue, 0)
-                            } else if (tracks.isEmpty()) {
-                                message = "Agrega canciones para comenzar."
-                                picker.launch(arrayOf("audio/*"))
-                            } else {
-                                message = "No hay canciones en esta lista."
-                            }
-                        }
-                        p.isPlaying -> p.pause()
-                        else -> p.play()
-                    }
-                }
-                DeckButton(
-                    Icons.Default.SkipNext,
-                    "Siguiente",
-                    false,
-                    Modifier.weight(1f),
-                ) { controller?.seekToNextMediaItem() }
-                DeckButton(
-                    if (repeat ==
-                        Player.REPEAT_MODE_ONE
-                    ) {
-                        Icons.Default.RepeatOne
-                    } else {
-                        Icons.Default.Repeat
-                    },
-                    "Repetir",
-                    repeat != Player.REPEAT_MODE_OFF,
-                    Modifier.weight(1f),
-                ) {
-                    controller?.let { p ->
-                        p.repeatMode =
-                            when (p.repeatMode) {
-                                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                                else -> Player.REPEAT_MODE_OFF
-                            }
-                        ; repeat =
-                            p.repeatMode
-                    }
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.VolumeDown, contentDescription = "Volumen", tint = Muted)
-                ClassicSlider(
-                    value = volume.coerceIn(0f, maxVolume),
-                    onValueChange = {
-                        volume = it
-                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0)
-                    },
-                    valueRange =
-                        0f..maxVolume,
-                    modifier = Modifier.weight(1f),
-                    colors =
-                        ClassicSliderDefaults.colors(
-                            thumbColor = Mint,
-                            activeTrackColor = Mint,
-                            inactiveTrackColor = Color(0xFF112C20),
+                        .fillMaxWidth()
+                        .background(Color(0xFF041C13), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFF13784D), RoundedCornerShape(12.dp))
+                        .padding(10.dp)
+                        .clickable { miniPlayerExpanded = !miniPlayerExpanded }
+                        .combinedClickable(
+                            onClick = { miniPlayerExpanded = !miniPlayerExpanded },
+                            onLongClick = { /* no-op */ }
                         ),
-                )
-                Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Muted)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        Modifier.size(48.dp).background(Color(0xFF164D38), RoundedCornerShape(7.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        artwork.bitmap?.let {
+                            Image(it, contentDescription = "Carátula", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        } ?: Icon(Icons.Default.MusicNote.imageVector, contentDescription = null, tint = Mint, modifier = Modifier.size(24.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(artwork.artist ?: "Música local", color = Muted, fontSize = 11.sp, maxLines = 1)
+                    }
+                    // Play/Pause in compact mode
+                    DeckButton(
+                        if (isPlaying) Icons.Default.Pause.imageVector else Icons.Default.PlayArrow.imageVector,
+                        if (isPlaying) "Pausar" else "Reproducir",
+                        isPlaying,
+                        Modifier.padding(start = 8.dp)
+                    ) {
+                        val p = controller
+                        when {
+                            p == null -> message = "Conectando el reproductor…"
+                            currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> {
+                                if (tracks.isNotEmpty()) start(0)
+                                else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }
+                            }
+                            p.isPlaying -> p.pause()
+                            else -> p.play()
+                        }
+                    }
+                    // Expand/collapse indicator
+                    Icon(
+                        if (shouldShowExpanded) Icons.Default.ExpandLess.imageVector else Icons.Default.ExpandMore.imageVector,
+                        contentDescription = if (shouldShowExpanded) "Contraer" else "Expandir",
+                        tint = Muted,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                // Expanded controls - only visible when expanded or playing
+                AnimatedVisibility(
+                    visible = shouldShowExpanded,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Canvas(
+                            Modifier
+                                .width(if (compact) 58.dp else 76.dp)
+                                .height(44.dp)
+                                .semantics { contentDescription = "Visualizador de audio" }
+                        ) {
+                            val gap = 2.dp.toPx()
+                            val barWidth = ((size.width - gap * (spectrum.size - 1)) / spectrum.size).coerceAtLeast(1f)
+                            spectrum.forEachIndexed { index, level ->
+                                val height = if (isPlaying) (level.coerceIn(0f, 1f) * size.height) else 0f
+                                if (height > 0f) drawRect(
+                                    color = Mint,
+                                    topLeft = Offset(index * (barWidth + gap), size.height - height),
+                                    size = Size(barWidth, height),
+                                )
+                            }
+                        }
+                        ClassicSlider(
+                            value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                            onValueChange = { seeking = true; position = (it * duration).toLong() },
+                            onValueChangeFinished = { if (duration > 0) controller?.seekTo(position); seeking = false },
+                            enabled = duration > 0,
+                            colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20))
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            DeckButton(Icons.Default.Shuffle.imageVector, "Aleatorio", shuffle, Modifier.weight(1f)) { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled; shuffle = it.shuffleModeEnabled } }
+                            DeckButton(Icons.Default.SkipPrevious.imageVector, "Anterior", false, Modifier.weight(1f)) { controller?.seekToPreviousMediaItem() }
+                            DeckButton(
+                                if (isPlaying) Icons.Default.Pause.imageVector else Icons.Default.PlayArrow.imageVector,
+                                if (isPlaying) "Pausar" else "Reproducir",
+                                true,
+                                Modifier.weight(1.2f)
+                            ) {
+                                val p = controller
+                                when {
+                                    p == null -> message = "Conectando el reproductor…"
+                                    currentItemUri(p)?.let { uri -> tracks.any { it.uri == uri } } != true -> {
+                                        if (tracks.isNotEmpty()) start(0)
+                                        else { message = "Agrega canciones para comenzar."; picker.launch(arrayOf("audio/*")) }
+                                    }
+                                    p.isPlaying -> p.pause()
+                                    else -> p.play()
+                                }
+                            }
+                            DeckButton(Icons.Default.SkipNext.imageVector, "Siguiente", false, Modifier.weight(1f)) { controller?.seekToNextMediaItem() }
+                            DeckButton(
+                                if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne.imageVector else Icons.Default.Repeat.imageVector,
+                                "Repetir",
+                                repeat != Player.REPEAT_MODE_OFF,
+                                Modifier.weight(1f)
+                            ) {
+                                controller?.let { p ->
+                                    p.repeatMode = when (p.repeatMode) {
+                                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                                        else -> Player.REPEAT_MODE_OFF
+                                    }
+                                    repeat = p.repeatMode
+                                }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.VolumeDown.imageVector, contentDescription = "Volumen", tint = Muted)
+                            ClassicSlider(
+                                value = volume.coerceIn(0f, maxVolume),
+                                onValueChange = { volume = it; audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.toInt(), 0) },
+                                valueRange = 0f..maxVolume,
+                                modifier = Modifier.weight(1f),
+                                colors = ClassicSliderDefaults.colors(thumbColor = Mint, activeTrackColor = Mint, inactiveTrackColor = Color(0xFF112C20))
+                            )
+                            Icon(Icons.Default.VolumeUp.imageVector, contentDescription = null, tint = Muted)
+                        }
+                        Text("${clock(position)} / ${clock(duration)}", color = Mint, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
             }
         }
         Column(
