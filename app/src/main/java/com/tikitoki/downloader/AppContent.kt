@@ -50,6 +50,7 @@ import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
+import com.tikitoki.downloader.data.rethrowIfFatal
 import com.tikitoki.downloader.domain.DownloadFormatPreference
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.PlaybackKind
@@ -64,6 +65,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val CLIPBOARD_DEBOUNCE_MS = 500L
+private const val ON_SURFACE_COLOR = 0xFFF4F4F7
+
 private val TikitokiColors =
     darkColorScheme(
         primary = TechPurple,
@@ -71,18 +75,24 @@ private val TikitokiColors =
         secondary = TechPink,
         background = TechBackground,
         surface = TechPanel,
-        onSurface = Color(0xFFF4F4F7),
+        onSurface = Color(ON_SURFACE_COLOR),
     )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@Suppress("ktlint:standard:function-naming")
+@Suppress(
+    "ktlint:standard:function-naming",
+    "LongMethod",
+    "CyclomaticComplexMethod",
+    "TooGenericExceptionCaught",
+)
 @Composable
 internal fun AppContent(
     incomingLink: String,
     shareRevision: Int,
 ) {
     val context = LocalContext.current
-    val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
+    val settings =
+        remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     FirstRunNotice(settings)
     var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
     var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
@@ -134,7 +144,7 @@ internal fun AppContent(
                 } catch (
                     e: Exception,
                 ) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    rethrowIfFatal(e)
                     DiagnosticHistory.record(context, e.message)
                     settings.edit().remove("download_tree").apply()
                 }
@@ -157,6 +167,7 @@ internal fun AppContent(
     val profileState by profileViewModel.state.collectAsState()
     val dao = remember(context) { DownloadDatabase.get(context).downloads() }
     val downloadsViewModel: DownloadsViewModel = viewModel()
+    val records by downloadsViewModel.records.collectAsState()
     val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
     val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
@@ -171,7 +182,6 @@ internal fun AppContent(
     var url by rememberSaveable { mutableStateOf(incomingLink) }
     var search by rememberSaveable { mutableStateOf("") }
     var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
-    var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
     var libraryKind by rememberSaveable { mutableStateOf("Videos") }
     var message by remember { mutableStateOf("") }
     var inspecting by remember { mutableStateOf(false) }
@@ -200,7 +210,7 @@ internal fun AppContent(
     }
     LaunchedEffect(url, analysisRevision) {
         val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
-        delay(500)
+        delay(CLIPBOARD_DEBOUNCE_MS)
         if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, false)
     }
 
@@ -214,7 +224,7 @@ internal fun AppContent(
                     if (result.added > 0 || result.duplicates > 0) items.forEach { selected.remove(it.video.id) }
                     if (selected.isEmpty()) tab = 1
                 } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    rethrowIfFatal(e)
                     message = "No se pudo crear la cola. Inténtalo otra vez."
                 } finally {
                     queueBusy = false
@@ -249,7 +259,7 @@ internal fun AppContent(
             pendingDownloads = items
             storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         } else {
-            if (Build.VERSION.SDK_INT >= 33 &&
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
                 notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -278,8 +288,13 @@ internal fun AppContent(
                                 val displayName =
                                     runCatching {
                                         context.contentResolver
-                                            .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-                                            ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                                            .query(
+                                                uri,
+                                                arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                                                null,
+                                                null,
+                                                null,
+                                            )?.use { if (it.moveToFirst()) it.getString(0) else null }
                                     }.getOrNull()
                                 type to (displayName ?: uri.lastPathSegment)
                             } else {
@@ -289,7 +304,7 @@ internal fun AppContent(
                     if (PlaybackKind.isAudio(record.formatId, mime, name)) {
                         musicRequestUri = saved
                         musicRequestTitle = record.title
-                        tab = 6
+                        tab = MUSIC_TAB
                     } else {
                         context.startActivity(
                             Intent(context, PlayerActivity::class.java).apply {
@@ -299,12 +314,8 @@ internal fun AppContent(
                             },
                         )
                     }
-                } catch (
-                    e: kotlinx.coroutines.CancellationException,
-                ) {
-                    throw e
                 } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    rethrowIfFatal(e)
                     runCatching { DiagnosticHistory.record(context, e.message) }
                     message = "No se pudo abrir el reproductor."
                 }
@@ -321,7 +332,10 @@ internal fun AppContent(
             onOpenSources = {
                 runCatching {
                     context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/cponce123com-create/Tikitoki-Dowloader")),
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://github.com/cponce123com-create/Tikitoki-Dowloader"),
+                        ),
                     )
                 }
             },
@@ -334,7 +348,7 @@ internal fun AppContent(
             },
             onChooseMusic = {
                 showPlayerChoice = false
-                tab = 6
+                tab = MUSIC_TAB
             },
             qualityVideos = qualityVideos,
             source = source,
@@ -357,7 +371,7 @@ internal fun AppContent(
                         val deleted = DownloadQueue.clearTemporary(context)
                         message = "Archivos temporales eliminados: $deleted."
                     } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        rethrowIfFatal(e)
                         DiagnosticHistory.record(context, e.message)
                         message = "No se puede limpiar mientras haya descargas en curso, pendientes o pausadas."
                     }
@@ -372,11 +386,13 @@ internal fun AppContent(
                         message =
                             when (DownloadQueue.deleteCompleted(context, item.videoId)) {
                                 DeleteCompletedResult.DELETED -> "Video eliminado del dispositivo y del historial."
-                                DeleteCompletedResult.FILE_MISSING -> "El archivo ya no existía. Se eliminó del historial."
-                                DeleteCompletedResult.FAILED -> "No se pudo eliminar el archivo. El registro se conserva."
+                                DeleteCompletedResult.FILE_MISSING ->
+                                    "El archivo ya no existía. Se eliminó del historial."
+                                DeleteCompletedResult.FAILED ->
+                                    "No se pudo eliminar el archivo. El registro se conserva."
                             }
                     } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        rethrowIfFatal(e)
                         message = "No se pudo eliminar el archivo. Comprueba que siga disponible."
                     }
                 }
@@ -425,6 +441,7 @@ internal fun AppContent(
                     profileState = profileState,
                     dao = dao,
                     downloadsViewModel = downloadsViewModel,
+                    records = records,
                     downloadSpeeds = downloadSpeeds,
                     galleryImageLoader = galleryImageLoader,
                     thumbnailResolver = thumbnailResolver,
@@ -440,7 +457,11 @@ internal fun AppContent(
                     openPlayback = openPlayback,
                     onExportDiagnostic = { diagnosticPicker.launch(it) },
                     onChooseFolder = { folderPicker.launch(null) },
-                    onRequestNotificationPermission = { notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                    onRequestNotificationPermission = {
+                        notificationsPermission.launch(
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        )
+                    },
                 ),
         )
     }

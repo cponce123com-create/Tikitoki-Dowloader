@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -29,6 +30,16 @@ class LaunchTest {
             compose.onAllNodesWithText("Baja.pe").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("Baja.pe").assertIsDisplayed()
+    }
+
+    @Test
+    fun rockolaOpensFromBottomNavigation() {
+        compose.onNodeWithText("Rockola").performClick()
+        compose.onNodeWithText("Canción, artista o enlace").assertIsDisplayed()
+        compose.onNodeWithText("En cola · 0").performClick()
+        compose.onNodeWithText("Agrega videos desde Explorar o Mis listas.").assertIsDisplayed()
+        compose.onNodeWithText("Mis listas").performClick()
+        compose.onNodeWithText("Favoritos").assertIsDisplayed()
     }
 
     @Test

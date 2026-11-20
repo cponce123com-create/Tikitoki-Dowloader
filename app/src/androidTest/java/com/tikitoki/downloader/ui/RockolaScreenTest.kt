@@ -31,7 +31,7 @@ class RockolaScreenTest {
     }
 
     @Test
-    fun discoveryAndSavedShelfControlsAreInteractive() {
+    fun tabsAreVisibleAndListsCanOpenAnEmptyFavoriteList() {
         compose.setContent {
             MaterialTheme {
                 RockolaScreen(
@@ -43,10 +43,11 @@ class RockolaScreenTest {
             }
         }
 
-        compose.onNodeWithText("¿Qué quieres escuchar?").assertIsDisplayed()
-        compose.onNodeWithText("Explora por género").assertIsDisplayed()
-        compose.onNodeWithText("Salsa").assertIsDisplayed()
+        compose.onNodeWithText("Rockola").assertIsDisplayed()
+        compose.onNodeWithText("Explorar").assertIsDisplayed()
+        compose.onNodeWithText("En cola · 0").assertIsDisplayed()
+        compose.onNodeWithText("Mis listas").performClick()
         compose.onNodeWithText("Favoritos").performClick()
-        compose.onNodeWithText("Aún no tienes favoritos", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Todavía no hay videos en esta lista.").assertIsDisplayed()
     }
 }

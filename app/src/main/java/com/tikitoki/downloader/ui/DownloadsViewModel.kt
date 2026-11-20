@@ -21,6 +21,12 @@ class DownloadsViewModel(
 
     private val dao = DownloadDatabase.get(application).downloads()
 
+    val records =
+        dao
+            .observeAll()
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<DownloadRecord>())
+
     val queueRecords =
         dao
             .observeQueue()
