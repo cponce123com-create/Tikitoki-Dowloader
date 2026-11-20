@@ -2,3 +2,7 @@
 # Las reglas restantes usan sus valores predeterminados.
 config:
   validation: true
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']

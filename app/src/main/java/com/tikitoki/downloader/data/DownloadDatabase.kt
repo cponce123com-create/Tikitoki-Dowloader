@@ -200,7 +200,8 @@ abstract class DownloadDatabase : RoomDatabase() {
                                 )
                             }
                         },
-                    ).build().also { INSTANCE = it }
+                    ).build()
+                    .also { INSTANCE = it }
             }
     }
 }
