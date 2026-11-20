@@ -725,6 +725,8 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                 },
             )
         } else {
+            val scrollState = rememberScrollState()
+            val scrollModifier = if (tab == ROCKOLA_TAB) Modifier else Modifier.verticalScroll(scrollState)
             Column(
                 modifier =
                     Modifier
@@ -739,7 +741,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             },
                         ).padding(insets)
                         .consumeWindowInsets(insets)
-                        .verticalScroll(rememberScrollState())
+                        .then(scrollModifier)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
