@@ -144,93 +144,29 @@ object NavRoutes {
 }
 
 /**
- * Navigation graph builder with all screens.
+ * Navigation graph builder with all screens - now using MainViewModel for state.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AppNavHost(
     navController: NavHostController,
+    viewModel: MainViewModel,
     startDestination: String = NavRoutes.HOME,
-    // Shared dependencies passed from MainActivity
-    onNavigateToDownloads: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onShowClearTemp: () -> Unit,
-    onShowAbout: () -> Unit,
-    themeChoice: String,
-    preferredQuality: String,
-    // Additional dependencies
-    focusManager: androidx.compose.ui.focus.FocusManager,
-    keyboard: androidx.compose.ui.platform.SoftwareKeyboardController?,
-    clipboard: androidx.compose.ui.platform.ClipboardManager,
-    incomingLink: String,
-    shareRevision: Int,
-    context: Context,
-    settings: android.content.SharedPreferences,
-    source: TikTokVideoSource,
-    thumbnailResolver: VideoThumbnailResolver,
-    avatarResolver: ProfileAvatarResolver,
-    galleryImageLoader: coil.ImageLoader,
-    universalSource: UniversalMediaSource,
-    profileViewModel: ProfileViewModel,
-    profileState: com.tikitoki.downloader.ui.ProfileUiState,
-    dao: com.tikitoki.downloader.data.DownloadDao,
-    downloadsViewModel: DownloadsViewModel,
-    records: androidx.compose.runtime.State<java.util.List<DownloadRecord>>,
-    downloadSpeeds: androidx.compose.runtime.State<java.util.Map<String, String>>,
-    finishedBatches: androidx.compose.runtime.State<java.util.List<com.tikitoki.downloader.data.BatchSummary>>,
-    scope: kotlinx.coroutines.CoroutineScope,
-    folderDescription: String,
-    downloadFolder: String?,
+    // UI callbacks that need Activity context
     folderPicker: androidx.activity.result.ActivityResultLauncher<android.content.Intent>,
-    networkSettingsBusy: androidx.compose.runtime.MutableState<Boolean>,
-    wifiParallel: androidx.compose.runtime.MutableState<Int>,
-    meteredParallel: androidx.compose.runtime.MutableState<Int>,
-    allowMetered: androidx.compose.runtime.MutableState<Boolean>,
-    rateKiB: androidx.compose.runtime.MutableState<Int>,
-    showProgressNotice: androidx.compose.runtime.MutableState<Boolean>,
-    completionNotice: androidx.compose.runtime.MutableState<Boolean>,
-    monitorHours: androidx.compose.runtime.MutableState<Int>,
-    monitorPages: androidx.compose.runtime.MutableState<Int>,
-    libraryKind: androidx.compose.runtime.MutableState<String>,
-    url: androidx.compose.runtime.MutableState<String>,
-    monitorRevision: androidx.compose.runtime.MutableState<Int>,
-    message: androidx.compose.runtime.MutableState<String>,
-    inspecting: androidx.compose.runtime.MutableState<Boolean>,
     storagePermission: androidx.activity.result.ActivityResultLauncher<String>,
     notificationsPermission: androidx.activity.result.ActivityResultLauncher<String>,
     diagnosticPicker: androidx.activity.result.ActivityResultLauncher<String>,
-    deleteCandidate: androidx.compose.runtime.MutableState<DownloadRecord?>,
-    showClearTemp: androidx.compose.runtime.MutableState<Boolean>,
-    showPlayerChoice: androidx.compose.runtime.MutableState<Boolean>,
-    showAbout: androidx.compose.runtime.MutableState<Boolean>,
-    musicRequestUri: androidx.compose.runtime.MutableState<String?>,
-    musicRequestTitle: androidx.compose.runtime.MutableState<String>,
-    onMusicRequestConsumed: () -> Unit,
-    onOpenFile: (DownloadRecord) -> Unit,
-    onDelete: (DownloadRecord) -> Unit,
-    onKindChange: (String) -> Unit,
-    onRetryFailed: () -> Unit,
-    onClearErrors: () -> Unit,
-    onFollowProfile: () -> Unit,
-    onUnfollowProfile: (String) -> Unit,
-    onUpdateExtractor: () -> Unit,
-    onChooseFolder: () -> Unit,
-    onResetFolder: () -> Unit,
-    onMonitorHoursChange: (Int) -> Unit,
-    onMonitorPagesChange: (Int) -> Unit,
-    onWifiChange: (Int) -> Unit,
-    onMeteredChange: (Int) -> Unit,
-    onAllowMeteredChange: (Boolean) -> Unit,
-    onRateChange: (Int) -> Unit,
-    onProgressNoticeChange: (Boolean) -> Unit,
-    onCompletionNoticeChange: (Boolean) -> Unit,
-    onThemeChange: (String) -> Unit,
-    onQualityChange: (String) -> Unit,
-    onSettings: () -> Unit,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onCancel: (String) -> Unit,
-    onOpenPlayer: () -> Unit,
+    focusManager: androidx.compose.ui.focus.FocusManager,
+    keyboard: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    clipboard: androidx.compose.ui.platform.ClipboardManager,
+    context: Context,
+    settings: android.content.SharedPreferences,
+    incomingLink: String,
+    shareRevision: Int,
+    galleryImageLoader: coil.ImageLoader,
+    thumbnailResolver: VideoThumbnailResolver,
+    avatarResolver: ProfileAvatarResolver,
 ) {
     // ZeroWindowInsets workaround for Compose 1.6.x compatibility (WindowInsets.Companion.zero doesn't exist)
     val zeroInsets = object : WindowInsets {
@@ -240,80 +176,187 @@ fun AppNavHost(
         override fun getTop(density: Density): Int = 0
     }
 
+    // Observe ViewModel state for screens that need derived data
+    val records by viewModel.records.collectAsState()
+    val downloadSpeeds by viewModel.downloadSpeeds.collectAsState()
+    val finishedBatches by viewModel.finishedBatches.collectAsState()
+    val profileState by viewModel.profileState.collectAsState()
+    val message by viewModel.message.collectAsState()
+    val themeChoice by viewModel.themeChoice.collectAsState()
+    val preferredQuality by viewModel.preferredQuality.collectAsState()
+    val libraryKind by viewModel.libraryKind.collectAsState()
+    val url by viewModel.url.collectAsState()
+    val monitorRevision by viewModel.monitorRevision.collectAsState()
+    val monitorHours by viewModel.monitorHours.collectAsState()
+    val monitorPages by viewModel.monitorPages.collectAsState()
+    val wifiParallel by viewModel.wifiParallel.collectAsState()
+    val meteredParallel by viewModel.meteredParallel.collectAsState()
+    val allowMetered by viewModel.allowMetered.collectAsState()
+    val networkSettingsBusy by viewModel.networkSettingsBusy.collectAsState()
+    val rateKiB by viewModel.rateKiB.collectAsState()
+    val showProgressNotice by viewModel.showProgressNotice.collectAsState()
+    val completionNotice by viewModel.completionNotice.collectAsState()
+    val downloadFolder by viewModel.downloadFolder.collectAsState()
+    val showClearTemp by viewModel.showClearTemp.collectAsState()
+    val showPlayerChoice by viewModel.showPlayerChoice.collectAsState()
+    val showAbout by viewModel.showAbout.collectAsState()
+    val musicRequestUri by viewModel.musicRequestUri.collectAsState()
+    val musicRequestTitle by viewModel.musicRequestTitle.collectAsState()
+    val queueBusy by viewModel.queueBusy.collectAsState()
+    val formatsBusy by viewModel.formatsBusy.collectAsState()
+    val formatError by viewModel.formatError.collectAsState()
+    val showQualitySheet by viewModel.showQualitySheet.collectAsState()
+    val formats by viewModel.formats.collectAsState()
+    val chosenFormat by viewModel.chosenFormat.collectAsState()
+    val rememberFormat by viewModel.rememberFormat.collectAsState()
+    val batchChecking by viewModel.batchChecking.collectAsState()
+    val batchChecked by viewModel.batchChecked.collectAsState()
+    val batchFailed by viewModel.batchFailed.collectAsState()
+    val batchTotal by viewModel.batchTotal.collectAsState()
+    val batchCounts by viewModel.batchCounts.collectAsState()
+    val batchGeneration by viewModel.batchGeneration.collectAsState()
+    val inspecting by viewModel.inspecting.collectAsState()
+    val search by viewModel.search.collectAsState()
+    val onlyUndownloaded by viewModel.onlyUndownloaded.collectAsState()
+    val forceRefresh by viewModel.forceRefresh.collectAsState()
+    val selectedVideos by viewModel.selectedVideos.collectAsState()
+    val defaultFormat by viewModel.defaultFormat.collectAsState()
+
     NavHost(navController, startDestination) {
         composable(NavRoutes.HOME) {
             AnalysisScreen(
                 incomingLink = incomingLink,
                 shareRevision = shareRevision,
-                onNavigateToDownloads = onNavigateToDownloads,
-                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToDownloads = viewModel.onNavigateToDownloads,
+                onNavigateToSettings = viewModel.onNavigateToSettings,
                 onShowQualitySheet = { /* handled internally */ },
-                onShowClearTemp = onShowClearTemp,
-                onShowAbout = onShowAbout,
+                onShowClearTemp = viewModel.onShowClearTemp,
+                onShowAbout = viewModel.onShowAbout,
                 themeChoice = themeChoice,
                 preferredQuality = preferredQuality,
                 onSettingsChanged = { /* settings are shared via SharedPreferences */ },
                 insets = zeroInsets,
+                // ViewModel-driven state
+                url = url,
+                search = search,
+                onlyUndownloaded = onlyUndownloaded,
+                forceRefresh = forceRefresh,
+                inspecting = inspecting,
+                formatsBusy = formatsBusy,
+                formats = formats,
+                chosenFormat = chosenFormat,
+                rememberFormat = rememberFormat,
+                formatError = formatError,
+                showQualitySheet = showQualitySheet,
+                batchChecking = batchChecking,
+                batchChecked = batchChecked,
+                batchFailed = batchFailed,
+                batchTotal = batchTotal,
+                batchCounts = batchCounts,
+                batchGeneration = batchGeneration,
+                selectedVideos = selectedVideos,
+                defaultFormat = defaultFormat,
+                profileState = profileState,
+                // Additional state from ViewModel
+                records = records,
+                downloadSpeeds = downloadSpeeds,
+                finishedBatches = finishedBatches,
+                thumbnailResolver = thumbnailResolver,
+                onUrlChange = viewModel::onUrlChange,
+                onSearchChange = viewModel::onSearchChange,
+                onOnlyUndownloadedChange = viewModel::onOnlyUndownloadedChange,
+                onForceRefreshChange = viewModel::onForceRefreshChange,
+                onInspectLink = viewModel::onInspectLink,
+                onResumeScan = viewModel::onResumeScan,
+                onSkipIncompletePage = viewModel::onSkipIncompletePage,
+                onChooseQuality = { ids -> viewModel.chooseQuality(ids) },
+                onFormatSelected = viewModel::onFormatSelected,
+                onRememberFormatChange = viewModel::onRememberFormatChange,
+                onDownloadSelected = viewModel::onDownloadSelected,
+                onNavigateToHome = viewModel.onNavigateToHome,
             )
         }
         composable(NavRoutes.DOWNLOADS) {
             DownloadQueueScreen(
-                records = records.value,
+                records = records,
                 themeChoice = themeChoice,
                 insets = zeroInsets,
-                message = message.value,
-                thumbnailResolver = thumbnailResolver,
-                downloadSpeeds = downloadSpeeds.value,
-                onSettings = onSettings,
-                onPause = onPause,
-                onResume = onResume,
-                onCancel = onCancel,
+                message = message,
+                thumbnailResolver = viewModel.thumbnailResolver,
+                downloadSpeeds = downloadSpeeds,
+                onSettings = viewModel.onNavigateToSettings,
+                onPause = viewModel.onPauseQueue,
+                onResume = viewModel.onResumeQueue,
+                onCancel = viewModel::onCancelDownload,
             )
         }
         composable(NavRoutes.LIBRARY) {
             LibraryScreen(
-                records = records.value,
+                records = records,
                 themeChoice = themeChoice,
                 insets = zeroInsets,
-                libraryKind = libraryKind.value,
-                message = message.value,
-                thumbnailResolver = thumbnailResolver,
+                libraryKind = libraryKind,
+                message = message,
+                thumbnailResolver = viewModel.thumbnailResolver,
                 galleryImageLoader = galleryImageLoader,
-                onSettings = onSettings,
-                onKindChange = onKindChange,
+                onSettings = viewModel.onNavigateToSettings,
+                onKindChange = viewModel::onLibraryKindChange,
                 onMusic = { navController.navigate(NavRoutes.MUSIC) },
                 onCollections = { navController.navigate(NavRoutes.COLLECTIONS) },
-                onOpen = onOpenFile,
-                onDelete = onDelete,
+                onOpen = viewModel::onOpenFile,
+                onDelete = viewModel::onDeleteVideo,
+                onHistoryFilterChange = viewModel::onHistoryFilterChange,
+                historyFilter = viewModel.historyFilter.collectAsState(),
             )
         }
         composable(NavRoutes.TOOLS) {
-            val monitored = remember(monitorRevision.value) { ProfileMonitor.profiles(context).sorted() }
+            val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
             ToolsScreen(
                 monitored = monitored,
-                failedCount = records.value.count { it.status == DownloadState.FAILED },
-                currentUrl = url.value,
+                failedCount = records.count { it.status == DownloadState.FAILED },
+                currentUrl = url,
                 profileImage = profileState.profileImage,
                 avatarResolver = avatarResolver,
-                message = message.value,
-                onRetryFailed = onRetryFailed,
-                onClearErrors = onClearErrors,
-                onOpenPlayer = onOpenPlayer,
-                onFollowProfile = onFollowProfile,
-                onUnfollowProfile = onUnfollowProfile,
+                message = message,
+                onRetryFailed = viewModel.onRetryFailed,
+                onClearErrors = viewModel.onClearErrors,
+                onOpenPlayer = viewModel.onOpenPlayer,
+                onFollowProfile = { viewModel.onFollowProfile(url) },
+                onUnfollowProfile = viewModel::onUnfollowProfile,
+                onUpdateExtractor = viewModel.onUpdateExtractor,
             )
         }
         composable(NavRoutes.FILES) {
+            val folderDescription = remember(downloadFolder) {
+                androidx.compose.runtime.produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
+                    val tree = downloadFolder
+                    value =
+                        if (tree == null) {
+                            "Descargas/TikitokiDownloader"
+                        } else {
+                            withContext(Dispatchers.IO) {
+                                kotlinx.coroutines.runCatching {
+                                    val folder = DocumentFile.fromTreeUri(context, Uri.parse(tree))
+                                    if (folder != null && folder.exists() && folder.canWrite()) {
+                                        folder.name ?: "Carpeta personalizada"
+                                    } else {
+                                        "Carpeta no disponible. Elige otra ubicación."
+                                    }
+                                }.getOrElse { "Carpeta no disponible. Elige otra ubicación." }
+                            }
+                        }
+                }
+            }
             FilesScreen(
                 themeChoice = themeChoice,
-                folderDescription = folderDescription,
+                folderDescription = folderDescription.value,
                 downloadFolder = downloadFolder,
-                message = message.value,
-                onSettingsClick = onSettings,
-                onChooseFolder = onChooseFolder,
-                onResetFolder = onResetFolder,
+                message = message,
+                onSettingsClick = viewModel.onNavigateToSettings,
+                onChooseFolder = { viewModel.onChooseFolder(folderPicker) },
+                onResetFolder = viewModel.onResetFolder,
                 onOpenFolder = { /* handled by FilesScreen internally */ },
-                completedCount = records.value.count { it.status == DownloadState.COMPLETED },
+                completedCount = records.count { it.status == DownloadState.COMPLETED },
                 settings = settings,
             )
         }
@@ -321,46 +364,46 @@ fun AppNavHost(
             SettingsScreen(
                 themeChoice = themeChoice,
                 preferredQuality = preferredQuality,
-                folderDescription = folderDescription,
+                folderDescription = "", // computed in FilesScreen now
                 downloadFolder = downloadFolder,
-                message = message,
-                monitorHours = monitorHours,
-                monitorPages = monitorPages,
-                wifiParallel = wifiParallel,
-                meteredParallel = meteredParallel,
-                allowMetered = allowMetered,
-                networkSettingsBusy = networkSettingsBusy,
-                rateKiB = rateKiB,
-                showProgressNotice = showProgressNotice,
-                completionNotice = completionNotice,
+                message = viewModel.message,
+                monitorHours = viewModel.monitorHours,
+                monitorPages = viewModel.monitorPages,
+                wifiParallel = viewModel.wifiParallel,
+                meteredParallel = viewModel.meteredParallel,
+                allowMetered = viewModel.allowMetered,
+                networkSettingsBusy = viewModel.networkSettingsBusy,
+                rateKiB = viewModel.rateKiB,
+                showProgressNotice = viewModel.showProgressNotice,
+                completionNotice = viewModel.completionNotice,
                 hasCustomFolder = downloadFolder != null,
-                onAbout = { showAbout.value = true },
+                onAbout = viewModel.onShowAbout,
                 onExportDiagnostic = { diagnosticPicker.launch(context.getString(R.string.diagnostic_filename)) },
-                onMonitorHoursChange = onMonitorHoursChange,
-                onMonitorPagesChange = onMonitorPagesChange,
-                onUpdateExtractor = onUpdateExtractor,
-                onChooseFolder = onChooseFolder,
-                onResetFolder = onResetFolder,
-                onThemeChange = onThemeChange,
-                onQualityChange = onQualityChange,
-                onWifiChange = onWifiChange,
-                onMeteredChange = onMeteredChange,
-                onAllowMeteredChange = onAllowMeteredChange,
-                onRateChange = onRateChange,
-                onProgressNoticeChange = onProgressNoticeChange,
-                onCompletionNoticeChange = onCompletionNoticeChange,
-                onClearTemporary = { showClearTemp.value = true },
+                onMonitorHoursChange = viewModel::onMonitorHoursChange,
+                onMonitorPagesChange = viewModel::onMonitorPagesChange,
+                onUpdateExtractor = viewModel.onUpdateExtractor,
+                onChooseFolder = { viewModel.onChooseFolder(folderPicker) },
+                onResetFolder = viewModel.onResetFolder,
+                onThemeChange = viewModel::onThemeChange,
+                onQualityChange = viewModel::onQualityChange,
+                onWifiChange = viewModel::onWifiChange,
+                onMeteredChange = viewModel::onMeteredChange,
+                onAllowMeteredChange = viewModel::onAllowMeteredChange,
+                onRateChange = viewModel::onRateChange,
+                onProgressNoticeChange = viewModel::onProgressNoticeChange,
+                onCompletionNoticeChange = viewModel::onCompletionNoticeChange,
+                onClearTemporary = viewModel.onShowClearTemp,
                 settings = settings,
                 folderPicker = folderPicker,
                 context = context,
-                scope = scope,
+                scope = viewModel.viewModelScope,
             )
         }
         composable(NavRoutes.MUSIC) {
             MusicScreen(
-                requestedUri = musicRequestUri.value,
-                requestedTitle = musicRequestTitle.value,
-                onRequestConsumed = onMusicRequestConsumed,
+                requestedUri = musicRequestUri,
+                requestedTitle = musicRequestTitle,
+                onRequestConsumed = viewModel.onMusicRequestConsumed,
             )
         }
         composable(NavRoutes.COLLECTIONS) {
@@ -372,10 +415,7 @@ fun AppNavHost(
                     .consumeWindowInsets(androidx.compose.foundation.layout.WindowInsets.safeDrawing),
                 onBack = { navController.popBackStack() },
                 onOpenPlaylist = { link ->
-                    url.value = link
-                    profileViewModel.reset()
-                    // Clear selected videos
-                    message.value = ""
+                    viewModel.handleIncomingLink(link, 1)
                     navController.navigate(NavRoutes.HOME) {
                         popUpTo(NavRoutes.HOME) { inclusive = false }
                         launchSingleTop = true
@@ -397,16 +437,16 @@ private fun SettingsScreen(
     preferredQuality: String,
     folderDescription: String,
     downloadFolder: String?,
-    message: androidx.compose.runtime.MutableState<String>,
-    monitorHours: androidx.compose.runtime.MutableState<Int>,
-    monitorPages: androidx.compose.runtime.MutableState<Int>,
-    wifiParallel: androidx.compose.runtime.MutableState<Int>,
-    meteredParallel: androidx.compose.runtime.MutableState<Int>,
-    allowMetered: androidx.compose.runtime.MutableState<Boolean>,
-    networkSettingsBusy: androidx.compose.runtime.MutableState<Boolean>,
-    rateKiB: androidx.compose.runtime.MutableState<Int>,
-    showProgressNotice: androidx.compose.runtime.MutableState<Boolean>,
-    completionNotice: androidx.compose.runtime.MutableState<Boolean>,
+    message: String,
+    monitorHours: kotlinx.coroutines.flow.StateFlow<Int>,
+    monitorPages: kotlinx.coroutines.flow.StateFlow<Int>,
+    wifiParallel: kotlinx.coroutines.flow.StateFlow<Int>,
+    meteredParallel: kotlinx.coroutines.flow.StateFlow<Int>,
+    allowMetered: kotlinx.coroutines.flow.StateFlow<Boolean>,
+    networkSettingsBusy: kotlinx.coroutines.flow.StateFlow<Boolean>,
+    rateKiB: kotlinx.coroutines.flow.StateFlow<Int>,
+    showProgressNotice: kotlinx.coroutines.flow.StateFlow<Boolean>,
+    completionNotice: kotlinx.coroutines.flow.StateFlow<Boolean>,
     hasCustomFolder: Boolean,
     onAbout: () -> Unit,
     onExportDiagnostic: () -> Unit,
@@ -429,6 +469,16 @@ private fun SettingsScreen(
     context: Context,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
+    val monitorHoursValue by monitorHours.collectAsState()
+    val monitorPagesValue by monitorPages.collectAsState()
+    val wifiParallelValue by wifiParallel.collectAsState()
+    val meteredParallelValue by meteredParallel.collectAsState()
+    val allowMeteredValue by allowMetered.collectAsState()
+    val networkSettingsBusyValue by networkSettingsBusy.collectAsState()
+    val rateKiBValue by rateKiB.collectAsState()
+    val showProgressNoticeValue by showProgressNotice.collectAsState()
+    val completionNoticeValue by completionNotice.collectAsState()
+
     Column(
         modifier =
             Modifier
@@ -448,11 +498,11 @@ private fun SettingsScreen(
     ) {
         TechHeader(onSettings = { /* already in settings */ })
         SettingsGeneralSection(
-            monitorHours = monitorHours.value,
-            monitorPages = monitorPages.value,
+            monitorHours = monitorHoursValue,
+            monitorPages = monitorPagesValue,
             folderDescription = folderDescription,
             hasCustomFolder = hasCustomFolder,
-            message = message.value,
+            message = message,
             onAbout = onAbout,
             onExportDiagnostic = onExportDiagnostic,
             onMonitorHoursChange = onMonitorHoursChange,
@@ -468,13 +518,13 @@ private fun SettingsScreen(
             onQualityChange = onQualityChange,
         )
         DownloadSettingsSection(
-            wifiParallel = wifiParallel.value,
-            meteredParallel = meteredParallel.value,
-            allowMetered = allowMetered.value,
-            networkSettingsBusy = networkSettingsBusy.value,
-            rateKiB = rateKiB.value,
-            showProgressNotice = showProgressNotice.value,
-            completionNotice = completionNotice.value,
+            wifiParallel = wifiParallelValue,
+            meteredParallel = meteredParallelValue,
+            allowMetered = allowMeteredValue,
+            networkSettingsBusy = networkSettingsBusyValue,
+            rateKiB = rateKiBValue,
+            showProgressNotice = showProgressNoticeValue,
+            completionNotice = completionNoticeValue,
             onWifiChange = onWifiChange,
             onMeteredChange = onMeteredChange,
             onAllowMeteredChange = onAllowMeteredChange,
@@ -483,7 +533,7 @@ private fun SettingsScreen(
             onCompletionNoticeChange = onCompletionNoticeChange,
         )
         SettingsStorageSection(
-            message = message.value,
+            message = message,
             onClearTemporary = onClearTemporary,
         )
     }

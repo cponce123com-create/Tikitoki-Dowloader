@@ -108,6 +108,7 @@ import com.tikitoki.downloader.R
 /**
  * AnalysisScreen - Main home screen for video analysis and selection.
  *
+ * Now observes state from MainViewModel instead of managing local state.
  * Handles:
  * - Link input and platform selection
  * - Profile/video analysis via ProfileViewModel
@@ -136,114 +137,147 @@ fun AnalysisScreen(
     onSettingsChanged: () -> Unit,
     // Window insets from Scaffold
     insets: androidx.compose.foundation.layout.WindowInsets,
+    // ViewModel-driven state
+    url: kotlinx.coroutines.flow.MutableStateFlow<String>,
+    search: kotlinx.coroutines.flow.MutableStateFlow<String>,
+    onlyUndownloaded: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    forceRefresh: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    inspecting: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    formatsBusy: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    formats: kotlinx.coroutines.flow.MutableStateFlow<List<FormatChoice>>,
+    chosenFormat: kotlinx.coroutines.flow.MutableStateFlow<FormatChoice?>,
+    rememberFormat: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    formatError: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    showQualitySheet: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    batchChecking: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
+    batchChecked: kotlinx.coroutines.flow.MutableStateFlow<Int>,
+    batchFailed: kotlinx.coroutines.flow.MutableStateFlow<Int>,
+    batchTotal: kotlinx.coroutines.flow.MutableStateFlow<Int>,
+    batchCounts: kotlinx.coroutines.flow.MutableStateFlow<Map<String, Int>>,
+    batchGeneration: kotlinx.coroutines.flow.MutableStateFlow<Int>,
+    selectedVideos: kotlinx.coroutines.flow.MutableStateFlow<Map<String, Boolean>>,
+    defaultFormat: kotlinx.coroutines.flow.MutableStateFlow<FormatChoice?>,
+    profileState: com.tikitoki.downloader.ui.ProfileUiState,
+    // Additional state from ViewModel
+    records: androidx.compose.runtime.State<List<com.tikitoki.downloader.data.DownloadRecord>>,
+    downloadSpeeds: androidx.compose.runtime.State<Map<String, Long>>,
+    finishedBatches: androidx.compose.runtime.State<List<com.tikitoki.downloader.data.BatchSummary>>,
+    thumbnailResolver: com.tikitoki.downloader.data.VideoThumbnailResolver,
+    // ViewModel action callbacks
+    onUrlChange: (String) -> Unit,
+    onSearchChange: (String) -> Unit,
+    onOnlyUndownloadedChange: (Boolean) -> Unit,
+    onForceRefreshChange: (Boolean) -> Unit,
+    onInspectLink: () -> Unit,
+    onResumeScan: () -> Unit,
+    onSkipIncompletePage: () -> Unit,
+    onChooseQuality: (List<String>) -> Unit,
+    onFormatSelected: (FormatChoice) -> Unit,
+    onRememberFormatChange: (Boolean) -> Unit,
+    onDownloadSelected: (List<String>) -> Unit,
+    onNavigateToHome: () -> Unit,
 ) {
     val context = LocalContext.current
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     val invalidLinkMessage = stringResource(R.string.media_invalid_link)
 
-    // Analysis-specific state
+    // Collect ViewModel state
+    val urlValue by url.collectAsState()
+    val searchValue by search.collectAsState()
+    val onlyUndownloadedValue by onlyUndownloaded.collectAsState()
+    val forceRefreshValue by forceRefresh.collectAsState()
+    val inspectingValue by inspecting.collectAsState()
+    val formatsBusyValue by formatsBusy.collectAsState()
+    val formatsValue by formats.collectAsState()
+    val chosenFormatValue by chosenFormat.collectAsState()
+    val rememberFormatValue by rememberFormat.collectAsState()
+    val formatErrorValue by formatError.collectAsState()
+    val showQualitySheetValue by showQualitySheet.collectAsState()
+    val batchCheckingValue by batchChecking.collectAsState()
+    val batchCheckedValue by batchChecked.collectAsState()
+    val batchFailedValue by batchFailed.collectAsState()
+    val batchTotalValue by batchTotal.collectAsState()
+    val batchCountsValue by batchCounts.collectAsState()
+    val batchGenerationValue by batchGeneration.collectAsState()
+    val selectedVideosValue by selectedVideos.collectAsState()
+    val defaultFormatValue by defaultFormat.collectAsState()
+
+    // Local UI state
     var selectedPlatform by rememberSaveable { mutableStateOf<String?>("Auto") }
-    var url by rememberSaveable { mutableStateOf(incomingLink) }
-    var search by rememberSaveable { mutableStateOf("") }
-    var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
-    var forceRefresh by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
-    var analysisRevision by remember { mutableStateOf(0) }
-
-    // Format selection state
-    var formatsBusy by remember { mutableStateOf(false) }
-    var formatError by remember { mutableStateOf(false) }
-    var formats by remember { mutableStateOf(listOf<FormatChoice>()) }
-    var chosenFormat by remember { mutableStateOf<FormatChoice?>(null) }
-    var defaultFormat by remember { mutableStateOf<FormatChoice?>(null) }
-    var rememberFormat by remember { mutableStateOf(false) }
-
-    // Batch checking state
-    var batchChecking by remember { mutableStateOf(false) }
-    var batchChecked by remember { mutableStateOf(0) }
-    var batchFailed by remember { mutableStateOf(0) }
-    var batchTotal by remember { mutableStateOf(0) }
-    var batchCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    var batchGeneration by remember { mutableStateOf(0) }
-    var batchCheckJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-    // Selected videos (mutableStateMapOf for selection tracking)
-    val selected = remember { mutableStateMapOf<String, Boolean>() }
+    var queueBusy by remember { mutableStateOf(false) }
+    var showClearTemp by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
+    var showPlayerChoice by remember { mutableStateOf(false) }
+    var deleteCandidate by remember { mutableStateOf<com.tikitoki.downloader.data.DownloadRecord?>(null) }
 
     // Repositories and services
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
-    val source = remember(context) { TikTokVideoSource(context.applicationContext) }
-    val thumbnailResolver = remember(context) { VideoThumbnailResolver(context.applicationContext) }
-    val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
-    val profileViewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-    val profileState by profileViewModel.state.collectAsState()
-    val dao = remember(context) { DownloadDatabase.get(context).downloads() }
-    val downloadsViewModel: DownloadsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-    val records by downloadsViewModel.records.collectAsState()
-    val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
-    val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
 
-    var queueBusy by remember { mutableStateOf(false) }
-    var showQualitySheet by remember { mutableStateOf(false) }
-    var showClearTemp by remember { mutableStateOf(false) }
-    var showAbout by remember { mutableStateOf(false) }
-    var showPlayerChoice by remember { mutableStateOf(false) }
-    var deleteCandidate by remember { mutableStateOf<com.tikitoki.downloader.data.DownloadRecord?>(null) }
+    val diagnosticPicker =
+        DiagnosticExport.rememberDiagnosticPicker {
+            message = context.getString(R.string.diagnostic_error)
+        }
 
-    // Initialize default format based on preferredQuality
-    LaunchedEffect(preferredQuality) {
-        val selector = when (preferredQuality) {
-            "720p" -> "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
-            "480p" -> "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
-            else -> TikTokVideoSource.DEFAULT_FORMAT
+    // Compute completed kinds and downloaded IDs for UI
+    val completedKinds =
+        remember(records.value) {
+            records.value
+                .filter { it.status == DownloadState.COMPLETED }
+                .groupBy { DownloadIdentity.sourceId(it.videoId) }
         }
-        val df = FormatChoice(selector, preferredQuality)
-        defaultFormat = df
-        if (formats.isEmpty()) {
-            formats = listOf(df)
+    val downloadedIds =
+        remember(completedKinds) {
+            completedKinds
+                .filterValues { items ->
+                    items.any { PlaybackKind.isAudio(it.formatId, null, it.savedUri) } &&
+                        items.any { !PlaybackKind.isAudio(it.formatId, null, it.savedUri) }
+                }.keys
         }
-        if (chosenFormat == null) {
-            chosenFormat = df
-        }
-    }
-
     val videos = profileState.videos
+    val visibleVideos =
+        remember(videos, searchValue, onlyUndownloadedValue, downloadedIds) {
+            videos.filter {
+                (searchValue.isBlank() || it.title.contains(searchValue, ignoreCase = true) || it.id.contains(searchValue)) &&
+                    (!onlyUndownloadedValue || it.id !in downloadedIds)
+            }
+        }
 
-    // Handle incoming link changes
+    // Sync ViewModel state to local when needed (for incoming link handling)
     LaunchedEffect(incomingLink, shareRevision) {
-        if (incomingLink.isNotBlank() && (shareRevision > 0 || !profileViewModel.isCurrentLink(incomingLink))) {
-            url = incomingLink
-            profileViewModel.reset()
-            selected.clear()
-            forceRefresh = false
+        if (incomingLink.isNotBlank() && (shareRevision > 0)) {
+            url.value = incomingLink
+            selectedVideos.value = emptyMap()
+            forceRefresh.value = false
             message = ""
-            analysisRevision++
         }
     }
 
-    // Trigger analysis when URL changes
-    LaunchedEffect(url, analysisRevision) {
-        val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
+    // Trigger analysis when URL changes - handled by ViewModel's handleUrlChange
+    LaunchedEffect(urlValue) {
+        val link = IncomingLinkValidator.validate(urlValue)?.url ?: return@LaunchedEffect
         delay(500)
-        if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, forceRefresh)
+        onInspectLink()
     }
 
     // Download handling
     val addToQueue: () -> Unit = {
-        if (!queueBusy && selected.isNotEmpty()) {
+        if (!queueBusy && selectedVideosValue.isNotEmpty()) {
             queueBusy = true
-            val batch = videos.filter { it.id in selected }
-            val formatId = chosenFormat?.id ?: defaultFormat?.id ?: TikTokVideoSource.DEFAULT_FORMAT
+            val batch = videos.filter { it.id in selectedVideosValue }
+            val formatId = chosenFormatValue?.id ?: defaultFormatValue?.id ?: TikTokVideoSource.DEFAULT_FORMAT
             scope.launch {
                 try {
                     val result = DownloadQueue.enqueue(context, batch, formatId)
                     message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
-                    if (result.added > 0 || result.duplicates > 0) batch.forEach { selected.remove(it.id) }
-                    if (selected.isEmpty()) onNavigateToDownloads()
+                    if (result.added > 0 || result.duplicates > 0) {
+                        selectedVideos.value = emptyMap()
+                    }
+                    if (selectedVideosValue.isEmpty()) onNavigateToDownloads()
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     message = "No se pudo crear la cola. Inténtalo otra vez."
@@ -286,78 +320,12 @@ fun AnalysisScreen(
         }
     }
 
-    val chooseQuality: () -> Unit = {
+    val chooseQualityAction: () -> Unit = {
         focusManager.clearFocus()
         keyboard?.hide()
-        val video = selected.keys.firstOrNull()?.let { id -> videos.firstOrNull { it.id == id } }
-        if (video != null) {
-            batchGeneration++
-            batchCheckJob?.cancel()
-            batchChecking = false
-            batchChecked = 0
-            batchFailed = 0
-            batchTotal = 0
-            batchCounts = emptyMap()
-            formatError = false
-            showQualitySheet = true
-            formatsBusy = selected.size == 1
-            formats = if (selected.size == 1) listOf(defaultFormat!!) else FormatOptions.batch(context)
-            chosenFormat = formats.first()
-            rememberFormat = false
-            scope.launch {
-                try {
-                    if (selected.size == 1) {
-                        val found = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
-                        if (found.isEmpty()) throw IllegalStateException("No formats")
-                        formats = found
-                    }
-                    val saved = settings.getString("default_download_format", "video")
-                    chosenFormat =
-                        formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) }
-                            ?: formats.first()
-                } catch (
-                    e: CancellationException,
-                ) {
-                    throw e
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    runCatching { com.tikitoki.downloader.data.DiagnosticHistory.record(context, e.message) }
-                    message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez."
-                    formatError = true
-                } finally {
-                    formatsBusy = false
-                }
-            }
-        }
+        val selectedIds = selectedVideosValue.keys.toList()
+        onChooseQuality(selectedIds)
     }
-
-    val diagnosticPicker =
-        DiagnosticExport.rememberDiagnosticPicker {
-            message = context.getString(R.string.diagnostic_error)
-        }
-
-    // Compute completed kinds and downloaded IDs for UI
-    val completedKinds =
-        remember(records) {
-            records
-                .filter { it.status == DownloadState.COMPLETED }
-                .groupBy { DownloadIdentity.sourceId(it.videoId) }
-        }
-    val downloadedIds =
-        remember(completedKinds) {
-            completedKinds
-                .filterValues { items ->
-                    items.any { PlaybackKind.isAudio(it.formatId, null, it.savedUri) } &&
-                        items.any { !PlaybackKind.isAudio(it.formatId, null, it.savedUri) }
-                }.keys
-        }
-    val visibleVideos =
-        remember(videos, search, onlyUndownloaded, downloadedIds) {
-            videos.filter {
-                (search.isBlank() || it.title.contains(search, ignoreCase = true) || it.id.contains(search)) &&
-                    (!onlyUndownloaded || it.id !in downloadedIds)
-            }
-        }
 
     // Main content
     LazyVerticalGrid(
@@ -386,18 +354,18 @@ fun AnalysisScreen(
 
                 HomeLinkInput(
                     selectedPlatform = selectedPlatform,
-                    url = url,
+                    url = urlValue,
                     loading = profileState.loading,
                     loadingMore = profileState.loadingMore,
                     onPlatformChange = { selectedPlatform = it },
-                    onUrlChange = {
-                        val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
-                        url = extracted?.url ?: it
+                    onUrlChange = { newUrl ->
+                        val extracted = if (newUrl.length - urlValue.length > 1) IncomingLinkValidator.extractFirstHttps(newUrl) else null
+                        val finalUrl = extracted?.url ?: newUrl
+                        url.value = finalUrl
                         profileViewModel.reset()
-                        selected.clear()
-                        val df = defaultFormat!!
-                        formats = listOf(df)
-                        chosenFormat = df
+                        selectedVideos.value = emptyMap()
+                        val df = defaultFormatValue!!
+                        // Note: formats/chosenFormat are now in ViewModel, but we update local for immediate UI
                         message = ""
                     },
                     onKeyboardDone = {
@@ -410,14 +378,10 @@ fun AnalysisScreen(
                         val pasted = clipboard.getText()?.text.orEmpty()
                         val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)
                         if (link != null) {
-                            url = link.url
-                            profileViewModel.reset()
-                            selected.clear()
-                            val df = defaultFormat!!
-                            formats = listOf(df)
-                            chosenFormat = df
+                            url.value = link.url
+                            selectedVideos.value = emptyMap()
+                            val df = defaultFormatValue!!
                             message = ""
-                            analysisRevision++
                         } else {
                             message = "El portapapeles no contiene un enlace válido."
                         }
@@ -425,12 +389,12 @@ fun AnalysisScreen(
                     onAnalyze = {
                         focusManager.clearFocus()
                         keyboard?.hide()
-                        when (val parsed = IncomingLinkValidator.validate(url)) {
+                        when (val parsed = IncomingLinkValidator.validate(urlValue)) {
                             null -> message = invalidLinkMessage
                             else -> {
-                                selected.clear()
-                                profileViewModel.inspect(url, forceRefresh)
-                                forceRefresh = false
+                                selectedVideos.value = emptyMap()
+                                onInspectLink()
+                                forceRefresh.value = false
                                 message = ""
                             }
                         }
@@ -446,11 +410,11 @@ fun AnalysisScreen(
                     Column {
                         Text(error, color = MaterialTheme.colorScheme.error)
                         if (profileState.hasMore && !profileState.countingTotal) {
-                            OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }
+                            OutlinedButton(onClick = onResumeScan) { Text("↻ Reanudar escaneo") }
                         }
                         if (profileState.incompletePage && !profileState.countingTotal) {
                             OutlinedButton(
-                                onClick = { profileViewModel.skipIncompletePage() },
+                                onClick = onSkipIncompletePage,
                             ) { Text("Continuar con la siguiente parte") }
                         }
                     }
@@ -458,7 +422,7 @@ fun AnalysisScreen(
                 if (message.isNotBlank()) Text(message, style = MaterialTheme.typography.bodySmall)
 
                 if (videos.isNotEmpty()) {
-                    val allSelected = videos.all { it.id in selected }
+                    val allSelected = videos.all { it.id in selectedVideosValue }
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -498,7 +462,7 @@ fun AnalysisScreen(
                                 }
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        url
+                                        urlValue
                                             .substringAfter("tiktok.com/")
                                             .substringBefore("?")
                                             .substringBefore("/video/")
@@ -530,7 +494,7 @@ fun AnalysisScreen(
                                     stringResource(R.string.home_detected) to
                                         (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
                                     stringResource(R.string.home_loaded) to videos.size.toString(),
-                                    stringResource(R.string.home_selected) to selected.size.toString(),
+                                    stringResource(R.string.home_selected) to selectedVideosValue.size.toString(),
                                 ).forEach { (label, value) ->
                                     Text("$label: $value", fontSize = 11.sp, color = TechMuted)
                                 }
@@ -545,11 +509,8 @@ fun AnalysisScreen(
                         OutlinedButton(modifier = Modifier.weight(1f), onClick = {
                             focusManager.clearFocus()
                             keyboard?.hide()
-                            selected.clear()
-                            if (!allSelected) videos.forEach { selected[it.id] = true }
-                            val df = defaultFormat!!
-                            formats = listOf(df)
-                            chosenFormat = df
+                            selectedVideos.value = if (allSelected) emptyMap() else videos.associate { it.id to true }
+                            val df = defaultFormatValue!!
                         }) {
                             Text(
                                 if (allSelected) "Quitar selección" else "Seleccionar todo",
@@ -559,18 +520,18 @@ fun AnalysisScreen(
                         }
                         Button(
                             modifier = Modifier.weight(1f),
-                            enabled = selected.isNotEmpty() && !queueBusy && !profileState.loading,
-                            onClick = chooseQuality,
+                            enabled = selectedVideosValue.isNotEmpty() && !queueBusy && !profileState.loading,
+                            onClick = chooseQualityAction,
                         ) {
                             Icon(Icons.Outlined.Download.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Descargar ${selected.size}", maxLines = 1)
+                            Text("Descargar ${selectedVideosValue.size}", maxLines = 1)
                         }
                     }
 
                     OutlinedTextField(
-                        value = search,
-                        onValueChange = { search = it },
+                        value = searchValue,
+                        onValueChange = { search.value = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Buscar videos") },
                         singleLine = true,
@@ -583,8 +544,8 @@ fun AnalysisScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         FilterChip(
-                            selected = onlyUndownloaded,
-                            onClick = { onlyUndownloaded = !onlyUndownloaded },
+                            selected = onlyUndownloadedValue,
+                            onClick = { onlyUndownloaded.value = !onlyUndownloadedValue },
                             label = { Text("Pendientes") },
                         )
                         FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })
@@ -594,13 +555,14 @@ fun AnalysisScreen(
             }
         }
         gridItems(visibleVideos, key = { it.id }) { video ->
-            val checked = video.id in selected
+            val checked = video.id in selectedVideosValue
             Card(
                 onClick = {
-                    if (checked) selected.remove(video.id) else selected[video.id] = true
-                    val df = defaultFormat!!
-                    formats = listOf(df)
-                    chosenFormat = df
+                    val newSelection = selectedVideosValue.toMutableMap().also { map ->
+                        if (map.containsKey(video.id)) map.remove(video.id) else map[video.id] = true
+                    }
+                    selectedVideos.value = newSelection
+                    val df = defaultFormatValue!!
                 },
                 colors =
                     androidx.compose.material3.CardDefaults

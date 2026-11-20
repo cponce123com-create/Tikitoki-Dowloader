@@ -121,6 +121,7 @@ import com.tikitoki.downloader.ui.VideoThumbnail
 import com.tikitoki.downloader.MainNavigationBar
 import com.tikitoki.downloader.COLLECTIONS_TAB
 import com.tikitoki.downloader.ui.AppNavHost
+import com.tikitoki.downloader.ui.MainViewModel
 import com.tikitoki.downloader.ui.NavRoutes
 import com.tikitoki.downloader.ui.rememberAppNavController
 import com.tikitoki.downloader.rememberDiagnosticPicker
@@ -200,44 +201,20 @@ private fun MainNavHost(
     val settings = remember(context) { context.getSharedPreferences("tikitoki_settings", android.content.Context.MODE_PRIVATE) }
     FirstRunNotice(settings)
 
-    // State variables
-    var preferredQuality by remember { mutableStateOf(settings.getString("quality", "Máxima") ?: "Máxima") }
-    var themeChoice by remember { mutableStateOf(settings.getString("theme", "Oscuro") ?: "Oscuro") }
-    var wifiParallel by remember { mutableStateOf(DownloadSettings.wifiLimit(context)) }
-    var meteredParallel by remember { mutableStateOf(DownloadSettings.meteredLimit(context)) }
-    var allowMetered by remember { mutableStateOf(DownloadSettings.allowMetered(context)) }
-    var showProgressNotice by remember { mutableStateOf(DownloadSettings.showProgress(context)) }
-    var completionNotice by remember { mutableStateOf(DownloadSettings.notifyCompletion(context)) }
-    var rateKiB by remember { mutableStateOf(DownloadSettings.rateKiB(context)) }
-    var monitorHours by remember { mutableStateOf(ProfileMonitor.interval(context)) }
-    var monitorPages by remember { mutableStateOf(ProfileMonitor.pageLimit(context)) }
-    var networkSettingsBusy by remember { mutableStateOf(false) }
-    var showClearTemp by remember { mutableStateOf(false) }
-    var showPlayerChoice by remember { mutableStateOf(false) }
-    var showAbout by remember { mutableStateOf(false) }
-    val invalidLinkMessage = stringResource(R.string.media_invalid_link)
-    var downloadFolder by remember { mutableStateOf(settings.getString("download_tree", null)) }
+    // Create and observe MainViewModel
+    val viewModel: MainViewModel = viewModel()
 
-    // The producer assigns value; this Compose lint check does not recognize it with the current Kotlin version.
-    @android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
-    val folderDescription by produceState(initialValue = "Comprobando carpeta…", key1 = downloadFolder) {
-        val tree = downloadFolder
-        value =
-            if (tree == null) {
-                "Descargas/TikitokiDownloader"
-            } else {
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                        val folder = DocumentFile.fromTreeUri(context, Uri.parse(tree))
-                        if (folder != null && folder.exists() && folder.canWrite()) {
-                            folder.name ?: "Carpeta personalizada"
-                        } else {
-                            "Carpeta no disponible. Elige otra ubicación."
-                        }
-                    }.getOrElse { "Carpeta no disponible. Elige otra ubicación." }
-                }
-            }
-    }
+    // Observe ViewModel state for values needed in MainActivity
+    val themeChoice by viewModel.themeChoice.collectAsState()
+    val preferredQuality by viewModel.preferredQuality.collectAsState()
+    val message by viewModel.message.collectAsState()
+    val showClearTemp by viewModel.showClearTemp.collectAsState()
+    val showPlayerChoice by viewModel.showPlayerChoice.collectAsState()
+    val showAbout by viewModel.showAbout.collectAsState()
+    val musicRequestUri by viewModel.musicRequestUri.collectAsState()
+    val musicRequestTitle by viewModel.musicRequestTitle.collectAsState()
+
+    // Folder picker for custom download directory
     val folderPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null) {
@@ -246,93 +223,16 @@ private fun MainNavHost(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                     )
-                    settings.edit().putString("download_tree", uri.toString()).apply()
-                    downloadFolder = uri.toString()
+                    viewModel.onChooseFolder(uri)
                 } catch (
                     e: Exception,
                 ) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     DiagnosticHistory.record(context, e.message)
-                    settings.edit().remove("download_tree").apply()
+                    viewModel.onResetFolder()
                 }
             }
         }
-
-    val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
-    val clipboard = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
-    val source = remember(context) { TikTokVideoSource(context.applicationContext) }
-    val thumbnailResolver = remember(context) { VideoThumbnailResolver(context.applicationContext) }
-    val avatarResolver = remember { ProfileAvatarResolver() }
-    val galleryImageLoader =
-        remember(context) {
-            ImageLoader.Builder(context).components { add(VideoFrameDecoder.Factory()) }.build()
-        }
-    val universalSource = remember(context) { UniversalMediaSource(context.applicationContext) }
-    val profileViewModel: ProfileViewModel = viewModel()
-    val profileState by profileViewModel.state.collectAsState()
-    val dao = remember(context) { DownloadDatabase.get(context).downloads() }
-    val downloadsViewModel: DownloadsViewModel = viewModel()
-    val records by downloadsViewModel.records.collectAsState()
-    val downloadSpeeds by DownloadTelemetry.speeds.collectAsState()
-    val finishedBatches by remember(dao) { dao.observeFinishedBatches() }.collectAsState(initial = emptyList())
-
-    val defaultFormat =
-        remember(preferredQuality) {
-            val selector =
-                when (preferredQuality) {
-                    "720p" -> "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
-                    "480p" -> "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
-                    else -> TikTokVideoSource.DEFAULT_FORMAT
-                }
-            FormatChoice(selector, preferredQuality)
-        }
-    var tab by rememberSaveable { mutableStateOf(0) }
-    var musicRequestUri by rememberSaveable { mutableStateOf<String?>(null) }
-    var musicRequestTitle by rememberSaveable { mutableStateOf("") }
-
-    // Navigation state
-    val navController = rememberAppNavController()
-    var gridMode by rememberSaveable { mutableStateOf(true) }
-    var selectedPlatform by remember { mutableStateOf<String?>("Auto") }
-    var deleteCandidate by remember { mutableStateOf<DownloadRecord?>(null) }
-    var monitorRevision by remember { mutableStateOf(0) }
-    var url by rememberSaveable { mutableStateOf(incomingLink) }
-    var search by rememberSaveable { mutableStateOf("") }
-    var onlyUndownloaded by rememberSaveable { mutableStateOf(false) }
-    var historyFilter by rememberSaveable { mutableStateOf("TODOS") }
-    var libraryKind by rememberSaveable { mutableStateOf("Videos") }
-    var message by remember { mutableStateOf("") }
-    var inspecting by remember { mutableStateOf(false) }
-    var forceRefresh by rememberSaveable { mutableStateOf(false) }
-    var formatsBusy by remember { mutableStateOf(false) }
-    var queueBusy by remember { mutableStateOf(false) }
-    var showQualitySheet by remember { mutableStateOf(false) }
-    var formatError by remember { mutableStateOf(false) }
-    var batchCheckJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    var batchGeneration by remember { mutableStateOf(0) }
-    var batchChecking by remember { mutableStateOf(false) }
-    var batchChecked by remember { mutableStateOf(0) }
-    var batchFailed by remember { mutableStateOf(0) }
-    var batchTotal by remember { mutableStateOf(0) }
-    var batchCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    var rememberFormat by remember { mutableStateOf(false) }
-    val videos = profileState.videos
-    val selected = remember { mutableStateMapOf<String, Boolean>() }
-    var formats by remember { mutableStateOf(listOf(defaultFormat)) }
-    var chosenFormat by remember(defaultFormat) { mutableStateOf(defaultFormat) }
-
-    val diagnosticPicker =
-        rememberDiagnosticPicker {
-            message = context.getString(R.string.diagnostic_error)
-        }
-
-    // Navigation callbacks
-    val onNavigateToDownloads = { navController.navigate(NavRoutes.DOWNLOADS) }
-    val onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) }
-    val onShowClearTemp = { showClearTemp = true }
-    val onShowAbout = { showAbout = true }
 
     // Permission launchers
     val storagePermission =
@@ -340,9 +240,9 @@ private fun MainNavHost(
             ActivityResultContracts.RequestPermission(),
         ) { granted ->
             if (granted) {
-                addToQueue()
+                viewModel.onDownloadSelected(viewModel.selectedVideos.value.keys.toList())
             } else {
-                message = "Android necesita permiso para guardar en Descargas."
+                viewModel.onMessage("Android necesita permiso para guardar en Descargas.")
             }
         }
     val notificationsPermission =
@@ -350,158 +250,25 @@ private fun MainNavHost(
             ActivityResultContracts.RequestPermission(),
         ) { /* Notificaciones opcionales: las descargas siguen aunque se denieguen. */ }
 
-    // Download actions
-    val addToQueue: () -> Unit = {
-        if (!queueBusy && selected.isNotEmpty()) {
-            queueBusy = true
-            val batch = videos.filter { it.id in selected }
-            val formatId = chosenFormat.id
-            scope.launch {
-                try {
-                    val result = DownloadQueue.enqueue(context, batch, formatId)
-                    message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
-                    if (result.added > 0 || result.duplicates > 0) batch.forEach { selected.remove(it.id) }
-                    if (selected.isEmpty()) navController.navigate(NavRoutes.DOWNLOADS)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    message = "No se pudo crear la cola. Inténtalo otra vez."
-                } finally {
-                    queueBusy = false
-                }
-            }
+    val diagnosticPicker =
+        rememberDiagnosticPicker {
+            viewModel.onMessage(context.getString(R.string.diagnostic_error))
         }
-    }
 
-    val requestDownload: () -> Unit = {
-        focusManager.clearFocus()
-        keyboard?.hide()
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-        ) {
-            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        } else {
-            if (Build.VERSION.SDK_INT >= 33 &&
-                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            addToQueue()
-        }
-    }
+    // Navigation
+    val navController = rememberAppNavController()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val clipboard = LocalClipboardManager.current
 
-    val chooseQuality: () -> Unit = {
-        focusManager.clearFocus()
-        keyboard?.hide()
-        val video = selected.keys.firstOrNull()?.let { id -> videos.firstOrNull { it.id == id } }
-        if (video != null) {
-            batchGeneration++
-            batchCheckJob?.cancel()
-            batchChecking = false
-            batchChecked = 0
-            batchFailed = 0
-            batchTotal = 0
-            batchCounts = emptyMap()
-            formatError = false
-            showQualitySheet = true
-            formatsBusy = selected.size == 1
-            formats = if (selected.size == 1) listOf(defaultFormat) else FormatOptions.batch(context)
-            chosenFormat = formats.first()
-            rememberFormat = false
-            scope.launch {
-                try {
-                    if (selected.size == 1) {
-                        val found = if (video.id.contains(":")) universalSource.formats(video) else source.formats(video)
-                        if (found.isEmpty()) throw IllegalStateException("No formats")
-                        formats = found
-                    }
-                    val saved = settings.getString("default_download_format", "video")
-                    chosenFormat =
-                        formats.firstOrNull { DownloadFormatPreference.matches(saved, it.id, it.label, TikTokVideoSource.DEFAULT_FORMAT) }
-                            ?: formats.first()
-                } catch (
-                    e: kotlinx.coroutines.CancellationException,
-                ) {
-                    throw e
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    runCatching { DiagnosticHistory.record(context, e.message) }
-                    message = "No se pudieron cargar las opciones de calidad. Inténtalo otra vez."
-                    formatError = true
-                } finally {
-                    formatsBusy = false
-                }
-            }
-        }
-    }
-
-    val openPlayback: (DownloadRecord) -> Unit = { record ->
-        val saved = record.savedUri
-        if (saved.isNullOrBlank()) {
-            message = "No se encontró la ubicación del archivo."
-        } else {
-            scope.launch {
-                try {
-                    val uri = Uri.parse(saved)
-                    val (mime, name) =
-                        withContext(Dispatchers.IO) {
-                            if (uri.scheme == "content") {
-                                val type = runCatching { context.contentResolver.getType(uri) }.getOrNull()
-                                val displayName =
-                                    runCatching {
-                                        context.contentResolver
-                                            .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-                                            ?.use { if (it.moveToFirst()) it.getString(0) else null }
-                                    }.getOrNull()
-                                type to (displayName ?: uri.lastPathSegment)
-                            } else {
-                                null to uri.lastPathSegment
-                            }
-                        }
-                    if (PlaybackKind.isAudio(record.formatId, mime, name)) {
-                        musicRequestUri = saved
-                        musicRequestTitle = record.title
-                        navController.navigate(NavRoutes.MUSIC)
-                    } else {
-                        context.startActivity(
-                            Intent(context, PlayerActivity::class.java).apply {
-                                data = uri
-                                putExtra("title", record.title)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            },
-                        )
-                    }
-                } catch (
-                    e: kotlinx.coroutines.CancellationException,
-                ) {
-                    throw e
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    runCatching { DiagnosticHistory.record(context, e.message) }
-                    message = "No se pudo abrir el reproductor."
-                }
-            }
-        }
-    }
-
-    // Incoming link handling
+    // Handle incoming links from MainActivity state
     LaunchedEffect(incomingLink, shareRevision) {
-        if (incomingLink.isNotBlank() && (shareRevision > 0 || !profileViewModel.isCurrentLink(incomingLink))) {
-            url = incomingLink
-            profileViewModel.reset()
-            selected.clear()
-            formats = listOf(defaultFormat)
-            chosenFormat = defaultFormat
-            message = ""
-            navController.navigate(NavRoutes.HOME)
+        if (incomingLink.isNotBlank() && (shareRevision > 0 || !viewModel.isCurrentLink(incomingLink))) {
+            viewModel.handleIncomingLink(incomingLink, shareRevision)
         }
     }
-    LaunchedEffect(url) {
-        val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
-        delay(500)
-        if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, false)
-    }
 
-    // Navigation back handler
+    // Back handler for MUSIC and COLLECTIONS routes
     BackHandler(enabled = navController.currentBackStackEntryAsState().value?.destination?.route?.let { it == NavRoutes.MUSIC || it == NavRoutes.COLLECTIONS } == true) {
         navController.popBackStack()
     }
@@ -549,192 +316,30 @@ private fun MainNavHost(
         ) { insets ->
             AppNavHost(
                 navController = navController,
+                viewModel = viewModel,
                 startDestination = NavRoutes.HOME,
-                onNavigateToDownloads = onNavigateToDownloads,
-                onNavigateToSettings = onNavigateToSettings,
-                onShowClearTemp = onShowClearTemp,
-                onShowAbout = onShowAbout,
-                themeChoice = themeChoice,
-                preferredQuality = preferredQuality,
+                // UI callbacks that need Activity context
+                folderPicker = folderPicker,
+                storagePermission = storagePermission,
+                notificationsPermission = notificationsPermission,
+                diagnosticPicker = diagnosticPicker,
                 focusManager = focusManager,
                 keyboard = keyboard,
                 clipboard = clipboard,
+                context = context,
+                settings = settings,
                 incomingLink = incomingLink,
                 shareRevision = shareRevision,
-                context = context,
-            settings = settings,
-            source = source,
-            thumbnailResolver = thumbnailResolver,
-            avatarResolver = avatarResolver,
-            galleryImageLoader = galleryImageLoader,
-            universalSource = universalSource,
-            profileViewModel = profileViewModel,
-            profileState = profileState,
-            dao = dao,
-            downloadsViewModel = downloadsViewModel,
-            records = records,
-            downloadSpeeds = downloadSpeeds,
-            finishedBatches = finishedBatches,
-            scope = scope,
-            folderDescription = folderDescription,
-            downloadFolder = downloadFolder,
-            folderPicker = folderPicker,
-            networkSettingsBusy = networkSettingsBusy,
-            wifiParallel = wifiParallel,
-            meteredParallel = meteredParallel,
-            allowMetered = allowMetered,
-            rateKiB = rateKiB,
-            showProgressNotice = showProgressNotice,
-            completionNotice = completionNotice,
-            monitorHours = monitorHours,
-            monitorPages = monitorPages,
-            libraryKind = libraryKind,
-            url = url,
-            monitorRevision = monitorRevision,
-            message = message,
-            inspecting = inspecting,
-            storagePermission = storagePermission,
-            notificationsPermission = notificationsPermission,
-            diagnosticPicker = diagnosticPicker,
-            deleteCandidate = deleteCandidate,
-            showClearTemp = showClearTemp,
-            showPlayerChoice = showPlayerChoice,
-            showAbout = showAbout,
-            musicRequestUri = musicRequestUri,
-            musicRequestTitle = musicRequestTitle,
-            onMusicRequestConsumed = { musicRequestUri = null },
-            onOpenFile = openPlayback,
-            onDelete = { deleteCandidate = it },
-            onKindChange = { libraryKind = it },
-            onRetryFailed = {
-                scope.launch {
-                    DownloadQueue.retryFailed(context)
-                    navController.navigate(NavRoutes.DOWNLOADS)
-                    message = "Reintentando descargas."
-                }
-            },
-            onClearErrors = { scope.launch { dao.clearFailed() } },
-            onFollowProfile = {
-                if (ProfileMonitor.add(context, url.trim())) {
-                    if (Build.VERSION.SDK_INT >= 33 &&
-                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    monitorRevision++
-                    message = "Perfil agregado al monitoreo."
-                } else {
-                    message = "Pega un enlace válido de perfil en Buscar."
-                }
-            },
-            onUnfollowProfile = { profile ->
-                ProfileMonitor.remove(context, profile)
-                monitorRevision++
-            },
-            onUpdateExtractor = {
-                ExtractorUpdateWorker.updateNow(context)
-                message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
-            },
-            onChooseFolder = { folderPicker.launch(null) },
-            onResetFolder = {
-                settings.edit().remove("download_tree").apply()
-                downloadFolder = null
-            },
-            onMonitorHoursChange = { hours ->
-                monitorHours = hours
-                ProfileMonitor.setInterval(context, hours)
-            },
-            onMonitorPagesChange = { pages ->
-                monitorPages = pages
-                ProfileMonitor.setPageLimit(context, pages)
-            },
-            onWifiChange = {
-                wifiParallel = it.roundToInt().coerceIn(1, 8)
-                settings.edit().putInt("wifi_parallel", wifiParallel).apply()
-            },
-            onMeteredChange = {
-                meteredParallel = it.roundToInt().coerceIn(1, 8)
-                settings.edit().putInt("metered_parallel", meteredParallel).apply()
-            },
-            onAllowMeteredChange = { allowed ->
-                networkSettingsBusy = true
-                scope.launch {
-                    try {
-                        val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
-                        allowMetered = allowed
-                        message =
-                            if (pending) {
-                                "Cola pausada para cambiar la red. Pulsa Continuar en Descargas."
-                            } else {
-                                "Preferencia de red actualizada."
-                            }
-                    } catch (e: Exception) {
-                        if (e is kotlinx.coroutines.CancellationException) throw e
-                        DiagnosticHistory.record(context, e.message)
-                        message = "No se pudo cambiar la preferencia de red."
-                    } finally {
-                        networkSettingsBusy = false
-                    }
-                }
-            },
-            onRateChange = { rate ->
-                rateKiB = rate
-                settings.edit().putInt("rate_kib", rate).apply()
-            },
-            onProgressNoticeChange = {
-                showProgressNotice = it
-                settings.edit().putBoolean("notify_progress_detail", it).apply()
-                if (it &&
-                    Build.VERSION.SDK_INT >= 33 &&
-                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            },
-            onCompletionNoticeChange = {
-                completionNotice = it
-                settings.edit().putBoolean("notify_completion", it).apply()
-                if (it &&
-                    Build.VERSION.SDK_INT >= 33 &&
-                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            },
-            onThemeChange = { option ->
-                themeChoice = option
-                settings.edit().putString("theme", option).apply()
-            },
-            onQualityChange = { option ->
-                preferredQuality = option
-                settings.edit().putString("quality", option).apply()
-            },
-            onSettings = { navController.navigate(NavRoutes.SETTINGS) },
-            onPause = {
-                scope.launch {
-                    downloadsViewModel.pauseQueue()
-                    message = "Cola pausada."
-                }
-            },
-            onResume = {
-                scope.launch {
-                    downloadsViewModel.resumeQueue()
-                    message = "Cola reanudada."
-                }
-            },
-            onCancel = { id ->
-                scope.launch {
-                    downloadsViewModel.cancelDownload(id)
-                    message = "Descarga cancelada."
-                }
-            },
-            onOpenPlayer = { showPlayerChoice = true },
-        )
+                galleryImageLoader = ImageLoader.Builder(context).components { add(VideoFrameDecoder.Factory()) }.build(),
+                thumbnailResolver = thumbnailResolver,
+                avatarResolver = avatarResolver,
+            )
+        }
 
         // Dialogs rendered at the top level (inside Scaffold content)
         if (showAbout) {
             AlertDialog(
-                onDismissRequest = { showAbout = false },
+                onDismissRequest = { viewModel.onShowAboutDismiss() },
                 title = { Text(stringResource(R.string.about_title)) },
                 text = {
                     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -744,7 +349,7 @@ private fun MainNavHost(
                         Text(stringResource(R.string.about_privacy))
                     }
                 },
-                confirmButton = { Button(onClick = { showAbout = false }) { Text(stringResource(R.string.about_close)) } },
+                confirmButton = { Button(onClick = { viewModel.onShowAboutDismiss() }) { Text(stringResource(R.string.about_close)) } },
                 dismissButton = {
                     OutlinedButton(onClick = {
                         runCatching {
@@ -758,146 +363,27 @@ private fun MainNavHost(
         }
         if (showPlayerChoice) {
             AlertDialog(
-                onDismissRequest = { showPlayerChoice = false },
+                onDismissRequest = { viewModel.onShowPlayerChoiceDismiss() },
                 title = { Text("Reproductor") },
                 text = { Text("Elige qué quieres reproducir.") },
                 confirmButton = {
                     Button(onClick = {
-                        showPlayerChoice = false
-                        libraryKind = "Videos"
+                        viewModel.onShowPlayerChoiceDismiss()
+                        viewModel.onLibraryKindChange("Videos")
                         navController.navigate(NavRoutes.LIBRARY)
                     }) { Text("Videos") }
                 },
                 dismissButton = {
                     OutlinedButton(onClick = {
-                        showPlayerChoice = false
+                        viewModel.onShowPlayerChoiceDismiss()
                         navController.navigate(NavRoutes.MUSIC)
                     }) { Text("Música") }
                 },
             )
         }
-        if (showQualitySheet && selected.isNotEmpty()) {
-            val preview = videos.firstOrNull { selected.size == 1 && it.id == selected.keys.first() }
-            ModalBottomSheet(
-                onDismissRequest = {
-                    batchGeneration++
-                    batchCheckJob?.cancel()
-                    batchChecking = false
-                    showQualitySheet = false
-                },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TechBackground,
-            ) {
-                Column(
-                    Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            "Opciones de descarga",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        if (preview != null) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                VideoThumbnail(
-                                    preview,
-                                    thumbnailResolver,
-                                    Modifier.width(144.dp).aspectRatio(
-                                        if (MediaLinkParser.parse(preview.url)?.platform == MediaPlatform.TIKTOK) {
-                                            9f / 16f
-                                        } else {
-                                            16f / 9f
-                                        },
-                                    ),
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        preview.title,
-                                        maxLines = 3,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                    Text("${preview.durationSeconds}s", color = TechMuted)
-                                }
-                            }
-                        }
-                        Text("Formato disponible", style = MaterialTheme.typography.titleMedium)
-                        if (selected.size > 1) {
-                            Text(stringResource(R.string.format_batch_note), color = TechMuted)
-                        }
-                        if (batchChecking) {
-                            CircularProgressIndicator(color = TechPink)
-                        }
-                        if (formatError) {
-                            Text(stringResource(R.string.format_check_failed), color = MaterialTheme.colorScheme.error)
-                        }
-                        Column {
-                            formats.forEach { option ->
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable { chosenFormat = option }
-                                        .padding(vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    RadioButton(
-                                        selected = chosenFormat.id == option.id,
-                                        onClick = { chosenFormat = option },
-                                    )
-                                    Column(Modifier.weight(1f)) {
-                                        Text(option.label)
-                                        if (selected.size > 1 && batchChecked > 0) {
-                                            Text(
-                                                stringResource(R.string.format_check_matches, batchCounts[option.id] ?: 0, batchChecked),
-                                                color = TechMuted,
-                                                style = MaterialTheme.typography.labelSmall,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Checkbox(checked = rememberFormat, onCheckedChange = { rememberFormat = it })
-                        Text("Usar como opción predeterminada")
-                    }
-                    TechPrimaryButton(
-                        "Descargar",
-                        icon = Icons.Outlined.Download,
-                        enabled = !queueBusy && !formatsBusy && !formatError,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            batchGeneration++
-                            batchCheckJob?.cancel()
-                            batchChecking = false
-                            if (rememberFormat) {
-                                val preference = DownloadFormatPreference.fromChoice(chosenFormat.id, chosenFormat.label)
-                                settings.edit().putString("default_download_format", preference).apply()
-                            }
-                            showQualitySheet = false
-                            requestDownload()
-                        },
-                    )
-                    androidx.compose.foundation.layout.Spacer(Modifier.height(18.dp))
-                }
-            }
-        }
-        finishedBatches.firstOrNull()?.let { batch ->
-            FinishedBatchDialog(
-                batch = batch,
-                onDismiss = {},
-                dao = dao,
-            )
-        }
         if (showClearTemp) {
             AlertDialog(
-                onDismissRequest = { showClearTemp = false },
+                onDismissRequest = { viewModel.onShowClearTempDismiss() },
                 title = { Text("Limpiar archivos temporales") },
                 text = {
                     Text(
@@ -906,51 +392,13 @@ private fun MainNavHost(
                 },
                 confirmButton = {
                     Button(onClick = {
-                        showClearTemp = false
-                        scope.launch {
-                            try {
-                                val deleted = DownloadQueue.clearTemporary(context)
-                                message = "Archivos temporales eliminados: $deleted."
-                            } catch (
-                                e: Exception,
-                            ) {
-                                if (e is kotlinx.coroutines.CancellationException) throw e
-                                DiagnosticHistory.record(context, e.message)
-                                message = "No se puede limpiar mientras haya descargas en curso, pendientes o pausadas."
-                            }
-                        }
+                        viewModel.onShowClearTempDismiss()
+                        viewModel.onClearTemporary()
                     }) { Text("Limpiar") }
                 },
-                dismissButton = { OutlinedButton(onClick = { showClearTemp = false }) { Text("Cancelar") } },
+                dismissButton = { OutlinedButton(onClick = { viewModel.onShowClearTempDismiss() }) { Text("Cancelar") } },
             )
         }
-        deleteCandidate?.let { item ->
-            AlertDialog(
-                onDismissRequest = { deleteCandidate = null },
-                title = { Text("Eliminar video") },
-                text = { Text("¿Eliminar este video del dispositivo y del historial de Baja.pe? Esta acción no se puede deshacer.") },
-                confirmButton = {
-                    Button(onClick = {
-                        deleteCandidate = null
-                        scope.launch {
-                            try {
-                                message =
-                                    when (DownloadQueue.deleteCompleted(context, item.videoId)) {
-                                        DeleteCompletedResult.DELETED -> "Video eliminado del dispositivo y del historial."
-                                        DeleteCompletedResult.FILE_MISSING -> "El archivo ya no existía. Se eliminó del historial."
-                                        DeleteCompletedResult.FAILED -> "No se pudo eliminar el archivo. El registro se conserva."
-                                    }
-                            } catch (e: Exception) {
-                                if (e is kotlinx.coroutines.CancellationException) throw e
-                                message = "No se pudo eliminar el archivo. Comprueba que siga disponible."
-                            }
-                        }
-                    }) { Text("Eliminar") }
-                },
-                dismissButton = { OutlinedButton(onClick = { deleteCandidate = null }) { Text("Cancelar") } },
-            )
-        }
-    }
     }
 }
 
@@ -960,29 +408,6 @@ private fun FirstRunNotice(settings: android.content.SharedPreferences) {
     if (!hasRun) {
         LaunchedEffect(Unit) {
             settings.edit().putBoolean("has_run", true).apply()
-        }
-    }
-}
-
-@Composable
-private fun SummaryTile(label: String, value: Int, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .background(TechPanel),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, TechBorder),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(label, color = TechMuted, style = MaterialTheme.typography.labelSmall)
-            Text(value.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
     }
 }
