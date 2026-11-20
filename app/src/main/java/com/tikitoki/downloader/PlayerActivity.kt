@@ -1,12 +1,14 @@
 package com.tikitoki.downloader
 
 import com.tikitoki.downloader.data.DiagnosticHistory
-import android.content.ComponentName
 import android.content.pm.ActivityInfo
-import android.widget.Button
-import android.view.View
+import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
+import android.os.Looper
+import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -14,25 +16,38 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.core.content.ContextCompat
+import androidx.annotation.OptIn
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.ui.PlayerView
-import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
+/**
+ * Video player activity using local ExoPlayer for proper video rendering.
+ * Uses its own player instance instead of the audio-only PlaybackService.
+ */
+@OptIn(UnstableApi::class)
 class PlayerActivity : ComponentActivity() {
-    private var controllerFuture: ListenableFuture<MediaController>? = null
     private lateinit var playerView: PlayerView
+    private var player: ExoPlayer? = null
     private var currentUri: String? = null
-    private var activeController: MediaController? = null
+    private var playbackJob: Job? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,11 +55,15 @@ class PlayerActivity : ComponentActivity() {
         if (uri == null || uri.scheme !in setOf("content", "file")) { finish(); return }
         val title = intent.getStringExtra("title").orEmpty().ifBlank { "Reproducción" }
         currentUri = uri.toString()
+
         playerView = PlayerView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             setBackgroundColor(android.graphics.Color.BLACK)
             useController = true
+            // Ensure video surface is used
+            surfaceType = PlayerView.SURFACE_TYPE_SURFACE_VIEW
         }
+
         val mint = Color.rgb(67, 230, 161)
         fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
         fun panel(colors: IntArray, border: Int, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors).apply {
@@ -59,18 +78,19 @@ class PlayerActivity : ComponentActivity() {
         val speed = Button(this).apply {
             text = "Velocidad 1x"
             setOnClickListener {
-                val player = activeController ?: return@setOnClickListener
+                val p = player ?: return@setOnClickListener
                 val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
-                val index = speeds.indexOf(player.playbackParameters.speed).let { if (it < 0) 2 else it }
+                val index = speeds.indexOf(p.playbackParameters.speed).let { if (it < 0) 2 else it }
                 val next = speeds[(index + 1) % speeds.size]
-                player.setPlaybackSpeed(next)
+                p.setPlaybackSpeed(next)
                 text = "Velocidad ${next}x"
             }
         }
         val rotate = Button(this).apply {
             text = "Girar pantalla"
             setOnClickListener {
-                requestedOrientation = if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                requestedOrientation = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             }
         }
         val fullScreen = Button(this).apply {
@@ -115,52 +135,65 @@ class PlayerActivity : ComponentActivity() {
         }
         setContentView(root)
         ViewCompat.requestApplyInsets(root)
-        val token = SessionToken(this, ComponentName(this, PlaybackService::class.java))
-        val future = MediaController.Builder(this, token).buildAsync()
-        controllerFuture = future
-        future.addListener({
-            if (!isFinishing && !isDestroyed) {
-                try {
-                    val controller = future.get()
-                    activeController = controller
-                    speed.text = "Velocidad ${controller.playbackParameters.speed}x"
-                    playerView.player = controller
-                    controller.addListener(object : Player.Listener {
-                        override fun onPlayerError(error: PlaybackException) {
-                            Toast.makeText(this@PlayerActivity, "No se pudo reproducir el archivo.", Toast.LENGTH_LONG).show()
-                        }
-                    })
-                    if (controller.currentMediaItem?.mediaId != "video:$uri") {
-                        val metadata = MediaMetadata.Builder().setTitle(title).build()
-                        controller.setMediaItem(MediaItem.Builder().setMediaId("video:$uri").setUri(uri).setMediaMetadata(metadata).build())
-                        controller.prepare()
-                        val position = getSharedPreferences("playback_positions", MODE_PRIVATE).getLong(uri.toString(), 0L)
-                        if (position > 0) controller.seekTo(position)
-                        controller.play()
-                    }
-                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; DiagnosticHistory.record(this@PlayerActivity, e.message);
-                    Toast.makeText(this, "No se pudo abrir el reproductor.", Toast.LENGTH_LONG).show()
-                }
+
+        // Initialize ExoPlayer with video renderers
+        val renderersFactory = DefaultRenderersFactory(this)
+        player = ExoPlayer.Builder(this, renderersFactory)
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(10_000)
+            .build().apply {
+                setAudioAttributes(AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build(), true)
+                setHandleAudioBecomingNoisy(true)
             }
-        }, ContextCompat.getMainExecutor(this))
+
+        playerView.player = player
+
+        player?.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("PlayerActivity", "Playback error", error)
+                runOnUiThread { Toast.makeText(this@PlayerActivity, "No se pudo reproducir el archivo.", Toast.LENGTH_LONG).show() }
+            }
+        })
+
+        // Prepare and play
+        val mediaItem = MediaItem.Builder()
+            .setMediaId("video:$uri")
+            .setUri(uri)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
+            .build()
+        player?.setMediaItem(mediaItem)
+        player?.prepare()
+
+        // Restore position
+        val position = getSharedPreferences("playback_positions", MODE_PRIVATE).getLong(uri.toString(), 0L)
+        if (position > 0) {
+            player?.seekTo(position)
+        }
+        player?.playWhenReady = true
     }
 
     override fun onStop() {
-        val player = activeController
+        super.onStop()
+        val p = player
         val key = currentUri
-        if (player != null && key != null && player.currentMediaItem?.mediaId == "video:$key") {
-            val remaining = if (player.duration > 0) player.duration - player.currentPosition else Long.MAX_VALUE
-            val position = if (remaining < 3000) 0L else player.currentPosition.coerceAtLeast(0L)
+        if (p != null && key != null) {
+            val remaining = if (p.duration > 0) p.duration - p.currentPosition else Long.MAX_VALUE
+            val position = if (remaining < 3000) 0L else p.currentPosition.coerceAtLeast(0L)
             getSharedPreferences("playback_positions", MODE_PRIVATE).edit().putLong(key, position).apply()
         }
-        super.onStop()
     }
 
     override fun onDestroy() {
-        activeController = null
-        playerView.player = null
-        controllerFuture?.let { MediaController.releaseFuture(it) }
-        controllerFuture = null
+        playbackJob?.cancel()
+        scope.coroutineContext.cancel()
+        player?.run {
+            playerView.player = null
+            release()
+        }
+        player = null
         super.onDestroy()
     }
 }
