@@ -38,7 +38,7 @@ class DownloadInputPolicyTest {
             collection = false,
         )
         assertNotNull(result)
-        assertTrue(result.contains("dQw4w9WgXcQ"))
+        assertTrue(result!!.contains("dQw4w9WgXcQ"))
     }
 
     @Test
