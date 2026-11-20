@@ -282,6 +282,19 @@ export KEY_PASSWORD=***
 
 **APKs firmados**: `app/build/outputs/apk/release/` (arm64-v8a, armeabi-v7a)
 
+#### Versionado y publicación
+
+La fuente única de versión está en `[versions]` de `gradle/libs.versions.toml`: aumenta `appVersion` y `appVersionCode` en cada release; el código Android debe ser mayor que el de todos los tags de release anteriores. Actualiza también el `CHANGELOG.md`.
+
+Antes de crear el tag, valida el estado local con:
+
+```bash
+git fetch --tags origin
+python3 scripts/verify_release_version.py vMAJOR.MINOR.PATCH
+```
+
+Cuando las verificaciones pasen, crea y publica un tag que coincida exactamente con `appVersion`, por ejemplo `v0.5.1`. El workflow vuelve a comprobar el tag y que `appVersionCode` avance antes de firmar; no reutilices tags/versiones publicados.
+
 ### 4. Ejecutar Tests
 
 ```bash

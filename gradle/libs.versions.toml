@@ -9,6 +9,8 @@ kotlin = "2.0.21"
 ksp = "2.0.21-1.0.28"
 gradle = "9.3.1"
 jdk = "17"
+appVersion = "0.5.0"
+appVersionCode = "5"
 
 # Android SDK
 compileSdk = "36"
