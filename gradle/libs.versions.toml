@@ -50,6 +50,7 @@ youtubedlAndroid = "0.18.1"
 
 # Testing
 junit = "4.13.2"
+jsonJvm = "20250517"
 androidxTestJunit = "1.2.1"
 androidxTestRunner = "1.6.2"
 androidxRoomTesting = "2.7.2"
@@ -156,6 +157,7 @@ youtubedlAndroidFfmpeg = { module = "io.github.junkfood02.youtubedl-android:ffmp
 
 # Testing
 junit = { module = "junit:junit", version.ref = "junit" }
+jsonJvm = { module = "org.json:json", version.ref = "jsonJvm" }
 androidxTestJunit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
 androidxTestRunner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 androidxComposeUiTestJunit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidxComposeUiTestJunit4" }

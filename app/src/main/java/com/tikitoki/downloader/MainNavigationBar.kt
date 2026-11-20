@@ -55,8 +55,8 @@ internal fun MainNavigationBar(
             names.forEachIndexed { index, name ->
                 NavigationBarItem(
                     selected =
-                            selectedTab == index ||
-                            (selectedTab == 6 && index == 3) ||
+                        selectedTab == index ||
+                            (selectedTab == MUSIC_TAB && index == TOOLS_TAB) ||
                             (selectedTab == COLLECTIONS_TAB && index == 2) ||
                             (selectedTab == ROCKOLA_TAB && index == 5),
                     onClick = { if (index == 5) onRockola() else onNavigate(index) },
@@ -82,5 +82,8 @@ internal fun MainNavigationBar(
     }
 }
 
+internal const val TOOLS_TAB = 3
+internal const val SETTINGS_TAB = 5
+internal const val MUSIC_TAB = 6
 internal const val COLLECTIONS_TAB = 7
 internal const val ROCKOLA_TAB = 8

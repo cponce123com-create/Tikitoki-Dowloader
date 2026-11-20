@@ -38,8 +38,16 @@ import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.ui.TechBackground
 import com.tikitoki.downloader.ui.TechMuted
 
+internal const val PORTRAIT_VIDEO_RATIO = 9f / 16f
+internal const val LANDSCAPE_VIDEO_RATIO = 16f / 9f
+
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("ktlint:standard:function-naming")
+@Suppress(
+    "ktlint:standard:function-naming",
+    "LongMethod",
+    "LongParameterList",
+    "TooGenericExceptionCaught",
+)
 @Composable
 internal fun AppDialogs(
     context: Context,
@@ -72,7 +80,10 @@ internal fun AppDialogs(
             onDismissRequest = onDismissAbout,
             title = { Text(stringResource(R.string.about_title)) },
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     Text(stringResource(R.string.about_description))
                     Text(stringResource(R.string.about_license))
                     Text(stringResource(R.string.about_credits))
@@ -131,7 +142,13 @@ internal fun AppDialogs(
                                 preview,
                                 thumbnailResolver,
                                 Modifier.width(144.dp).aspectRatio(
-                                    if (MediaLinkParser.parse(preview.url)?.platform == MediaPlatform.TIKTOK) 9f / 16f else 16f / 9f,
+                                    if (MediaLinkParser.parse(preview.url)?.platform ==
+                                        MediaPlatform.TIKTOK
+                                    ) {
+                                        PORTRAIT_VIDEO_RATIO
+                                    } else {
+                                        LANDSCAPE_VIDEO_RATIO
+                                    },
                                 ),
                             )
                             Column(Modifier.weight(1f)) {
@@ -169,10 +186,18 @@ internal fun AppDialogs(
                         SummaryTile("Errores", batch.failed, Modifier.weight(1f))
                     }
                     if (batch.cancelled > 0) {
-                        Text("Cancelados: ${batch.cancelled}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "Cancelados: ${batch.cancelled}",
+                            color = TechMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                     if (batch.duplicates > 0) {
-                        Text("Duplicados omitidos: ${batch.duplicates}", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "Duplicados omitidos: ${batch.duplicates}",
+                            color = TechMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             },
@@ -185,7 +210,8 @@ internal fun AppDialogs(
             title = { Text("Limpiar archivos temporales") },
             text = {
                 Text(
-                    "Se borrarán solo los archivos temporales de Baja.pe. Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan.",
+                    "Se borrarán solo los archivos temporales de Baja.pe. " +
+                        "Los fragmentos guardados para reanudar podrían perderse. Los videos descargados se conservan.",
                 )
             },
             confirmButton = { Button(onClick = onClearTemporary) { Text("Limpiar") } },
@@ -196,7 +222,12 @@ internal fun AppDialogs(
         AlertDialog(
             onDismissRequest = onDismissDelete,
             title = { Text("Eliminar video") },
-            text = { Text("¿Eliminar este video del dispositivo y del historial de Baja.pe? Esta acción no se puede deshacer.") },
+            text = {
+                Text(
+                    "¿Eliminar este video del dispositivo y del historial de Baja.pe? " +
+                        "Esta acción no se puede deshacer.",
+                )
+            },
             confirmButton = { Button(onClick = { onDelete(item) }) { Text("Eliminar") } },
             dismissButton = { OutlinedButton(onClick = onDismissDelete) { Text("Cancelar") } },
         )

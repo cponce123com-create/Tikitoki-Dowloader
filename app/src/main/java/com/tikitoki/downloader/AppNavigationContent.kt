@@ -81,6 +81,7 @@ import com.tikitoki.downloader.data.ProfileMonitor
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
+import com.tikitoki.downloader.data.rethrowIfFatal
 import com.tikitoki.downloader.domain.DownloadIdentity
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaLinkParser
@@ -106,6 +107,9 @@ import kotlin.math.roundToInt
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 import androidx.compose.foundation.lazy.grid.items as gridItems
+
+private const val PLAYLIST_PREVIEW_LIMIT = 35
+private const val MAX_PARALLEL_DOWNLOADS = 8
 
 internal class AppMutableValue<T>(
     private val read: () -> T,
@@ -186,7 +190,12 @@ internal data class AppNavigationState(
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@Suppress("ktlint:standard:function-naming")
+@Suppress(
+    "ktlint:standard:function-naming",
+    "LongMethod",
+    "CyclomaticComplexMethod",
+    "TooGenericExceptionCaught",
+)
 @Composable
 internal fun AppNavigationContent(state: AppNavigationState) {
     var tab by state.tab
@@ -308,7 +317,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        TechHeader(onSettings = { tab = 5 })
+                        TechHeader(onSettings = { tab = SETTINGS_TAB })
 
                         HomeLinkInput(
                             selectedPlatform = selectedPlatform,
@@ -317,7 +326,14 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             loadingMore = profileState.loadingMore,
                             onPlatformChange = { selectedPlatform = it },
                             onUrlChange = {
-                                val extracted = if (it.length - url.length > 1) IncomingLinkValidator.extractFirstHttps(it) else null
+                                val extracted =
+                                    if (it.length - url.length >
+                                        1
+                                    ) {
+                                        IncomingLinkValidator.extractFirstHttps(it)
+                                    } else {
+                                        null
+                                    }
                                 url = extracted?.url ?: it
                                 profileViewModel.reset()
                                 selected.clear()
@@ -331,7 +347,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                 focusManager.clearFocus()
                                 keyboard?.hide()
                                 val pasted = clipboard.getText()?.text.orEmpty()
-                                val link = IncomingLinkValidator.validate(pasted) ?: IncomingLinkValidator.extractFirstHttps(pasted)
+                                val link =
+                                    IncomingLinkValidator.validate(pasted)
+                                        ?: IncomingLinkValidator.extractFirstHttps(pasted)
                                 if (link != null) {
                                     url = link.url
                                     profileViewModel.reset()
@@ -345,7 +363,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             onAnalyze = {
                                 focusManager.clearFocus()
                                 keyboard?.hide()
-                                when (val parsed = IncomingLinkValidator.validate(url)) {
+                                when (IncomingLinkValidator.validate(url)) {
                                     null -> message = invalidLinkMessage
                                     else -> {
                                         selected.clear()
@@ -359,14 +377,20 @@ internal fun AppNavigationContent(state: AppNavigationState) {
 
                         // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
-                            AnalysisAnimation(found = videos.size, scanning = profileState.countingTotal || profileState.loadingMore)
+                            AnalysisAnimation(
+                                found = videos.size,
+                                scanning =
+                                    profileState.countingTotal || profileState.loadingMore,
+                            )
                         }
                         if (queueBusy) CircularProgressIndicator()
                         profileState.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
                                 if (profileState.hasMore && !profileState.countingTotal) {
-                                    OutlinedButton(onClick = { profileViewModel.resumeScan() }) { Text("↻ Reanudar escaneo") }
+                                    OutlinedButton(
+                                        onClick = { profileViewModel.resumeScan() },
+                                    ) { Text("↻ Reanudar escaneo") }
                                 }
                                 if (profileState.incompletePage && !profileState.countingTotal) {
                                     OutlinedButton(
@@ -394,7 +418,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
                                         Box(
-                                            Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(TechGradient),
+                                            Modifier
+                                                .size(
+                                                    34.dp,
+                                                ).clip(RoundedCornerShape(17.dp))
+                                                .background(TechGradient),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             if (profileState.profileImage != null) {
@@ -413,7 +441,12 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                     loading = { Text("@", fontSize = 18.sp, color = Color.White) },
                                                 )
                                             } else {
-                                                Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    "@",
+                                                    fontSize = 18.sp,
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                )
                                             }
                                         }
                                         Column(Modifier.weight(1f)) {
@@ -422,7 +455,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                     .substringAfter("tiktok.com/")
                                                     .substringBefore("?")
                                                     .substringBefore("/video/")
-                                                    .take(35)
+                                                    .take(PLAYLIST_PREVIEW_LIMIT)
                                                     .ifBlank { selectedPlatform ?: "Perfil" },
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color.White,
@@ -448,7 +481,10 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     ) {
                                         listOf(
                                             stringResource(R.string.home_detected) to
-                                                (profileState.totalVideos?.toString() ?: if (profileState.countingTotal) "…" else "—"),
+                                                (
+                                                    profileState.totalVideos?.toString()
+                                                        ?: if (profileState.countingTotal) "…" else "—"
+                                                ),
                                             stringResource(R.string.home_loaded) to videos.size.toString(),
                                             stringResource(R.string.home_selected) to selected.size.toString(),
                                         ).forEach { (label, value) ->
@@ -479,7 +515,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
                                     onClick = chooseQuality,
                                 ) {
-                                    Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Outlined.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                     Spacer(Modifier.width(4.dp))
                                     Text("Descargar ${selected.size}", maxLines = 1)
                                 }
@@ -498,14 +538,25 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         keyboard?.hide()
                                     }),
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 FilterChip(
                                     selected = onlyUndownloaded,
                                     onClick = { onlyUndownloaded = !onlyUndownloaded },
                                     label = { Text("Pendientes") },
                                 )
-                                FilterChip(selected = gridMode, onClick = { gridMode = true }, label = { Text("Cuadrícula") })
-                                FilterChip(selected = !gridMode, onClick = { gridMode = false }, label = { Text("Lista") })
+                                FilterChip(
+                                    selected = gridMode,
+                                    onClick = { gridMode = true },
+                                    label = { Text("Cuadrícula") },
+                                )
+                                FilterChip(
+                                    selected = !gridMode,
+                                    onClick = { gridMode = false },
+                                    label = { Text("Lista") },
+                                )
                             }
                         }
                     }
@@ -529,9 +580,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         if (MediaLinkParser.parse(video.url)?.platform ==
                                             MediaPlatform.TIKTOK
                                         ) {
-                                            9f / 16f
+                                            PORTRAIT_VIDEO_RATIO
                                         } else {
-                                            16f / 9f
+                                            LANDSCAPE_VIDEO_RATIO
                                         },
                                     ),
                                 ) {
@@ -570,9 +621,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         if (MediaLinkParser.parse(video.url)?.platform ==
                                             MediaPlatform.TIKTOK
                                         ) {
-                                            9f / 16f
+                                            PORTRAIT_VIDEO_RATIO
                                         } else {
-                                            16f / 9f
+                                            LANDSCAPE_VIDEO_RATIO
                                         },
                                     ),
                                 ) {
@@ -692,9 +743,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                TechHeader(onSettings = { tab = 5 })
+                TechHeader(onSettings = { tab = SETTINGS_TAB })
                 when (tab) {
-                    6 ->
+                    MUSIC_TAB ->
                         MusicScreen(
                             requestedUri = musicRequestUri,
                             requestedTitle = musicRequestTitle,
@@ -718,7 +769,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                 }
                             },
                         )
-                    3 -> {
+                    TOOLS_TAB -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
                         ToolsScreen(
                             monitored = monitored,
@@ -756,7 +807,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             },
                         )
                     }
-                    5 -> {
+                    SETTINGS_TAB -> {
                         SettingsGeneralSection(
                             monitorHours = monitorHours,
                             monitorPages = monitorPages,
@@ -764,7 +815,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             hasCustomFolder = downloadFolder != null,
                             message = message,
                             onAbout = { showAbout = true },
-                            onExportDiagnostic = { onExportDiagnostic(context.getString(R.string.diagnostic_filename)) },
+                            onExportDiagnostic = {
+                                onExportDiagnostic(
+                                    context.getString(R.string.diagnostic_filename),
+                                )
+                            },
                             onMonitorHoursChange = { hours ->
                                 monitorHours = hours
                                 ProfileMonitor.setInterval(context, hours)
@@ -804,11 +859,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             showProgressNotice = showProgressNotice,
                             completionNotice = completionNotice,
                             onWifiChange = {
-                                wifiParallel = it.roundToInt().coerceIn(1, 8)
+                                wifiParallel = it.roundToInt().coerceIn(1, MAX_PARALLEL_DOWNLOADS)
                                 settings.edit().putInt("wifi_parallel", wifiParallel).apply()
                             },
                             onMeteredChange = {
-                                meteredParallel = it.roundToInt().coerceIn(1, 8)
+                                meteredParallel = it.roundToInt().coerceIn(1, MAX_PARALLEL_DOWNLOADS)
                                 settings.edit().putInt("metered_parallel", meteredParallel).apply()
                             },
                             onAllowMeteredChange = { allowed ->
@@ -824,7 +879,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                 "Preferencia de red actualizada."
                                             }
                                     } catch (e: Exception) {
-                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        rethrowIfFatal(e)
                                         DiagnosticHistory.record(context, e.message)
                                         message = "No se pudo cambiar la preferencia de red."
                                     } finally {
@@ -881,7 +936,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             shape = RoundedCornerShape(18.dp),
                         ) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Carpeta de descarga", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "Carpeta de descarga",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
                                 Text(folderDescription, color = TechMuted)
                                 OutlinedButton(onClick = {
                                     try {
@@ -899,19 +958,24 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                 )
                                         context.startActivity(
                                             Intent(Intent.ACTION_VIEW).apply {
-                                                setDataAndType(folder, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                                                setDataAndType(
+                                                    folder,
+                                                    android.provider.DocumentsContract.Document.MIME_TYPE_DIR,
+                                                )
                                                 addFlags(
-                                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                                                 )
                                             },
                                         )
                                     } catch (
                                         e: Exception,
                                     ) {
-                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                        rethrowIfFatal(e)
                                         DiagnosticHistory.record(context, e.message)
                                         message =
-                                            "No se pudo abrir la carpeta. Busca $folderDescription en tu administrador de archivos."
+                                            "No se pudo abrir la carpeta. " +
+                                            "Busca $folderDescription en tu administrador de archivos."
                                     }
                                 }) { Text("Abrir carpeta de Baja.pe") }
                             }

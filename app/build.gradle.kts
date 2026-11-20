@@ -133,6 +133,7 @@ dependencies {
 
     debugImplementation(libs.androidxComposeUiTooling)
     testImplementation(libs.junit)
+    testImplementation(libs.jsonJvm)
     testImplementation(libs.kotlinxCoroutinesTest)
     androidTestImplementation(libs.androidxTestJunit)
     androidTestImplementation(libs.androidxTestRunner)
