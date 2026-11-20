@@ -19,7 +19,7 @@ targetSdk = "36"
 
 # AndroidX Libraries
 androidxCoreKtx = "1.15.0"
-androidxCoreSplashscreen = "1.0.1"
+androidxCoreSplashscreen = "1.2.0"
 androidxDocumentfile = "1.0.1"
 androidxLifecycleRuntimeKtx = "2.8.7"
 androidxLifecycleViewmodelCompose = "2.8.7"
