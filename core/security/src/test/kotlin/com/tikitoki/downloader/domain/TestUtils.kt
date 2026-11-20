@@ -19,10 +19,10 @@ object TestUtils {
     fun createTestMediaLink(
         url: String = TIKTOK_URL_VIDEO,
         platform: MediaPlatform = MediaPlatform.TIKTOK,
-        title: String = "Test Video",
+        collection: Boolean = false,
     ): MediaLink = MediaLink(
         url = url,
         platform = platform,
-        title = title,
+        collection = collection,
     )
 }

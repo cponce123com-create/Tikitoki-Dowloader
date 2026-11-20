@@ -16,38 +16,38 @@ class IncomingLinkValidatorTest {
     fun `validates TikTok video URL`() {
         val result = IncomingLinkValidator.validate(TestUtils.TIKTOK_URL_VIDEO)
         assertNotNull(result)
-        assertEquals(MediaPlatform.TIKTOK, result.platform)
-        assertEquals(TestUtils.TIKTOK_URL_VIDEO, result.url)
+        assertEquals(MediaPlatform.TIKTOK, result!!.platform)
+        assertEquals(TestUtils.TIKTOK_URL_VIDEO, result!!.url)
     }
 
     @Test
     fun `validates TikTok profile URL`() {
         val result = IncomingLinkValidator.validate(TestUtils.TIKTOK_URL_PROFILE)
         assertNotNull(result)
-        assertEquals(MediaPlatform.TIKTOK, result.platform)
-        assertEquals(TestUtils.TIKTOK_URL_PROFILE, result.url)
+        assertEquals(MediaPlatform.TIKTOK, result!!.platform)
+        assertEquals(TestUtils.TIKTOK_URL_PROFILE, result!!.url)
     }
 
     @Test
     fun `validates TikTok share URL`() {
         val result = IncomingLinkValidator.validate(TestUtils.TIKTOK_URL_SHARE)
         assertNotNull(result)
-        assertEquals(MediaPlatform.TIKTOK, result.platform)
+        assertEquals(MediaPlatform.TIKTOK, result!!.platform)
     }
 
     @Test
     fun `validates YouTube video URL`() {
         val result = IncomingLinkValidator.validate(TestUtils.YOUTUBE_URL_VIDEO)
         assertNotNull(result)
-        assertEquals(MediaPlatform.YOUTUBE, result.platform)
-        assertEquals(TestUtils.YOUTUBE_URL_VIDEO, result.url)
+        assertEquals(MediaPlatform.YOUTUBE, result!!.platform)
+        assertEquals(TestUtils.YOUTUBE_URL_VIDEO, result!!.url)
     }
 
     @Test
     fun `validates YouTube short URL`() {
         val result = IncomingLinkValidator.validate(TestUtils.YOUTUBE_URL_SHORT)
         assertNotNull(result)
-        assertEquals(MediaPlatform.YOUTUBE, result.platform)
+        assertEquals(MediaPlatform.YOUTUBE, result!!.platform)
     }
 
     @Test
@@ -73,7 +73,7 @@ class IncomingLinkValidatorTest {
         val text = "Check this out ${TestUtils.TIKTOK_URL_VIDEO} and also ${TestUtils.YOUTUBE_URL_VIDEO}"
         val result = IncomingLinkValidator.extractFirstHttps(text)
         assertNotNull(result)
-        assertEquals(TestUtils.TIKTOK_URL_VIDEO, result.url)
+        assertEquals(TestUtils.TIKTOK_URL_VIDEO, result!!.url)
     }
 
     @Test
@@ -88,6 +88,6 @@ class IncomingLinkValidatorTest {
         val result = IncomingLinkValidator.validate(urlWithTracking)
         assertNotNull(result)
         // Should strip tracking parameters
-        assertTrue(!result.url.contains("utm_source"))
+        assertTrue(!result!!.url.contains("utm_source"))
     }
 }

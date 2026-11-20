@@ -37,12 +37,24 @@ object MediaLinkParser {
             MediaPlatform.INSTAGRAM -> path.matches(Regex("^/[A-Za-z0-9._]+/?$"))
             else -> false
         }
-        // URI(text) has already validated the syntax. Preserve percent-encoding without
-        // double-escaping, and still fail closed if canonical reconstruction fails.
+        val normalizedQuery = uri.rawQuery
+            ?.split('&')
+            ?.filter { it.isNotEmpty() }
+            ?.filterNot { parameter ->
+                val name = parameter.substringBefore('=').lowercase(Locale.ROOT)
+                name.startsWith("utm_") || name in setOf("fbclid", "gclid", "_r", "_t")
+            }
+            ?.takeIf { it.isNotEmpty() }
+            ?.joinToString("&")
+
+        // URI(text) has already validated the syntax. Preserve remaining percent-encoding
+        // without double-escaping, and fail closed if canonical reconstruction fails.
         val normalized = runCatching {
-            URI.create("https://" + host + uri.rawPath.orEmpty().ifEmpty { "/" } + (uri.rawQuery?.let { "?$it" } ?: "")).toASCIIString()
+            URI.create(
+                "https://" + host + uri.rawPath.orEmpty().ifEmpty { "/" } +
+                    (normalizedQuery?.let { "?$it" } ?: "")
+            ).toASCIIString()
         }.getOrNull() ?: return null
         return MediaLink(normalized, platform, collection)
     }
 }
-

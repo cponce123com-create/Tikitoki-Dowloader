@@ -50,7 +50,7 @@ class MetadataSanitizerTest {
     }
 
     @Test
-    fun `title removes line/paragraph separators`() {
+    fun `title removes line and paragraph separators`() {
         val input = "Line1 Line2 Paragraph"
         val result = MetadataSanitizer.title(input)
         assertEquals("Line1Line2Paragraph", result)
