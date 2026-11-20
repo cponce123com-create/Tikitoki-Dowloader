@@ -8,7 +8,10 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -53,7 +56,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,8 +68,6 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -72,10 +75,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.DownloadDao
 import com.tikitoki.downloader.data.DownloadQueue
 import com.tikitoki.downloader.data.DownloadRecord
+import com.tikitoki.downloader.data.DownloadSelection
 import com.tikitoki.downloader.data.DownloadState
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.ProfileAvatarResolver
@@ -91,6 +97,7 @@ import com.tikitoki.downloader.domain.MediaPlatform
 import com.tikitoki.downloader.domain.PlaybackKind
 import com.tikitoki.downloader.ui.AnalysisAnimation
 import com.tikitoki.downloader.ui.DownloadsViewModel
+import com.tikitoki.downloader.ui.MainViewModel
 import com.tikitoki.downloader.ui.MusicScreen
 import com.tikitoki.downloader.ui.ProfileUiState
 import com.tikitoki.downloader.ui.ProfileViewModel
@@ -103,94 +110,21 @@ import com.tikitoki.downloader.ui.TechHeader
 import com.tikitoki.downloader.ui.TechMuted
 import com.tikitoki.downloader.ui.TechPanel
 import com.tikitoki.downloader.ui.TechPink
-import com.tikitoki.downloader.ui.rockolaVideoId
+import com.tikitoki.downloader.ui.TechPurple
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 private const val PLAYLIST_PREVIEW_LIMIT = 35
 private const val MAX_PARALLEL_DOWNLOADS = 8
-
-internal class AppMutableValue<T>(
-    private val read: () -> T,
-    private val write: (T) -> Unit,
-) : ReadWriteProperty<Any?, T> {
-    override fun getValue(
-        thisRef: Any?,
-        property: KProperty<*>,
-    ): T = read()
-
-    override fun setValue(
-        thisRef: Any?,
-        property: KProperty<*>,
-        value: T,
-    ) {
-        write(value)
-    }
-}
-
-internal data class AppNavigationState(
-    val context: Context,
-    val settings: SharedPreferences,
-    val tab: AppMutableValue<Int>,
-    val musicRequestUri: AppMutableValue<String?>,
-    val musicRequestTitle: AppMutableValue<String>,
-    val gridMode: AppMutableValue<Boolean>,
-    val selectedPlatform: AppMutableValue<String?>,
-    val deleteCandidate: AppMutableValue<DownloadRecord?>,
-    val monitorRevision: AppMutableValue<Int>,
-    val url: AppMutableValue<String>,
-    val search: AppMutableValue<String>,
-    val onlyUndownloaded: AppMutableValue<Boolean>,
-    val libraryKind: AppMutableValue<String>,
-    val message: AppMutableValue<String>,
-    val forceRefresh: AppMutableValue<Boolean>,
-    val qualityVideos: AppMutableValue<List<VideoEntry>>,
-    val showAbout: AppMutableValue<Boolean>,
-    val showPlayerChoice: AppMutableValue<Boolean>,
-    val monitorHours: AppMutableValue<Int>,
-    val monitorPages: AppMutableValue<Int>,
-    val preferredQuality: AppMutableValue<String>,
-    val themeChoice: AppMutableValue<String>,
-    val downloadFolder: AppMutableValue<String?>,
-    val wifiParallel: AppMutableValue<Int>,
-    val meteredParallel: AppMutableValue<Int>,
-    val allowMetered: AppMutableValue<Boolean>,
-    val networkSettingsBusy: AppMutableValue<Boolean>,
-    val rateKiB: AppMutableValue<Int>,
-    val showProgressNotice: AppMutableValue<Boolean>,
-    val completionNotice: AppMutableValue<Boolean>,
-    val showClearTemp: AppMutableValue<Boolean>,
-    val analysisRevision: AppMutableValue<Int>,
-    val focusManager: FocusManager,
-    val keyboard: SoftwareKeyboardController?,
-    val clipboard: ClipboardManager,
-    val scope: CoroutineScope,
-    val profileViewModel: ProfileViewModel,
-    val profileState: ProfileUiState,
-    val dao: DownloadDao,
-    val downloadsViewModel: DownloadsViewModel,
-    val records: List<DownloadRecord>,
-    val downloadSpeeds: Map<String, String>,
-    val galleryImageLoader: ImageLoader,
-    val thumbnailResolver: VideoThumbnailResolver,
-    val universalSource: UniversalMediaSource,
-    val avatarResolver: ProfileAvatarResolver,
-    val folderDescription: String,
-    val invalidLinkMessage: String,
-    val inspecting: Boolean,
-    val queueBusy: Boolean,
-    val videos: List<VideoEntry>,
-    val selected: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Boolean>,
-    val chooseQuality: () -> Unit,
-    val openPlayback: (DownloadRecord) -> Unit,
-    val onExportDiagnostic: (String) -> Unit,
-    val onChooseFolder: () -> Unit,
-    val onRequestNotificationPermission: () -> Unit,
-)
+// Tab constants from MainNavigationBar
+private const val TOOLS_TAB = 3
+private const val SETTINGS_TAB = 5
+private const val MUSIC_TAB = 6
+private const val COLLECTIONS_TAB = 7
+private const val ROCKOLA_TAB = 8
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Suppress(
@@ -200,64 +134,81 @@ internal data class AppNavigationState(
     "TooGenericExceptionCaught",
 )
 @Composable
-internal fun AppNavigationContent(state: AppNavigationState) {
-    var tab by state.tab
-    var musicRequestUri by state.musicRequestUri
-    var musicRequestTitle by state.musicRequestTitle
-    var gridMode by state.gridMode
-    var selectedPlatform by state.selectedPlatform
-    var deleteCandidate by state.deleteCandidate
-    var monitorRevision by state.monitorRevision
-    var url by state.url
-    var search by state.search
-    var onlyUndownloaded by state.onlyUndownloaded
-    var libraryKind by state.libraryKind
-    var message by state.message
-    var forceRefresh by state.forceRefresh
-    var qualityVideos by state.qualityVideos
-    var showAbout by state.showAbout
-    var showPlayerChoice by state.showPlayerChoice
-    var monitorHours by state.monitorHours
-    var monitorPages by state.monitorPages
-    var preferredQuality by state.preferredQuality
-    var themeChoice by state.themeChoice
-    var downloadFolder by state.downloadFolder
-    var wifiParallel by state.wifiParallel
-    var meteredParallel by state.meteredParallel
-    var allowMetered by state.allowMetered
-    var networkSettingsBusy by state.networkSettingsBusy
-    var rateKiB by state.rateKiB
-    var showProgressNotice by state.showProgressNotice
-    var completionNotice by state.completionNotice
-    var showClearTemp by state.showClearTemp
-    var analysisRevision by state.analysisRevision
-    val context = state.context
-    val settings = state.settings
-    val focusManager = state.focusManager
-    val keyboard = state.keyboard
-    val clipboard = state.clipboard
-    val scope = state.scope
-    val profileViewModel = state.profileViewModel
-    val profileState = state.profileState
-    val dao = state.dao
-    val downloadsViewModel = state.downloadsViewModel
-    val records = state.records
-    val downloadSpeeds = state.downloadSpeeds
-    val galleryImageLoader = state.galleryImageLoader
-    val thumbnailResolver = state.thumbnailResolver
-    val universalSource = state.universalSource
-    val avatarResolver = state.avatarResolver
-    val folderDescription = state.folderDescription
-    val invalidLinkMessage = state.invalidLinkMessage
-    val inspecting = state.inspecting
-    val queueBusy = state.queueBusy
-    val videos = state.videos
-    val selected = state.selected
-    val chooseQuality = state.chooseQuality
-    val openPlayback = state.openPlayback
-    val onExportDiagnostic = state.onExportDiagnostic
-    val onChooseFolder = state.onChooseFolder
-    val onRequestNotificationPermission = state.onRequestNotificationPermission
+internal fun AppNavigationContent(
+    viewModel: MainViewModel,
+    context: Context,
+    settings: SharedPreferences,
+    focusManager: FocusManager,
+    keyboard: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    clipboard: ClipboardManager,
+    scope: CoroutineScope,
+    folderPicker: androidx.activity.result.ActivityResultLauncher<Intent>,
+    storagePermission: androidx.activity.result.ActivityResultLauncher<String>,
+    notificationsPermission: androidx.activity.result.ActivityResultLauncher<String>,
+    diagnosticPicker: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>,
+) {
+    // Collect all state from ViewModel
+    var tab by viewModel.tab.collectAsState()
+    var musicRequestUri by viewModel.musicRequestUri.collectAsState()
+    var musicRequestTitle by viewModel.musicRequestTitle.collectAsState()
+    var gridMode by viewModel.gridMode.collectAsState()
+    var selectedPlatform by viewModel.selectedPlatform.collectAsState()
+    var deleteCandidate by viewModel.deleteCandidate.collectAsState()
+    val monitorRevision = viewModel.monitorRevision.collectAsState().value
+    var url by viewModel.url.collectAsState()
+    var search by viewModel.search.collectAsState()
+    var onlyUndownloaded by viewModel.onlyUndownloaded.collectAsState()
+    var libraryKind by viewModel.libraryKind.collectAsState()
+    var message by viewModel.message.collectAsState()
+    var forceRefresh by viewModel.forceRefresh.collectAsState()
+    var qualityVideos by viewModel.qualityVideos.collectAsState()
+    var showAbout by viewModel.showAbout.collectAsState()
+    var showPlayerChoice by viewModel.showPlayerChoice.collectAsState()
+    var monitorHours by viewModel.monitorHours.collectAsState()
+    var monitorPages by viewModel.monitorPages.collectAsState()
+    var preferredQuality by viewModel.preferredQuality.collectAsState()
+    var themeChoice by viewModel.themeChoice.collectAsState()
+    val downloadFolder = viewModel.downloadFolder.collectAsState().value
+    var wifiParallel by viewModel.wifiParallel.collectAsState()
+    var meteredParallel by viewModel.meteredParallel.collectAsState()
+    var allowMetered by viewModel.allowMetered.collectAsState()
+    var networkSettingsBusy by viewModel.networkSettingsBusy.collectAsState()
+    var rateKiB by viewModel.rateKiB.collectAsState()
+    var showProgressNotice by viewModel.showProgressNotice.collectAsState()
+    var completionNotice by viewModel.completionNotice.collectAsState()
+    var showClearTemp by viewModel.showClearTemp.collectAsState()
+    val analysisRevision = viewModel.analysisRevision.collectAsState().value
+
+    val profileViewModel = viewModel.profileViewModel
+    val profileState = viewModel.profileState.collectAsState()
+    val dao = viewModel.dao
+    val downloadsViewModel = viewModel.downloadsViewModel
+    val records = viewModel.records.collectAsState()
+    val downloadSpeeds = viewModel.downloadSpeeds.collectAsState()
+    val galleryImageLoader = viewModel.galleryImageLoader
+    val thumbnailResolver = viewModel.thumbnailResolver
+    val universalSource = viewModel.universalSource
+    val avatarResolver = viewModel.avatarResolver
+    val folderDescription = viewModel.folderDescription
+    val invalidLinkMessage = viewModel.invalidLinkMessage
+    val inspecting = viewModel.inspecting.collectAsState().value
+    val queueBusy = viewModel.queueBusy.collectAsState().value
+    val videos = profileState.value.videos
+    val selected = remember { mutableStateMapOf<String, Boolean>() }
+
+    // Keep selected in sync with ViewModel
+    val viewModelSelected = viewModel.selected.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(viewModelSelected.value) {
+        selected.clear()
+        selected.putAll(viewModelSelected.value)
+    }
+
+    val chooseQuality = { viewModel.chooseQuality() }
+    val openPlayback = { record: DownloadRecord -> viewModel.openPlayback(record) }
+    val onExportDiagnostic = { filename: String -> diagnosticPicker.launch(filename) }
+    val onChooseFolder = { folderPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)) }
+    val onRequestNotificationPermission = { notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
+
     Scaffold(
         modifier = Modifier.imePadding(),
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -265,19 +216,20 @@ internal fun AppNavigationContent(state: AppNavigationState) {
         bottomBar = {
             MainNavigationBar(
                 selectedTab = tab,
-                onMusic = { tab = 6 },
-                onRockola = { tab = ROCKOLA_TAB },
+                onMusic = { tab = MUSIC_TAB; viewModel.setTab(MUSIC_TAB) },
+                onRockola = { tab = ROCKOLA_TAB; viewModel.setTab(ROCKOLA_TAB) },
                 onNavigate = { target ->
                     focusManager.clearFocus()
                     keyboard?.hide()
                     tab = target
+                    viewModel.setTab(target)
                 },
             )
         },
     ) { insets ->
         val completedKinds =
-            remember(records) {
-                records
+            remember(records.value) {
+                records.value
                     .filter { it.status == DownloadState.COMPLETED }
                     .groupBy { DownloadIdentity.sourceId(it.videoId) }
             }
@@ -296,6 +248,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                         (!onlyUndownloaded || it.id !in downloadedIds)
                 }
             }
+
         if (tab == 0) {
             LazyVerticalGrid(
                 columns = if (gridMode) GridCells.Adaptive(minSize = 112.dp) else GridCells.Fixed(1),
@@ -303,44 +256,43 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                     Modifier
                         .fillMaxSize()
                         .background(
-                            if (themeChoice ==
-                                "Negro AMOLED"
-                            ) {
+                            if (themeChoice == "Negro AMOLED") {
                                 Color.Black
                             } else {
                                 TechBackground
                             },
-                        ).padding(insets)
+                        )
+                        .padding(insets)
                         .consumeWindowInsets(insets),
                 contentPadding =
-                    androidx.compose.foundation.layout
-                        .PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        TechHeader(onSettings = { tab = SETTINGS_TAB })
+                        TechHeader(onSettings = { tab = SETTINGS_TAB; viewModel.setTab(SETTINGS_TAB) })
 
                         HomeLinkInput(
                             selectedPlatform = selectedPlatform,
                             url = url,
-                            loading = profileState.loading,
-                            loadingMore = profileState.loadingMore,
-                            onPlatformChange = { selectedPlatform = it },
-                            onUrlChange = {
+                            loading = profileState.value.loading,
+                            loadingMore = profileState.value.loadingMore,
+                            onPlatformChange = { selectedPlatform = it; viewModel.setSelectedPlatform(it) },
+                            onUrlChange = { newUrl ->
                                 val extracted =
-                                    if (it.length - url.length >
-                                        1
-                                    ) {
-                                        IncomingLinkValidator.extractFirstHttps(it)
+                                    if (newUrl.length - url.length > 1) {
+                                        IncomingLinkValidator.extractFirstHttps(newUrl)
                                     } else {
                                         null
                                     }
-                                url = extracted?.url ?: it
+                                url = extracted?.url ?: newUrl
+                                viewModel.setUrl(url)
                                 profileViewModel.reset()
                                 selected.clear()
+                                viewModel.clearSelected()
                                 message = ""
+                                viewModel.setMessage("")
                             },
                             onKeyboardDone = {
                                 focusManager.clearFocus()
@@ -355,50 +307,58 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         ?: IncomingLinkValidator.extractFirstHttps(pasted)
                                 if (link != null) {
                                     url = link.url
+                                    viewModel.setUrl(url)
                                     profileViewModel.reset()
                                     selected.clear()
+                                    viewModel.clearSelected()
                                     message = ""
-                                    analysisRevision++
+                                    viewModel.setMessage("")
+                                    viewModel.incrementAnalysisRevision()
                                 } else {
                                     message = "El portapapeles no contiene un enlace válido."
+                                    viewModel.setMessage(message)
                                 }
                             },
                             onAnalyze = {
                                 focusManager.clearFocus()
                                 keyboard?.hide()
                                 when (IncomingLinkValidator.validate(url)) {
-                                    null -> message = invalidLinkMessage
+                                    null -> {
+                                        message = invalidLinkMessage
+                                        viewModel.setMessage(message)
+                                    }
                                     else -> {
                                         selected.clear()
+                                        viewModel.clearSelected()
                                         profileViewModel.inspect(url, forceRefresh)
                                         forceRefresh = false
+                                        viewModel.setForceRefresh(false)
                                         message = ""
+                                        viewModel.setMessage("")
                                     }
                                 }
                             },
                         )
 
-                        // Force refresh remains available from the analysis action on repeat requests.
-                        if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
+                        if (profileState.value.loading || profileState.value.loadingMore || profileState.value.countingTotal) {
                             AnalysisAnimation(
                                 found = videos.size,
-                                scanning =
-                                    profileState.countingTotal || profileState.loadingMore,
+                                scanning = profileState.value.countingTotal || profileState.value.loadingMore,
                             )
                         }
                         if (queueBusy) CircularProgressIndicator()
-                        profileState.error?.let { error ->
+                        profileState.value.error?.let { error ->
                             Column {
                                 Text(error, color = MaterialTheme.colorScheme.error)
-                                if (profileState.hasMore && !profileState.countingTotal) {
-                                    OutlinedButton(
-                                        onClick = { profileViewModel.resumeScan() },
-                                    ) { Text("↻ Reanudar escaneo") }
+                                if (profileState.value.hasMore && !profileState.value.countingTotal) {
+                                    OutlinedButton(onClick = { profileViewModel.resumeScan() }) {
+                                        Text("↻ Reanudar escaneo")
+                                    }
                                 }
-                                if (profileState.incompletePage && !profileState.countingTotal) {
-                                    OutlinedButton(
-                                        onClick = { profileViewModel.skipIncompletePage() },
-                                    ) { Text("Continuar con la siguiente parte") }
+                                if (profileState.value.incompletePage && !profileState.value.countingTotal) {
+                                    OutlinedButton(onClick = { profileViewModel.skipIncompletePage() }) {
+                                        Text("Continuar con la siguiente parte")
+                                    }
                                 }
                             }
                         }
@@ -422,20 +382,17 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     ) {
                                         Box(
                                             Modifier
-                                                .size(
-                                                    34.dp,
-                                                ).clip(RoundedCornerShape(17.dp))
+                                                .size(34.dp)
+                                                .clip(RoundedCornerShape(17.dp))
                                                 .background(TechGradient),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            if (profileState.profileImage != null) {
-                                                coil.compose.SubcomposeAsyncImage(
+                                            if (profileState.value.profileImage != null) {
+                                                SubcomposeAsyncImage(
                                                     model =
-                                                        coil.request.ImageRequest
-                                                            .Builder(LocalContext.current)
-                                                            .data(
-                                                                profileState.profileImage,
-                                                            ).addHeader("Referer", "https://www.tiktok.com/")
+                                                        ImageRequest.Builder(LocalContext.current)
+                                                            .data(profileState.value.profileImage)
+                                                            .addHeader("Referer", "https://www.tiktok.com/")
                                                             .build(),
                                                     contentDescription = stringResource(R.string.home_profile_photo),
                                                     modifier = Modifier.fillMaxSize(),
@@ -444,12 +401,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                     loading = { Text("@", fontSize = 18.sp, color = Color.White) },
                                                 )
                                             } else {
-                                                Text(
-                                                    "@",
-                                                    fontSize = 18.sp,
-                                                    color = Color.White,
-                                                    fontWeight = FontWeight.Bold,
-                                                )
+                                                Text("@", fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                         Column(Modifier.weight(1f)) {
@@ -473,7 +425,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         }
                                         IconButton(
                                             onClick = { profileViewModel.resumeScan() },
-                                            enabled = !profileState.countingTotal && profileState.hasMore,
+                                            enabled = !profileState.value.countingTotal && profileState.value.hasMore,
                                         ) {
                                             Text("↻", fontSize = 20.sp)
                                         }
@@ -485,8 +437,8 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         listOf(
                                             stringResource(R.string.home_detected) to
                                                 (
-                                                    profileState.totalVideos?.toString()
-                                                        ?: if (profileState.countingTotal) "…" else "—"
+                                                    profileState.value.totalVideos?.toString()
+                                                        ?: if (profileState.value.countingTotal) "…" else "—"
                                                 ),
                                             stringResource(R.string.home_loaded) to videos.size.toString(),
                                             stringResource(R.string.home_selected) to selected.size.toString(),
@@ -505,7 +457,8 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     focusManager.clearFocus()
                                     keyboard?.hide()
                                     selected.clear()
-                                    if (!allSelected) videos.forEach { selected[it.id] = true }
+                                    viewModel.clearSelected()
+                                    if (!allSelected) videos.forEach { selected[it.id] = true; viewModel.toggleSelected(it.id, true) }
                                 }) {
                                     Text(
                                         if (allSelected) "Quitar selección" else "Seleccionar todo",
@@ -518,11 +471,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     enabled = selected.isNotEmpty() && !queueBusy && !inspecting,
                                     onClick = chooseQuality,
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Download,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                    )
+                                    Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(4.dp))
                                     Text("Descargar ${selected.size}", maxLines = 1)
                                 }
@@ -530,16 +479,15 @@ internal fun AppNavigationContent(state: AppNavigationState) {
 
                             OutlinedTextField(
                                 value = search,
-                                onValueChange = { search = it },
+                                onValueChange = { search = it; viewModel.setSearch(it) },
                                 modifier = Modifier.fillMaxWidth(),
                                 placeholder = { Text("Buscar videos") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions =
-                                    KeyboardActions(onDone = {
-                                        focusManager.clearFocus()
-                                        keyboard?.hide()
-                                    }),
+                                keyboardActions = KeyboardActions(onDone = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                }),
                             )
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -547,17 +495,17 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             ) {
                                 FilterChip(
                                     selected = onlyUndownloaded,
-                                    onClick = { onlyUndownloaded = !onlyUndownloaded },
+                                    onClick = { onlyUndownloaded = !onlyUndownloaded; viewModel.setOnlyUndownloaded(!onlyUndownloaded) },
                                     label = { Text("Pendientes") },
                                 )
                                 FilterChip(
                                     selected = gridMode,
-                                    onClick = { gridMode = true },
+                                    onClick = { gridMode = true; viewModel.setGridMode(true) },
                                     label = { Text("Cuadrícula") },
                                 )
                                 FilterChip(
                                     selected = !gridMode,
-                                    onClick = { gridMode = false },
+                                    onClick = { gridMode = false; viewModel.setGridMode(false) },
                                     label = { Text("Lista") },
                                 )
                             }
@@ -568,7 +516,13 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                     val checked = video.id in selected
                     Card(
                         onClick = {
-                            if (checked) selected.remove(video.id) else selected[video.id] = true
+                            if (checked) {
+                                selected.remove(video.id)
+                                viewModel.toggleSelected(video.id, false)
+                            } else {
+                                selected[video.id] = true
+                                viewModel.toggleSelected(video.id, true)
+                            }
                         },
                         colors =
                             androidx.compose.material3.CardDefaults
@@ -580,9 +534,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Box(
                                     Modifier.fillMaxWidth().aspectRatio(
-                                        if (MediaLinkParser.parse(video.url)?.platform ==
-                                            MediaPlatform.TIKTOK
-                                        ) {
+                                        if (MediaLinkParser.parse(video.url)?.platform == MediaPlatform.TIKTOK) {
                                             PORTRAIT_VIDEO_RATIO
                                         } else {
                                             LANDSCAPE_VIDEO_RATIO
@@ -593,16 +545,15 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         video,
                                         thumbnailResolver,
                                         Modifier.fillMaxSize(),
-                                        deferLookup = profileState.countingTotal,
+                                        deferLookup = profileState.value.countingTotal,
                                     )
                                     Checkbox(
                                         checked = checked,
                                         onCheckedChange = null,
                                         modifier =
                                             Modifier
-                                                .align(
-                                                    Alignment.TopEnd,
-                                                ).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp))
+                                                .align(Alignment.TopEnd)
+                                                .background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp))
                                                 .size(36.dp),
                                     )
                                 }
@@ -621,9 +572,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             ) {
                                 Box(
                                     Modifier.width(116.dp).aspectRatio(
-                                        if (MediaLinkParser.parse(video.url)?.platform ==
-                                            MediaPlatform.TIKTOK
-                                        ) {
+                                        if (MediaLinkParser.parse(video.url)?.platform == MediaPlatform.TIKTOK) {
                                             PORTRAIT_VIDEO_RATIO
                                         } else {
                                             LANDSCAPE_VIDEO_RATIO
@@ -634,29 +583,24 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                         video,
                                         thumbnailResolver,
                                         Modifier.fillMaxSize(),
-                                        deferLookup = profileState.countingTotal,
+                                        deferLookup = profileState.value.countingTotal,
                                     )
                                     Checkbox(
                                         checked = checked,
                                         onCheckedChange = null,
                                         modifier =
                                             Modifier
-                                                .align(
-                                                    Alignment.TopEnd,
-                                                ).background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp))
+                                                .align(Alignment.TopEnd)
+                                                .background(Color.Black.copy(alpha = .65f), RoundedCornerShape(8.dp))
                                                 .size(36.dp),
                                     )
                                 }
                                 Column(Modifier.weight(1f)) {
                                     Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                     Text(
-                                        if (video.id in
-                                            downloadedIds
-                                        ) {
+                                        if (video.id in downloadedIds) {
                                             "✓ Audio y video"
-                                        } else if (video.id in
-                                            completedKinds
-                                        ) {
+                                        } else if (video.id in completedKinds) {
                                             "✓ Una versión guardada"
                                         } else {
                                             "Disponible"
@@ -672,75 +616,80 @@ internal fun AppNavigationContent(state: AppNavigationState) {
             }
         } else if (tab == 1) {
             DownloadQueueScreen(
-                records = records,
+                records = records.value,
                 themeChoice = themeChoice,
                 insets = insets,
                 message = message,
                 thumbnailResolver = thumbnailResolver,
-                downloadSpeeds = downloadSpeeds,
-                onSettings = { tab = 5 },
+                downloadSpeeds = downloadSpeeds.value,
+                onSettings = { tab = SETTINGS_TAB; viewModel.setTab(SETTINGS_TAB) },
                 onPause = {
                     scope.launch {
                         downloadsViewModel.pauseQueue()
                         message = "Cola pausada."
+                        viewModel.setMessage(message)
                     }
                 },
                 onResume = {
                     scope.launch {
                         downloadsViewModel.resumeQueue()
                         message = "Cola reanudada."
+                        viewModel.setMessage(message)
                     }
                 },
                 onCancel = { id ->
                     scope.launch {
                         downloadsViewModel.cancelDownload(id)
                         message = "Descarga cancelada."
+                        viewModel.setMessage(message)
                     }
                 },
             )
         } else if (tab == 2) {
             LibraryScreen(
-                records = records,
+                records = records.value,
                 themeChoice = themeChoice,
                 insets = insets,
                 libraryKind = libraryKind,
                 message = message,
                 thumbnailResolver = thumbnailResolver,
                 galleryImageLoader = galleryImageLoader,
-                onSettings = { tab = 5 },
-                onKindChange = { libraryKind = it },
-                onMusic = { tab = 6 },
-                onCollections = { tab = COLLECTIONS_TAB },
-                onOpen = { openPlayback(it) },
-                onDelete = { deleteCandidate = it },
+                onSettings = { tab = SETTINGS_TAB; viewModel.setTab(SETTINGS_TAB) },
+                onKindChange = { libraryKind = it; viewModel.setLibraryKind(it) },
+                onMusic = { tab = MUSIC_TAB; viewModel.setTab(MUSIC_TAB) },
+                onCollections = { tab = COLLECTIONS_TAB; viewModel.setTab(COLLECTIONS_TAB) },
+                onOpen = { viewModel.openPlayback(it) },
+                onDelete = { deleteCandidate = it; viewModel.setDeleteCandidate(it) },
             )
         } else if (tab == COLLECTIONS_TAB) {
             CollectionsScreen(
                 modifier = Modifier.padding(insets).consumeWindowInsets(insets),
-                onBack = { tab = 2 },
+                onBack = { tab = 2; viewModel.setTab(2) },
                 onOpenPlaylist = { link ->
                     url = link
+                    viewModel.setUrl(link)
                     profileViewModel.reset()
                     selected.clear()
+                    viewModel.clearSelected()
                     message = ""
+                    viewModel.setMessage("")
                     tab = 0
-                    analysisRevision++
+                    viewModel.setTab(0)
+                    viewModel.incrementAnalysisRevision()
                 },
             )
         } else if (tab == ROCKOLA_TAB) {
             RockolaScreen(
                 source = universalSource,
                 thumbnailResolver = thumbnailResolver,
-                onDownload = { video -> qualityVideos = listOf(video) },
+                onDownload = { video -> qualityVideos = listOf(video); viewModel.setQualityVideos(listOf(video)) },
                 onOpenYouTube = { video ->
                     video.rockolaVideoId()?.let { videoId ->
                         val watchUri = Uri.parse("https://www.youtube.com/watch?v=$videoId")
                         try {
                             context.startActivity(Intent(Intent.ACTION_VIEW, watchUri))
                         } catch (_: ActivityNotFoundException) {
-                            Toast
-                                .makeText(context, "No hay una aplicación para abrir YouTube.", Toast.LENGTH_SHORT)
-                                .show()
+                            Toast.makeText(context, "No hay una aplicación para abrir YouTube.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 },
@@ -753,62 +702,50 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                     Modifier
                         .fillMaxSize()
                         .background(
-                            if (themeChoice ==
-                                "Negro AMOLED"
-                            ) {
+                            if (themeChoice == "Negro AMOLED") {
                                 Color.Black
                             } else {
                                 TechBackground
                             },
-                        ).padding(insets)
+                        )
+                        .padding(insets)
                         .consumeWindowInsets(insets)
                         .verticalScroll(scrollState)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                TechHeader(onSettings = { tab = SETTINGS_TAB })
+                TechHeader(onSettings = { tab = SETTINGS_TAB; viewModel.setTab(SETTINGS_TAB) })
                 when (tab) {
-                    MUSIC_TAB ->
-                        MusicScreen(
-                            requestedUri = musicRequestUri,
-                            requestedTitle = musicRequestTitle,
-                            onRequestConsumed = { musicRequestUri = null },
-                        )
+                    MUSIC_TAB -> MusicScreen(
+                        requestedUri = musicRequestUri,
+                        requestedTitle = musicRequestTitle,
+                        onRequestConsumed = { musicRequestUri = null; viewModel.setMusicRequestUri(null) },
+                    )
                     TOOLS_TAB -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }
                         ToolsScreen(
                             monitored = monitored,
-                            failedCount = records.count { it.status == DownloadState.FAILED },
+                            failedCount = records.value.count { it.status == DownloadState.FAILED },
                             currentUrl = url,
-                            profileImage = profileState.profileImage,
+                            profileImage = profileState.value.profileImage,
                             avatarResolver = avatarResolver,
                             message = message,
                             onRetryFailed = {
                                 scope.launch {
                                     DownloadQueue.retryFailed(context)
                                     tab = 1
+                                    viewModel.setTab(1)
                                     message = "Reintentando descargas."
+                                    viewModel.setMessage(message)
                                 }
                             },
                             onClearErrors = { scope.launch { dao.clearFailed() } },
-                            onOpenPlayer = { showPlayerChoice = true },
+                            onOpenPlayer = { showPlayerChoice = true; viewModel.setShowPlayerChoice(true) },
                             onFollowProfile = {
-                                if (ProfileMonitor.add(context, url.trim())) {
-                                    if (Build.VERSION.SDK_INT >= 33 &&
-                                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        onRequestNotificationPermission()
-                                    }
-                                    monitorRevision++
-                                    message = "Perfil agregado al monitoreo."
-                                } else {
-                                    message = "Pega un enlace válido de perfil en Buscar."
-                                }
+                                viewModel.onFollowProfile(url)
                             },
                             onUnfollowProfile = { profile ->
-                                ProfileMonitor.remove(context, profile)
-                                monitorRevision++
+                                viewModel.onUnfollowProfile(profile)
                             },
                         )
                     }
@@ -819,28 +756,26 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             folderDescription = folderDescription,
                             hasCustomFolder = downloadFolder != null,
                             message = message,
-                            onAbout = { showAbout = true },
+                            onAbout = { showAbout = true; viewModel.setShowAbout(true) },
                             onExportDiagnostic = {
-                                onExportDiagnostic(
-                                    context.getString(R.string.diagnostic_filename),
-                                )
+                                onExportDiagnostic(context.getString(R.string.diagnostic_filename))
                             },
                             onMonitorHoursChange = { hours ->
                                 monitorHours = hours
-                                ProfileMonitor.setInterval(context, hours)
+                                viewModel.setMonitorHours(hours)
                             },
                             onMonitorPagesChange = { pages ->
                                 monitorPages = pages
-                                ProfileMonitor.setPageLimit(context, pages)
+                                viewModel.setMonitorPages(pages)
                             },
                             onUpdateExtractor = {
                                 ExtractorUpdateWorker.updateNow(context)
                                 message = "Actualización solicitada. Se ejecutará sin descargas pendientes."
+                                viewModel.setMessage(message)
                             },
                             onChooseFolder = { onChooseFolder() },
                             onResetFolder = {
-                                settings.edit().remove("download_tree").apply()
-                                downloadFolder = null
+                                viewModel.onResetFolder()
                             },
                         )
                         SettingsAppearanceSection(
@@ -848,11 +783,11 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             preferredQuality = preferredQuality,
                             onThemeChange = { option ->
                                 themeChoice = option
-                                settings.edit().putString("theme", option).apply()
+                                viewModel.setThemeChoice(option)
                             },
                             onQualityChange = { option ->
                                 preferredQuality = option
-                                settings.edit().putString("quality", option).apply()
+                                viewModel.setPreferredQuality(option)
                             },
                         )
                         DownloadSettingsSection(
@@ -865,55 +800,39 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             completionNotice = completionNotice,
                             onWifiChange = {
                                 wifiParallel = it.roundToInt().coerceIn(1, MAX_PARALLEL_DOWNLOADS)
-                                settings.edit().putInt("wifi_parallel", wifiParallel).apply()
+                                viewModel.setWifiParallel(wifiParallel)
                             },
                             onMeteredChange = {
                                 meteredParallel = it.roundToInt().coerceIn(1, MAX_PARALLEL_DOWNLOADS)
-                                settings.edit().putInt("metered_parallel", meteredParallel).apply()
+                                viewModel.setMeteredParallel(meteredParallel)
                             },
                             onAllowMeteredChange = { allowed ->
                                 networkSettingsBusy = true
-                                scope.launch {
-                                    try {
-                                        val pending = DownloadQueue.changeMeteredPolicy(context, allowed)
-                                        allowMetered = allowed
-                                        message =
-                                            if (pending) {
-                                                "Cola pausada para cambiar la red. Pulsa Continuar en Descargas."
-                                            } else {
-                                                "Preferencia de red actualizada."
-                                            }
-                                    } catch (e: Exception) {
-                                        rethrowIfFatal(e)
-                                        DiagnosticHistory.record(context, e.message)
-                                        message = "No se pudo cambiar la preferencia de red."
-                                    } finally {
-                                        networkSettingsBusy = false
-                                    }
-                                }
+                                viewModel.setNetworkSettingsBusy(true)
+                                viewModel.setAllowMetered(allowed)
                             },
                             onRateChange = { rate ->
                                 rateKiB = rate
-                                settings.edit().putInt("rate_kib", rate).apply()
+                                viewModel.setRateKiB(rate)
                             },
                             onProgressNoticeChange = {
                                 showProgressNotice = it
-                                settings.edit().putBoolean("notify_progress_detail", it).apply()
+                                viewModel.setShowProgressNotice(it)
                                 if (it &&
                                     Build.VERSION.SDK_INT >= 33 &&
                                     context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                    PackageManager.PERMISSION_GRANTED
+                                        PackageManager.PERMISSION_GRANTED
                                 ) {
                                     onRequestNotificationPermission()
                                 }
                             },
                             onCompletionNoticeChange = {
                                 completionNotice = it
-                                settings.edit().putBoolean("notify_completion", it).apply()
+                                viewModel.setCompletionNotice(it)
                                 if (it &&
                                     Build.VERSION.SDK_INT >= 33 &&
                                     context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                                    PackageManager.PERMISSION_GRANTED
+                                        PackageManager.PERMISSION_GRANTED
                                 ) {
                                     onRequestNotificationPermission()
                                 }
@@ -921,7 +840,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                         )
                         SettingsStorageSection(
                             message = message,
-                            onClearTemporary = { showClearTemp = true },
+                            onClearTemporary = { showClearTemp = true; viewModel.setShowClearTemp(true) },
                         )
                     }
                     else -> {
@@ -948,45 +867,12 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                 )
                                 Text(folderDescription, color = TechMuted)
                                 OutlinedButton(onClick = {
-                                    try {
-                                        val folder =
-                                            downloadFolder?.let { tree ->
-                                                val treeUri = Uri.parse(tree)
-                                                android.provider.DocumentsContract.buildDocumentUriUsingTree(
-                                                    treeUri,
-                                                    android.provider.DocumentsContract.getTreeDocumentId(treeUri),
-                                                )
-                                            }
-                                                ?: android.provider.DocumentsContract.buildDocumentUri(
-                                                    "com.android.externalstorage.documents",
-                                                    "primary:Download/TikitokiDownloader",
-                                                )
-                                        context.startActivity(
-                                            Intent(Intent.ACTION_VIEW).apply {
-                                                setDataAndType(
-                                                    folder,
-                                                    android.provider.DocumentsContract.Document.MIME_TYPE_DIR,
-                                                )
-                                                addFlags(
-                                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-                                                )
-                                            },
-                                        )
-                                    } catch (
-                                        e: Exception,
-                                    ) {
-                                        rethrowIfFatal(e)
-                                        DiagnosticHistory.record(context, e.message)
-                                        message =
-                                            "No se pudo abrir la carpeta. " +
-                                            "Busca $folderDescription en tu administrador de archivos."
-                                    }
+                                    viewModel.openDownloadFolder()
                                 }) { Text("Abrir carpeta de Baja.pe") }
                             }
-                        }
+                        )
                         Text(
-                            "${records.count { it.status == DownloadState.COMPLETED }} archivos guardados",
+                            "${records.value.count { it.status == DownloadState.COMPLETED }} archivos guardados",
                             color = TechMuted,
                             style = MaterialTheme.typography.bodySmall,
                         )
