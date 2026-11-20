@@ -1,12 +1,14 @@
 package com.tikitoki.downloader
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -101,6 +103,7 @@ import com.tikitoki.downloader.ui.TechHeader
 import com.tikitoki.downloader.ui.TechMuted
 import com.tikitoki.downloader.ui.TechPanel
 import com.tikitoki.downloader.ui.TechPink
+import com.tikitoki.downloader.ui.rockolaVideoId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -724,9 +727,27 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                     analysisRevision++
                 },
             )
+        } else if (tab == ROCKOLA_TAB) {
+            RockolaScreen(
+                source = universalSource,
+                thumbnailResolver = thumbnailResolver,
+                onDownload = { video -> qualityVideos = listOf(video) },
+                onOpenYouTube = { video ->
+                    video.rockolaVideoId()?.let { videoId ->
+                        val watchUri = Uri.parse("https://www.youtube.com/watch?v=$videoId")
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, watchUri))
+                        } catch (_: ActivityNotFoundException) {
+                            Toast
+                                .makeText(context, "No hay una aplicación para abrir YouTube.", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    }
+                },
+                modifier = Modifier.padding(insets).consumeWindowInsets(insets),
+            )
         } else {
             val scrollState = rememberScrollState()
-            val scrollModifier = if (tab == ROCKOLA_TAB) Modifier else Modifier.verticalScroll(scrollState)
             Column(
                 modifier =
                     Modifier
@@ -741,7 +762,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             },
                         ).padding(insets)
                         .consumeWindowInsets(insets)
-                        .then(scrollModifier)
+                        .verticalScroll(scrollState)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
@@ -752,24 +773,6 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             requestedUri = musicRequestUri,
                             requestedTitle = musicRequestTitle,
                             onRequestConsumed = { musicRequestUri = null },
-                        )
-                    ROCKOLA_TAB ->
-                        RockolaScreen(
-                            source = universalSource,
-                            thumbnailResolver = thumbnailResolver,
-                            onDownload = { video -> qualityVideos = listOf(video) },
-                            onOpenYouTube = { video ->
-                                val videoId = video.id.removePrefix("youtube:")
-                                if (videoId.isBlank()) {
-                                    message = "No se identificó el video de YouTube."
-                                } else {
-                                    context.startActivity(
-                                        Intent(context, YouTubePlayerActivity::class.java)
-                                            .putExtra(YouTubePlayerActivity.EXTRA_VIDEO_ID, videoId)
-                                            .putExtra(YouTubePlayerActivity.EXTRA_TITLE, video.title),
-                                    )
-                                }
-                            },
                         )
                     TOOLS_TAB -> {
                         val monitored = remember(monitorRevision) { ProfileMonitor.profiles(context).sorted() }

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Reproductor de YouTube</title>
+    <style>
+        html, body, iframe { width: 100%; height: 100%; margin: 0; border: 0; }
+        body { overflow: hidden; background: #000; }
+    </style>
+</head>
+<body>
+<div id="player"></div>
+<script>
+    let player;
+    let ready = false;
+    let target;
+    let failed = false;
+    let autoplayBlocked = false;
+    let started = false;
+    let active = false;
+    let appliedRequest;
+
+    function applyTarget() {
+        if (!ready || !active || !target || target.requestId === appliedRequest) return;
+        appliedRequest = target.requestId;
+        player.loadVideoById(target.videoId);
+    }
+
+    function rockolaLoad(videoId, requestId) {
+        target = { videoId, requestId };
+        failed = false;
+        autoplayBlocked = false;
+        started = false;
+        applyTarget();
+    }
+
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player("player", {
+            host: "https://www.youtube.com",
+            width: "100%",
+            height: "100%",
+            playerVars: { playsinline: 1, origin: location.origin },
+            events: {
+                onReady: function () {
+                    ready = true;
+                    applyTarget();
+                },
+                onError: function () { failed = true; },
+                onAutoplayBlocked: function () { autoplayBlocked = true; }
+            }
+        });
+    }
+
+    function rockolaToggle() {
+        if (!ready) return;
+        if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
+        } else {
+            autoplayBlocked = false;
+            player.playVideo();
+        }
+    }
+
+    function rockolaSetActive(value) {
+        active = value;
+        if (active) {
+            applyTarget();
+        } else if (ready) {
+            player.pauseVideo();
+        }
+    }
+
+    function rockolaSeek(seconds) {
+        if (ready) player.seekTo(seconds, true);
+    }
+
+    function rockolaRead() {
+        if (!target) return null;
+
+        let state = -1;
+        let time = 0;
+        let duration = 0;
+        if (ready && !failed) {
+            const url = player.getVideoUrl();
+            const videoId = url && new URL(url).searchParams.get("v");
+            if (videoId === target.videoId) {
+                const actualState = player.getPlayerState();
+                if (actualState === YT.PlayerState.PLAYING) started = true;
+                state = actualState === YT.PlayerState.ENDED && !started ? -1 : actualState;
+                time = player.getCurrentTime() || 0;
+                duration = player.getDuration() || 0;
+            }
+        }
+        return JSON.stringify({ id: target.requestId, ready, failed, autoplayBlocked, state, time, duration });
+    }
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

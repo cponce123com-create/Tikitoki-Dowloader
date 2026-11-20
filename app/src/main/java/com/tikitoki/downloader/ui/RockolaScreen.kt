@@ -1,597 +1,432 @@
 package com.tikitoki.downloader.ui
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tikitoki.downloader.VideoThumbnail
+import androidx.compose.ui.unit.sp
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
+import com.tikitoki.downloader.domain.IncomingLinkValidator
+import com.tikitoki.downloader.domain.MediaPlatform
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-private const val MAX_HISTORY_ITEMS = 50
-private const val GENRES_IN_FIRST_ROW = 5
-private const val SECONDS_PER_MINUTE = 60
-private const val THOUSAND_VIEWS = 1_000.0
-private const val MILLION_VIEWS = 1_000_000.0
+private const val DEFAULT_QUERY = "música popular Perú rock cumbia salsa"
+private const val RECOMMENDATION_LIMIT = 12
+
+private val rockolaSearchLock = Mutex()
 
 private val rockolaGenres =
-    listOf(
-        "Salsa",
-        "Cumbia",
-        "Reguetón",
-        "Rock",
-        "Pop",
-        "Bachata",
-        "Criolla",
-        "Huayno",
-        "Electrónica",
-    )
+    listOf("Salsa", "Cumbia", "Reguetón", "Rock", "Pop", "Bachata", "Criolla", "Huayno", "Electrónica")
 
-private enum class RockolaSection { GENRES, ARTISTS, SONGS }
+private enum class RockolaTab(
+    val label: String,
+) {
+    EXPLORE("Explorar"),
+    QUEUE("En cola"),
+    LISTS("Mis listas"),
+}
 
-private data class ArtistSummary(
-    val name: String,
-    val sample: VideoEntry,
-    val songCount: Int,
+private enum class RockolaCategory(
+    val label: String,
+    val query: String,
+) {
+    ALL("Todo", DEFAULT_QUERY),
+    MUSIC("Música", "música popular salsa cumbia rock Perú"),
+    CHRISTIAN("Cristiana", "música cristiana alabanzas devocionales"),
+    REFLECTIONS("Reflexiones", "reflexiones y mensajes para la vida"),
+    NEWS("Noticias", "noticias del día Perú"),
+}
+
+private data class RockolaSearch(
+    val text: String,
+    val revision: Int = 0,
+    val limit: Int = RECOMMENDATION_LIMIT,
 )
 
-@Suppress(
-    "ktlint:standard:function-naming",
-    "LongMethod",
-    "CyclomaticComplexMethod",
-    "TooGenericExceptionCaught",
-)
+@Suppress("ktlint:standard:function-naming", "LongMethod", "CyclomaticComplexMethod", "TooGenericExceptionCaught")
 @Composable
 internal fun RockolaScreen(
     source: UniversalMediaSource,
     thumbnailResolver: VideoThumbnailResolver,
     onDownload: (VideoEntry) -> Unit,
     onOpenYouTube: (VideoEntry) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("rockola", Context.MODE_PRIVATE) }
+    val prefs = remember(context) { context.getSharedPreferences("rockola", Context.MODE_PRIVATE) }
+    val library = remember(prefs) { RockolaLibrary(prefs) }
     val keyboard = LocalSoftwareKeyboardController.current
-    val scope = rememberCoroutineScope()
-    var section by remember { mutableStateOf(RockolaSection.GENRES) }
+    val focusManager = LocalFocusManager.current
+    val outerScroll = rememberScrollState()
+    val listScroll = rememberScrollState()
+    var tab by remember { mutableStateOf(RockolaTab.EXPLORE) }
+    var category by remember { mutableStateOf(RockolaCategory.ALL) }
+    var genre by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
-    var activeArtist by remember { mutableStateOf<String?>(null) }
-    var selectedGenre by remember { mutableStateOf<String?>(null) }
+    var search by remember { mutableStateOf(RockolaSearch(DEFAULT_QUERY)) }
     var results by remember { mutableStateOf(emptyList<VideoEntry>()) }
-    var artists by remember { mutableStateOf(emptyList<ArtistSummary>()) }
-    var loading by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf("") }
-    var favoritesOnly by remember { mutableStateOf(false) }
-    var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet()).orEmpty().toSet()) }
-    var favoriteItems by remember { mutableStateOf(loadTracks(prefs, "favorite_items")) }
-    var historyItems by remember { mutableStateOf(loadTracks(prefs, "history_items")) }
-    var pendingDownload by remember { mutableStateOf<VideoEntry?>(null) }
-    var downloadConsent by remember { mutableStateOf(false) }
+    var openedList by remember { mutableStateOf<String?>(null) }
+    var selection by remember { mutableStateOf<RockolaSelection?>(null) }
+    var requestId by remember { mutableIntStateOf(0) }
+    var popup by remember { mutableStateOf<RockolaPopup?>(null) }
 
-    fun updateSet(
-        key: String,
-        values: Set<String>,
-    ) {
-        prefs.edit().putStringSet(key, values).apply()
-    }
-
-    fun updateItems(
-        key: String,
-        values: List<VideoEntry>,
-    ) {
-        val array = JSONArray()
-        values.takeLast(MAX_HISTORY_ITEMS).forEach { item ->
-            array.put(
-                JSONObject().apply {
-                    put("id", item.id)
-                    put("url", item.url)
-                    put("title", item.title)
-                    put("thumbnail", item.thumbnail ?: "")
-                    put("duration", item.durationSeconds)
-                    put("uploader", item.uploader ?: "")
-                    put("views", item.viewCount)
-                },
-            )
+    fun play(video: VideoEntry) {
+        val videoId = video.rockolaVideoId()
+        if (videoId != null) {
+            selection = RockolaSelection(video, videoId, ++requestId)
+            library.remove(video)
         }
-        prefs.edit().putString(key, array.toString()).apply()
     }
 
-    fun toggleFavorite(video: VideoEntry) {
-        favoriteIds = if (video.id in favoriteIds) favoriteIds - video.id else favoriteIds + video.id
-        updateSet("favorites", favoriteIds)
-        favoriteItems =
-            if (video.id in
-                favoriteIds
-            ) {
-                favoriteItems.filterNot { it.id == video.id } + video
-            } else {
-                favoriteItems.filterNot { it.id == video.id }
-            }
-        updateItems("favorite_items", favoriteItems)
+    fun next() {
+        library.queue.firstOrNull { it.rockolaVideoId() != null }?.let(::play)
     }
 
-    fun rememberHistory(video: VideoEntry) {
-        historyItems = (historyItems.filterNot { it.id == video.id } + video).takeLast(MAX_HISTORY_ITEMS)
-        updateSet("history", historyItems.map { it.id }.toSet())
-        updateItems("history_items", historyItems)
-    }
-
-    fun search(
-        term: String,
-        artist: String? = null,
-        genre: String? = null,
-    ) {
-        val clean = term.trim()
-        if (clean.isBlank() || loading) return
-        query = clean
-        activeArtist = artist
-        selectedGenre = genre
-        favoritesOnly = false
+    fun submitSearch() {
+        val clean = query.trim()
+        if (clean.isEmpty()) return
+        genre = null
+        category = RockolaCategory.ALL
+        tab = RockolaTab.EXPLORE
+        search = RockolaSearch(clean, search.revision + 1, limit = 30)
+        focusManager.clearFocus()
         keyboard?.hide()
+    }
+
+    BackHandler(enabled = tab == RockolaTab.LISTS && openedList != null) {
+        openedList = null
+    }
+    LaunchedEffect(tab, search, openedList) { listScroll.scrollTo(0) }
+    LaunchedEffect(search) {
         loading = true
         message = ""
-        scope.launch {
-            try {
-                val found = source.searchYouTube(clean, sortByViews = artist != null)
-                results = found
-                if (artist == null) {
-                    artists =
-                        found
-                            .mapNotNull { item ->
-                                item.uploader?.takeIf { it.isNotBlank() }?.let { name -> name to item }
-                            }.groupBy { it.first }
-                            .map { (name, entries) ->
-                                ArtistSummary(name, entries.first().second, entries.size)
-                            }.sortedByDescending { it.songCount }
+        results = emptyList()
+        try {
+            results =
+                rockolaSearchLock.withLock {
+                    findRockolaVideos(source, search).filter { it.rockolaVideoId() != null }.distinctBy { it.id }
                 }
-                section = if (artist == null && artists.isNotEmpty()) RockolaSection.ARTISTS else RockolaSection.SONGS
-                if (found.isEmpty()) message = "No se encontraron resultados."
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                DiagnosticHistory.record(context, e.message)
-                results = emptyList()
-                if (artist == null) artists = emptyList()
-                message = "No se pudo consultar YouTube. Comprueba tu conexión."
-            } finally {
-                loading = false
+            if (results.isEmpty()) message = "No se encontraron videos."
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: IllegalArgumentException) {
+            message = "Pega un enlace válido de YouTube."
+        } catch (e: Exception) {
+            DiagnosticHistory.record(context, e.message)
+            message = "No se pudo consultar YouTube. Comprueba tu conexión."
+        } finally {
+            loading = false
+        }
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize().background(RockolaColors.Background)) {
+        // Keep the same player instance when landscape or the keyboard reduces the space.
+        val compact = maxHeight < 590.dp
+        Column(
+            Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 480.dp)
+                .fillMaxSize()
+                .then(if (compact) Modifier.verticalScroll(outerScroll) else Modifier)
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            RockolaHeader()
+            RockolaSearchField(query, { query = it }, ::submitSearch)
+            RockolaPlayer(
+                selection = selection,
+                hasNext = library.queue.isNotEmpty(),
+                onNext = ::next,
+                onEnded = ::next,
+                onStarted = library::recordPlayed,
+                onRetry = { selection?.track?.let(::play) },
+                onOpenInYouTube = { selection?.track?.let(onOpenYouTube) },
+            )
+            RockolaTabs(tab, library.queue.size) { tab = it }
+            Column(
+                modifier = if (compact) Modifier.fillMaxWidth() else Modifier.weight(1f).verticalScroll(listScroll),
+            ) {
+                when (tab) {
+                    RockolaTab.EXPLORE -> {
+                        RockolaCategories(
+                            category = category,
+                            genre = genre,
+                            onCategory = {
+                                category = it
+                                genre = null
+                                query = ""
+                                search = RockolaSearch(it.query, search.revision + 1)
+                            },
+                            onGenre = {
+                                genre = it
+                                query = ""
+                                search = RockolaSearch("$it música popular", search.revision + 1)
+                            },
+                        )
+                        RockolaSearchResults(
+                            loading = loading,
+                            message = message,
+                            results = results,
+                            onRetry = { search = search.copy(revision = search.revision + 1) },
+                        ) { track ->
+                            RockolaTrackRow(track, thumbnailResolver, onPlay = { play(track) }) {
+                                RockolaAddButton(track, library, selection)
+                                RockolaMoreButton { popup = RockolaPopup.TrackActions(track) }
+                            }
+                        }
+                    }
+                    RockolaTab.QUEUE -> {
+                        if (library.queue.isEmpty()) RockolaMessage("Agrega videos desde Explorar o Mis listas.")
+                        library.queue.forEachIndexed { index, track ->
+                            RockolaTrackRow(track, thumbnailResolver, onPlay = { play(track) }) {
+                                IconButton(onClick = { library.moveUp(track) }, enabled = index > 0) {
+                                    Icon(
+                                        Icons.Default.ExpandLess,
+                                        contentDescription = "Subir ${track.title}",
+                                        tint = if (index > 0) RockolaColors.Text else RockolaColors.Edge,
+                                    )
+                                }
+                                IconButton(onClick = { library.remove(track) }) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Quitar ${track.title}",
+                                        tint = RockolaColors.Muted,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    RockolaTab.LISTS -> {
+                        RockolaLists(library, openedList, { openedList = it }) { track ->
+                            RockolaTrackRow(track, thumbnailResolver, onPlay = { play(track) }) {
+                                RockolaAddButton(track, library, selection)
+                                RockolaMoreButton { popup = RockolaPopup.TrackActions(track) }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    fun openSongList(title: String) {
-        search(title, artist = title, genre = selectedGenre)
-    }
+    RockolaDialogs(
+        popup = popup,
+        preferences = prefs,
+        library = library,
+        onPopup = { popup = it },
+        onOpenYouTube = onOpenYouTube,
+        onDownload = onDownload,
+    )
+}
 
-    fun requestDownload(video: VideoEntry) {
-        if (prefs.getBoolean("authorized_downloads_ack", false)) {
-            onDownload(video)
-        } else {
-            downloadConsent = false
-            pendingDownload = video
+private suspend fun findRockolaVideos(
+    source: UniversalMediaSource,
+    search: RockolaSearch,
+): List<VideoEntry> {
+    val link = IncomingLinkValidator.validate(search.text) ?: IncomingLinkValidator.extractFirstHttps(search.text)
+    if (link != null) {
+        require(link.platform == MediaPlatform.YOUTUBE)
+        return source.inspect(link, count = search.limit)
+    }
+    require(!search.text.contains("://"))
+    return source.searchYouTube(search.text, limit = search.limit)
+}
+
+@Suppress("ktlint:standard:function-naming")
+@Composable
+private fun RockolaHeader() {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(40.dp).background(RockolaColors.Green, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.GraphicEq, contentDescription = null, tint = RockolaColors.Ink)
+        }
+        Column(Modifier.weight(1f).padding(start = 10.dp)) {
+            Text("Baja.pe", color = RockolaColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text("Rockola", color = RockolaColors.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+        Box(
+            Modifier.size(width = 22.dp, height = 16.dp).background(RockolaColors.YouTube, RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(13.dp),
+            )
+        }
+        Text("YouTube", Modifier.padding(start = 6.dp), color = RockolaColors.Muted, fontSize = 12.sp)
+    }
+}
+
+@Suppress("ktlint:standard:function-naming")
+@Composable
+private fun RockolaSearchField(
+    query: String,
+    onChange: (String) -> Unit,
+    onSearch: () -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("Canción, artista o enlace", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        leadingIcon = {
+            IconButton(onClick = onSearch, enabled = query.isNotBlank()) {
+                Icon(Icons.Default.Search, contentDescription = "Buscar en YouTube", tint = RockolaColors.Muted)
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                focusedTextColor = RockolaColors.Text,
+                unfocusedTextColor = RockolaColors.Text,
+                cursorColor = RockolaColors.Green,
+                focusedPlaceholderColor = RockolaColors.Muted,
+                unfocusedPlaceholderColor = RockolaColors.Muted,
+                focusedBorderColor = RockolaColors.Green,
+                unfocusedBorderColor = RockolaColors.Edge,
+                focusedContainerColor = RockolaColors.Surface,
+                unfocusedContainerColor = RockolaColors.Surface,
+            ),
+    )
+}
+
+@Suppress("ktlint:standard:function-naming")
+@Composable
+private fun RockolaTabs(
+    selected: RockolaTab,
+    count: Int,
+    onSelect: (RockolaTab) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().selectableGroup()) {
+        RockolaTab.entries.forEach { tab ->
+            val active = selected == tab
+            Column(
+                Modifier
+                    .weight(1f)
+                    .selectable(selected = active, onClick = { onSelect(tab) }, role = Role.Tab),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.heightIn(min = 42.dp).padding(horizontal = 3.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        if (tab == RockolaTab.QUEUE) "${tab.label} · $count" else tab.label,
+                        color = if (active) RockolaColors.Green else RockolaColors.Muted,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                HorizontalDivider(thickness = 2.dp, color = if (active) RockolaColors.Green else RockolaColors.Edge)
+            }
         }
     }
+}
 
-    val visibleResults = results.filter { !favoritesOnly || it.id in favoriteIds }
-    pendingDownload?.let { video ->
-        AlertDialog(
-            onDismissRequest = { pendingDownload = null },
-            title = { Text("Descarga autorizada") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Descarga solo contenido propio, de dominio público o para el que tengas autorización. " +
-                            "La aplicación no puede verificar los derechos de cada video de YouTube.",
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = downloadConsent, onCheckedChange = { downloadConsent = it })
-                        Text("Confirmo que tengo permiso para descargarlo.")
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    enabled = downloadConsent,
-                    onClick = {
-                        prefs.edit().putBoolean("authorized_downloads_ack", true).apply()
-                        pendingDownload = null
-                        onDownload(video)
-                    },
-                ) { Text("Continuar") }
-            },
-            dismissButton = { TextButton(onClick = { pendingDownload = null }) { Text("Cancelar") } },
+@Suppress("ktlint:standard:function-naming")
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RockolaCategories(
+    category: RockolaCategory,
+    genre: String?,
+    onCategory: (RockolaCategory) -> Unit,
+    onGenre: (String) -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        RockolaCategory.entries.forEach {
+            RockolaPill(it.label, it == category) { onCategory(it) }
+        }
+    }
+    if (category == RockolaCategory.MUSIC) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            rockolaGenres.forEach {
+                RockolaPill(it, it == genre) { onGenre(it) }
+            }
+        }
+    }
+}
+
+@Suppress("ktlint:standard:function-naming")
+@Composable
+private fun RockolaPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        Modifier.heightIn(min = 42.dp).selectable(selected, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            Modifier
+                .background(if (selected) RockolaColors.Green else RockolaColors.Surface, shape)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            color = if (selected) RockolaColors.Ink else RockolaColors.Muted,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (section != RockolaSection.GENRES) {
-                        IconButton(onClick = {
-                            section =
-                                if (section == RockolaSection.SONGS) RockolaSection.ARTISTS else RockolaSection.GENRES
-                            if (section == RockolaSection.GENRES) {
-                                artists = emptyList()
-                                results = emptyList()
-                                activeArtist = null
-                            }
-                        }) { Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = Color.White) }
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "Rockola",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            when (section) {
-                                RockolaSection.GENRES -> "Elige un género para descubrir artistas."
-                                RockolaSection.ARTISTS -> "Artistas encontrados en ${selectedGenre ?: "YouTube"}."
-                                RockolaSection.SONGS -> {
-                                    val artist = activeArtist ?: "tu búsqueda"
-                                    "Resultados de $artist"
-                                }
-                            },
-                            color = TechMuted,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("Buscar canción, cantante o grupo") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        IconButton(onClick = { search(query) }, enabled = !loading) {
-                            Icon(Icons.Default.Search, contentDescription = "Buscar")
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { search(query) }),
-                )
-                if (section == RockolaSection.GENRES) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        rockolaGenres.take(GENRES_IN_FIRST_ROW).forEach { genre ->
-                            FilterChip(selected = selectedGenre == genre, onClick = {
-                                search("$genre música popular", genre = genre)
-                            }, label = { Text(genre, maxLines = 1) })
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        rockolaGenres.drop(GENRES_IN_FIRST_ROW).forEach { genre ->
-                            FilterChip(selected = selectedGenre == genre, onClick = {
-                                search("$genre música popular", genre = genre)
-                            }, label = { Text(genre, maxLines = 1) })
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        FilterChip(
-                            selected = false,
-                            onClick = {
-                                results = historyItems.asReversed()
-                                section = RockolaSection.SONGS
-                                activeArtist = "Historial"
-                                favoritesOnly = false
-                            },
-                            label = { Text("Historial") },
-                            enabled = historyItems.isNotEmpty(),
-                        )
-                        FilterChip(
-                            selected = false,
-                            onClick = {
-                                results = favoriteItems.asReversed()
-                                section = RockolaSection.SONGS
-                                activeArtist = "Favoritos"
-                                favoritesOnly = true
-                            },
-                            label = { Text("Favoritos") },
-                            enabled = favoriteItems.isNotEmpty(),
-                        )
-                    }
-                } else if (section == RockolaSection.SONGS) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(
-                            selected = favoritesOnly,
-                            onClick = { favoritesOnly = !favoritesOnly },
-                            label = { Text("Favoritos") },
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "${visibleResults.size} resultados",
-                            color = TechMuted,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
-            }
-        }
-        if (loading) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().padding(20.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) { CircularProgressIndicator(color = TechPurple) }
-            }
-        }
-        if (message.isNotBlank() && !loading) {
-            item { Text(message, color = TechMuted, modifier = Modifier.padding(vertical = 12.dp)) }
-        }
-        if (!loading && section == RockolaSection.ARTISTS) {
-            items(artists, key = { it.name }) { artist ->
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        VideoThumbnail(artist.sample, thumbnailResolver, Modifier.size(width = 96.dp, height = 64.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                artist.name,
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                "${artist.songCount} resultados encontrados",
-                                color = TechMuted,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                        Button(onClick = { openSongList(artist.name) }) { Text("Canciones") }
-                    }
-                }
-            }
-            if (artists.isEmpty() && results.isNotEmpty()) {
-                item { Text("No se pudo identificar el canal; mostrando canciones encontradas.", color = TechMuted) }
-            }
-        }
-        if (!loading && section == RockolaSection.SONGS) {
-            items(visibleResults, key = { it.id }) { video ->
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        VideoThumbnail(video, thumbnailResolver, Modifier.size(width = 128.dp, height = 74.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(
-                                video.title,
-                                color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(songMeta(video), color = TechMuted, style = MaterialTheme.typography.labelSmall)
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                IconButton(
-                                    onClick = {
-                                        rememberHistory(video)
-                                        onOpenYouTube(video)
-                                    },
-                                    modifier =
-                                        Modifier.size(
-                                            36.dp,
-                                        ),
-                                ) {
-                                    Icon(
-                                        Icons.Default.OpenInNew,
-                                        contentDescription = "Abrir en YouTube",
-                                        tint = TechPink,
-                                    )
-                                }
-                                IconButton(onClick = { toggleFavorite(video) }, modifier = Modifier.size(36.dp)) {
-                                    Icon(
-                                        if (video.id in
-                                            favoriteIds
-                                        ) {
-                                            Icons.Default.Favorite
-                                        } else {
-                                            Icons.Default.FavoriteBorder
-                                        },
-                                        contentDescription = "Favorito",
-                                        tint = TechPink,
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        requestDownload(video)
-                                    },
-                                    modifier =
-                                        Modifier.size(
-                                            36.dp,
-                                        ),
-                                ) { Icon(Icons.Default.Download, contentDescription = "Descargar", tint = TechPurple) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (!loading && section == RockolaSection.GENRES && results.isEmpty()) {
-            item {
-                Column(
-                    Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("Elige un género o busca un artista para comenzar.", color = TechMuted)
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { search("salsa música popular", genre = "Salsa") }) { Text("Explorar música") }
-                }
-            }
-        }
-        val hasUncategorizedSongs = results.isNotEmpty() && artists.isEmpty()
-        if (!loading && section == RockolaSection.ARTISTS && hasUncategorizedSongs) {
-            items(results, key = { it.id }) { video ->
-                SimpleSongResult(
-                    video,
-                    thumbnailResolver,
-                    favoriteIds,
-                    onOpenYouTube,
-                    ::requestDownload,
-                    ::toggleFavorite,
-                    ::rememberHistory,
-                )
-            }
-        }
-    }
 }
-
-@Suppress(
-    "ktlint:standard:function-naming",
-    "LongParameterList",
-)
-@Composable
-private fun SimpleSongResult(
-    video: VideoEntry,
-    resolver: VideoThumbnailResolver,
-    favoriteIds: Set<String>,
-    onOpen: (VideoEntry) -> Unit,
-    onDownload: (VideoEntry) -> Unit,
-    onFavorite: (VideoEntry) -> Unit,
-    onHistory: (VideoEntry) -> Unit,
-) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            VideoThumbnail(video, resolver, Modifier.size(width = 128.dp, height = 74.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(video.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Row {
-                    IconButton(
-                        onClick = {
-                            onHistory(video)
-                            onOpen(video)
-                        },
-                        modifier =
-                            Modifier.size(
-                                36.dp,
-                            ),
-                    ) { Icon(Icons.Default.OpenInNew, contentDescription = "Abrir en YouTube", tint = TechPink) }
-                    IconButton(onClick = { onFavorite(video) }, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            if (video.id in
-                                favoriteIds
-                            ) {
-                                Icons.Default.Favorite
-                            } else {
-                                Icons.Default.FavoriteBorder
-                            },
-                            contentDescription = "Favorito",
-                            tint = TechPink,
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            onDownload(video)
-                        },
-                        modifier =
-                            Modifier.size(
-                                36.dp,
-                            ),
-                    ) { Icon(Icons.Default.Download, contentDescription = "Descargar", tint = TechPurple) }
-                }
-            }
-        }
-    }
-}
-
-private fun songMeta(video: VideoEntry): String {
-    val duration =
-        if (video.durationSeconds >
-            0
-        ) {
-            "%d:%02d".format(video.durationSeconds / SECONDS_PER_MINUTE, video.durationSeconds % SECONDS_PER_MINUTE)
-        } else {
-            "YouTube"
-        }
-    val views =
-        video.viewCount
-            .takeIf { it > 0 }
-            ?.let { " · ${compactCount(it)} vistas" }
-            .orEmpty()
-    return duration + views
-}
-
-private fun compactCount(value: Long): String =
-    when {
-        value >= MILLION_VIEWS -> "%.1f M".format(value / MILLION_VIEWS)
-        value >= THOUSAND_VIEWS -> "%.1f mil".format(value / THOUSAND_VIEWS)
-        else -> value.toString()
-    }
-
-private fun loadTracks(
-    prefs: android.content.SharedPreferences,
-    key: String,
-): List<VideoEntry> =
-    runCatching {
-        val array = JSONArray(prefs.getString(key, "[]"))
-        (0 until array.length())
-            .mapNotNull { index ->
-                array.optJSONObject(index)?.let { item ->
-                    VideoEntry(
-                        id = item.optString("id"),
-                        url = item.optString("url"),
-                        title = item.optString("title").ifBlank { "Video de YouTube" },
-                        thumbnail = item.optString("thumbnail").takeIf { it.isNotBlank() },
-                        durationSeconds = item.optInt("duration").coerceAtLeast(0),
-                        uploader = item.optString("uploader").takeIf { it.isNotBlank() },
-                        viewCount = item.optLong("views", 0L).coerceAtLeast(0L),
-                    )
-                }
-            }.filter { it.id.isNotBlank() && it.url.isNotBlank() }
-    }.getOrDefault(emptyList())
