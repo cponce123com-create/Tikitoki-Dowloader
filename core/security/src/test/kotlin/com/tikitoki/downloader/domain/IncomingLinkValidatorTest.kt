@@ -1,6 +1,5 @@
 package com.tikitoki.downloader.domain
 
-import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
