@@ -85,6 +85,7 @@ import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.data.rethrowIfFatal
 import com.tikitoki.downloader.domain.DownloadIdentity
+import com.tikitoki.downloader.domain.FacebookPhotoLinks
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaLinkParser
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -297,6 +298,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                 }
             }
         if (tab == 0) {
+            val facebookPhotos = FacebookPhotoLinks.isPhotoCollection(url)
             LazyVerticalGrid(
                 columns = if (gridMode) GridCells.Adaptive(minSize = 112.dp) else GridCells.Fixed(1),
                 modifier =
@@ -327,6 +329,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             url = url,
                             loading = profileState.loading,
                             loadingMore = profileState.loadingMore,
+                            showAnalyze = !facebookPhotos,
                             onPlatformChange = { selectedPlatform = it },
                             onUrlChange = {
                                 val extracted =
@@ -366,19 +369,28 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             onAnalyze = {
                                 focusManager.clearFocus()
                                 keyboard?.hide()
-                                when (IncomingLinkValidator.validate(url)) {
+                                when (val link = IncomingLinkValidator.validate(url)) {
                                     null -> message = invalidLinkMessage
                                     else -> {
-                                        selected.clear()
-                                        profileViewModel.inspect(url, forceRefresh)
-                                        forceRefresh = false
-                                        message = ""
+                                        if (FacebookPhotoLinks.isPhotoCollection(link.url)) {
+                                            message = "Para este enlace usa Descargar fotos."
+                                        } else {
+                                            selected.clear()
+                                            profileViewModel.inspect(link.url, forceRefresh)
+                                            forceRefresh = false
+                                            message = ""
+                                        }
                                     }
                                 }
                             },
                         )
 
-                        PhotoDownloadPanel(url)
+                        if (facebookPhotos ||
+                            IncomingLinkValidator.validate(url)?.platform in
+                            setOf(MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)
+                        ) {
+                            PhotoDownloadPanel(url)
+                        }
 
                         // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
