@@ -21,6 +21,15 @@ class TikTokLinkParserTest {
         assertEquals(TikTokLinkType.VIDEO, result.link.type)
     }
 
+    @Test fun recognizesPhotoPostWithoutTreatingItAsAProfile() {
+        val url = "https://www.tiktok.com/@demo/photo/123456789?lang=es"
+        val result = TikTokLinkParser.parse(url) as LinkParseResult.Success
+        assertEquals(TikTokLinkType.VIDEO, result.link.type)
+        assertEquals("123456789", result.link.videoId)
+        assertEquals("demo", result.link.username)
+        assertNull(TikTokLinkParser.canonicalProfile(url))
+    }
+
     @Test fun recognizesShortLink() {
         val result = TikTokLinkParser.parse("https://vt.tiktok.com/ZExample/")
         assertTrue(result is LinkParseResult.Success)
