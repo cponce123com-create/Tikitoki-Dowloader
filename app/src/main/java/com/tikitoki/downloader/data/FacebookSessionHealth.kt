@@ -44,11 +44,16 @@ internal object FacebookSessionHealth {
     fun recordNoAuthError(context: Context) = record(context, "no_auth_error")
 
     fun reset(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
     }
 
     private fun record(context: Context, outcome: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(OUTCOME, outcome)
             .putLong(CHECKED_AT, System.currentTimeMillis())
