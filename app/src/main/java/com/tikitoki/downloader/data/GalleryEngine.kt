@@ -15,6 +15,7 @@ internal class GalleryEngine(
         private val installLock = Any()
     }
 
+    @Suppress("TooGenericExceptionCaught")
     fun run(
         arguments: List<String>,
         onLine: (String) -> Unit = {},

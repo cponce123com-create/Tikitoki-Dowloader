@@ -6,6 +6,7 @@ import java.io.File
 import java.util.Locale
 
 /** Session files remain in app-private, non-backed-up storage. */
+@Suppress("MagicNumber")
 internal object PhotoSession {
     private const val MAX_BYTES = 1024 * 1024
     private val domains = listOf("facebook.com", "instagram.com", "tiktok.com")

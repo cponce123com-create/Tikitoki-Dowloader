@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-@Suppress("ktlint:standard:function-naming")
+@Suppress("ktlint:standard:function-naming", "LongMethod", "CyclomaticComplexMethod")
 internal fun PhotoDownloadPanel(url: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -68,7 +68,8 @@ internal fun PhotoDownloadPanel(url: String) {
 
     fun enqueue() {
         val link = IncomingLinkValidator.validate(url)
-        if (link == null || link.platform !in setOf(MediaPlatform.FACEBOOK, MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)) {
+        val supported = setOf(MediaPlatform.FACEBOOK, MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)
+        if (link == null || link.platform !in supported) {
             message = "Pega un enlace de Facebook, Instagram o TikTok."
             return
         }
@@ -96,7 +97,9 @@ internal fun PhotoDownloadPanel(url: String) {
                     enqueue()
                 }
             }, enabled = !active, modifier = Modifier.weight(1f)) { Text("Descargar fotos") }
-            if (active) OutlinedButton(onClick = { manager.cancelUniqueWork(PhotoDownloadWorker.UNIQUE) }) { Text("Cancelar") }
+            if (active) {
+                OutlinedButton(onClick = { manager.cancelUniqueWork(PhotoDownloadWorker.UNIQUE) }) { Text("Cancelar") }
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) { Text("Importar sesión") }

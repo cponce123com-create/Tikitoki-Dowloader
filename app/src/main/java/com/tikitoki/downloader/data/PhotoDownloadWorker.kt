@@ -39,10 +39,12 @@ internal class PhotoDownloadWorker(
         private const val CHANNEL = "bajape_photo_download"
     }
 
+    @Suppress("LongMethod", "CyclomaticComplexMethod", "TooGenericExceptionCaught")
     override suspend fun doWork(): Result =
         withContext(Dispatchers.IO) {
             val parsed = IncomingLinkValidator.validate(inputData.getString(URL_KEY))
-            if (parsed == null || parsed.platform !in setOf(MediaPlatform.FACEBOOK, MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)) {
+            val supported = setOf(MediaPlatform.FACEBOOK, MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)
+            if (parsed == null || parsed.platform !in supported) {
                 return@withContext Result.failure(workDataOf(RESULT_KEY to "El enlace no es compatible con fotos."))
             }
             try {
@@ -93,9 +95,14 @@ internal class PhotoDownloadWorker(
                 val exitCode =
                     runInterruptible {
                         GalleryEngine(applicationContext).run(arguments) { line ->
-                            if (line.contains("AuthRequired", true) || line.contains("login required", true)) loginNeeded = true
+                            if (line.contains("AuthRequired", true) || line.contains("login required", true)) {
+                                loginNeeded = true
+                            }
                             val file = File(line)
-                            if (file.isFile && file.canonicalPath.startsWith(root) && file.extension.lowercase() in IMAGE_EXTENSIONS) {
+                            if (file.isFile &&
+                                file.canonicalPath.startsWith(root) &&
+                                file.extension.lowercase() in IMAGE_EXTENSIONS
+                            ) {
                                 try {
                                     if (publish(file, directory)) count++ else skipped++
                                 } catch (_: Exception) {
@@ -110,7 +117,7 @@ internal class PhotoDownloadWorker(
                 if (isStopped) return@withContext Result.failure()
                 val message =
                     when {
-                        loginNeeded -> "Facebook o Instagram requiere una sesión válida. Importa tus cookies y vuelve a intentar."
+                        loginNeeded -> "La plataforma requiere sesión. Importa tus cookies y vuelve a intentar."
                         exitCode != 0 -> "Se guardaron $count fotos; no se pudo completar la consulta."
                         errors > 0 -> "Se guardaron $count fotos; $errors no se pudieron guardar."
                         count == 0 && skipped == 0 -> "No se encontraron fotos accesibles para este enlace."
@@ -127,12 +134,14 @@ internal class PhotoDownloadWorker(
                 Thread.currentThread().interrupt()
                 Result.failure()
             } catch (_: Exception) {
-                Result.failure(workDataOf(RESULT_KEY to "No se pudo descargar la galería. Revisa la sesión y vuelve a intentar."))
+                val message = "No se pudo descargar la galería. Revisa la sesión y vuelve a intentar."
+                Result.failure(workDataOf(RESULT_KEY to message))
             } finally {
                 temp.deleteRecursively()
             }
         }
 
+    @Suppress("MagicNumber")
     private fun resolveShare(url: String): String =
         FacebookShareResolver.resolve(url) { current ->
             val connection = URL(current).openConnection() as HttpURLConnection
@@ -147,6 +156,7 @@ internal class PhotoDownloadWorker(
             }
         } ?: url
 
+    @Suppress("MagicNumber", "ReturnCount", "TooGenericExceptionCaught")
     private fun publish(
         file: File,
         directory: String,
@@ -162,7 +172,10 @@ internal class PhotoDownloadWorker(
             }
         if (Build.VERSION.SDK_INT < 29) {
             val folder =
-                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), directory.removePrefix("Pictures/"))
+                File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                    directory.removePrefix("Pictures/"),
+                )
             check(folder.isDirectory || folder.mkdirs())
             val dest = File(folder, name)
             if (dest.exists()) return false
@@ -191,7 +204,9 @@ internal class PhotoDownloadWorker(
             }
         val target = checkNotNull(resolver.insert(collection, values))
         try {
-            checkNotNull(resolver.openOutputStream(target)).use { output -> file.inputStream().use { input -> input.copyTo(output) } }
+            checkNotNull(resolver.openOutputStream(target)).use { output ->
+                file.inputStream().use { input -> input.copyTo(output) }
+            }
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
             resolver.update(target, values, null, null)
@@ -202,10 +217,16 @@ internal class PhotoDownloadWorker(
         }
     }
 
+    @Suppress("MagicNumber")
     private fun foreground(message: String): ForegroundInfo {
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val manager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         manager.createNotificationChannel(
-            android.app.NotificationChannel(CHANNEL, "Descarga de fotos", android.app.NotificationManager.IMPORTANCE_LOW),
+            android.app.NotificationChannel(
+                CHANNEL,
+                "Descarga de fotos",
+                android.app.NotificationManager.IMPORTANCE_LOW,
+            ),
         )
         val notification =
             NotificationCompat

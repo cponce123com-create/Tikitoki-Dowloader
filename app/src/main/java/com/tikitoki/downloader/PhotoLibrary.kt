@@ -34,7 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-@Suppress("ktlint:standard:function-naming")
+@Suppress("ktlint:standard:function-naming", "LongMethod", "MagicNumber")
 internal fun PhotoLibrary(
     insets: PaddingValues,
     onSettings: () -> Unit,
@@ -64,7 +64,9 @@ internal fun PhotoLibrary(
                             arrayOf(pattern),
                             "${MediaStore.Images.Media.DATE_ADDED} DESC",
                         )?.use { cursor ->
-                            while (cursor.moveToNext()) result.add(ContentUris.withAppendedId(collection, cursor.getLong(0)))
+                            while (cursor.moveToNext()) {
+                                result.add(ContentUris.withAppendedId(collection, cursor.getLong(0)))
+                            }
                         }
                     result
                 }.getOrDefault(emptyList())
@@ -92,7 +94,10 @@ internal fun PhotoLibrary(
         items(photos, key = { it.toString() }) { uri ->
             Box(
                 Modifier.fillMaxWidth().aspectRatio(1f).clickable {
-                    val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "image/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val intent =
+                        Intent(Intent.ACTION_VIEW)
+                            .setDataAndType(uri, "image/*")
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     runCatching { context.startActivity(intent) }
                 },
             ) {
