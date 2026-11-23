@@ -18,14 +18,17 @@ internal object PhotoSession {
 
     fun facebookCookieState(context: Context): FacebookCookieState {
         val file = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE)
-        if (!file.isFile) return FacebookCookieState.MISSING
-        if (file.length() > MAX_BYTES) return FacebookCookieState.INCOMPLETE
-        return runCatching { facebookCookieStateFromText(file.readText()) }
-            .getOrDefault(FacebookCookieState.INCOMPLETE)
+        return when {
+            !file.isFile -> FacebookCookieState.MISSING
+            file.length() > MAX_BYTES -> FacebookCookieState.INCOMPLETE
+            else -> runCatching { facebookCookieStateFromText(file.readText()) }
+                .getOrDefault(FacebookCookieState.INCOMPLETE)
+        }
     }
 
-    internal fun hasFacebookLoginCookies(contents: String): Boolean =
-        facebookCookieStateFromText(contents) == FacebookCookieState.PRESENT
+    internal fun hasFacebookLoginCookies(contents: String): Boolean {
+        return facebookCookieStateFromText(contents) == FacebookCookieState.PRESENT
+    }
 
     internal fun facebookCookieStateFromText(
         contents: String,
