@@ -127,6 +127,13 @@ internal class PhotoDownloadWorker(
                         }
                     }
                 if (isStopped) return@withContext Result.failure()
+                if (parsed.platform == MediaPlatform.FACEBOOK) {
+                    when {
+                        loginNeeded -> FacebookSessionHealth.recordLoginRequired(applicationContext)
+                        exitCode == 0 && cookies.isFile && PhotoSession.hasFacebookLogin(applicationContext) ->
+                            FacebookSessionHealth.recordNoAuthError(applicationContext)
+                    }
+                }
                 val message =
                     when {
                         loginNeeded && parsed.platform == MediaPlatform.FACEBOOK ->
