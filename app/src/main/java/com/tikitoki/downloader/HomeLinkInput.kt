@@ -36,6 +36,7 @@ internal fun HomeLinkInput(
     url: String,
     loading: Boolean,
     loadingMore: Boolean,
+    showAnalyze: Boolean = true,
     onPlatformChange: (String) -> Unit,
     onUrlChange: (String) -> Unit,
     onKeyboardDone: () -> Unit,
@@ -66,12 +67,14 @@ internal fun HomeLinkInput(
             Spacer(Modifier.width(5.dp))
             Text(stringResource(R.string.home_paste))
         }
-        TechPrimaryButton(
-            modifier = Modifier.weight(1f).height(44.dp),
-            enabled = !loading && !loadingMore && url.isNotBlank(),
-            onClick = onAnalyze,
-            icon = Icons.Outlined.Search,
-            text = stringResource(if (loading) R.string.home_analyzing else R.string.home_analyze),
-        )
+        if (showAnalyze) {
+            TechPrimaryButton(
+                modifier = Modifier.weight(1f).height(44.dp),
+                enabled = !loading && !loadingMore && url.isNotBlank(),
+                onClick = onAnalyze,
+                icon = Icons.Outlined.Search,
+                text = stringResource(if (loading) R.string.home_analyzing else R.string.home_analyze),
+            )
+        }
     }
 }
