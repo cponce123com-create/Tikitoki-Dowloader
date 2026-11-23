@@ -74,4 +74,55 @@ class GalleryEngineTest {
             }
         }
     }
+
+    @Test
+    fun interruptedEngineStopsWhileWaitingForNetwork() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val folder = java.io.File(context.cacheDir, "gallery-cancel-" + java.util.UUID.randomUUID())
+        folder.mkdirs()
+        val connected = java.util.concurrent.CountDownLatch(1)
+        val accepted =
+            java.util.concurrent.atomic
+                .AtomicReference<java.net.Socket?>()
+        java.net.ServerSocket(0).use { server ->
+            server.soTimeout = 20000
+            val serving =
+                Thread {
+                    runCatching {
+                        val socket = server.accept()
+                        accepted.set(socket)
+                        connected.countDown()
+                        socket.getInputStream().read()
+                        Thread.sleep(20000)
+                    }
+                }.apply { isDaemon = true }
+            serving.start()
+            val worker =
+                Thread {
+                    try {
+                        GalleryEngine(context).run(
+                            listOf(
+                                "--config-ignore",
+                                "--no-input",
+                                "-D",
+                                folder.absolutePath,
+                                "http://127.0.0.1:${server.localPort}/slow.png",
+                            ),
+                        )
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    }
+                }.apply { isDaemon = true }
+            try {
+                worker.start()
+                assertTrue(connected.await(20, java.util.concurrent.TimeUnit.SECONDS))
+                worker.interrupt()
+                worker.join(7000)
+                assertTrue("El motor debería terminar al cancelar", !worker.isAlive)
+            } finally {
+                accepted.get()?.close()
+                folder.deleteRecursively()
+            }
+        }
+    }
 }
