@@ -45,7 +45,10 @@ import kotlinx.coroutines.withContext
 
 @Composable
 @Suppress("ktlint:standard:function-naming", "LongMethod", "CyclomaticComplexMethod")
-internal fun PhotoDownloadPanel(url: String) {
+internal fun PhotoDownloadPanel(
+    url: String,
+    onManageFacebook: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val manager = remember(context) { WorkManager.getInstance(context) }
@@ -178,6 +181,9 @@ internal fun PhotoDownloadPanel(url: String) {
                 facebookReady = false
                 message = "Sesión borrada del dispositivo."
             }) { Text("Borrar sesión") }
+        }
+        if (isFacebook) {
+            OutlinedButton(onClick = onManageFacebook) { Text("Gestionar cuenta de Facebook") }
         }
         if (isFacebook && sessionPresent) {
             Text(
