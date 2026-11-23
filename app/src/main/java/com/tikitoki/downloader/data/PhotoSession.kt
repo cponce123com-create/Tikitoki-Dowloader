@@ -13,6 +13,28 @@ internal object PhotoSession {
 
     fun isPresent(context: Context): Boolean = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).isFile
 
+    /** Only checks whether the two Facebook authentication cookies are present locally.
+     * The server may still reject an expired or revoked session.
+     */
+    fun hasFacebookLogin(context: Context): Boolean {
+        val file = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE)
+        if (!file.isFile || file.length() > MAX_BYTES) return false
+        return runCatching { hasFacebookLoginCookies(file.readText()) }.getOrDefault(false)
+    }
+
+    internal fun hasFacebookLoginCookies(contents: String): Boolean {
+        val names =
+            sanitize(contents)
+                .asSequence()
+                .map { it.split('\t') }
+                .filter { fields ->
+                    val host = fields[0].removePrefix("#HttpOnly_").trimStart('.').lowercase(Locale.ROOT)
+                    host == "facebook.com" || host.endsWith(".facebook.com")
+                }.map { it[5] }
+                .toSet()
+        return "c_user" in names && "xs" in names
+    }
+
     fun delete(context: Context) {
         File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).delete()
     }
