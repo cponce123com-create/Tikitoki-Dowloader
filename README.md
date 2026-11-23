@@ -293,7 +293,7 @@ git fetch --tags origin
 python3 scripts/verify_release_version.py vMAJOR.MINOR.PATCH
 ```
 
-Cuando las verificaciones pasen, crea y publica un tag que coincida exactamente con `appVersion`, por ejemplo `v0.5.1`. El workflow vuelve a comprobar el tag y que `appVersionCode` avance antes de firmar; no reutilices tags/versiones publicados.
+Cuando las verificaciones pasen en el commit de `main`, crea y sube un tag que coincida exactamente con `appVersion`, por ejemplo `v0.5.1`. Ejecuta **Release Android** sobre ese tag con `gh workflow run release.yml --ref v0.5.1`. El flujo verifica el CI del mismo commit, el versionado, la firma y las bibliotecas nativas de los APK. Si todo pasa, crea un borrador de GitHub Release para la validación final en dispositivos y la publicación manual.
 
 ### 4. Ejecutar Tests
 
@@ -361,7 +361,7 @@ graph LR
 | **sbom** | Push/PR main | ~3 min | CycloneDX BOM |
 | **ktlint** | Push/PR main | ~2 min | ktlint report |
 | **verify-signed-release** | Push/PR main | ~5 min | Verificación firma + no x86_64 |
-| **release (publish)** | Tag `v*.*.*` | ~10 min | GitHub Release con APKs + SHA256SUMS |
+| **Release Android** | Manual sobre tag `v*.*.*` | ~10 min | Borrador de GitHub Release con APKs y SHA256SUMS |
 
 ### Secrets Requeridos para Release
 
@@ -381,7 +381,7 @@ Tikitoki-Dowloader/
 ├── .github/
 │   ├── workflows/
 │   │   ├── android.yml          # CI principal
-│   │   └── release.yml          # Release automático
+│   │   └── release.yml          # Borrador de release
 │   └── dependabot.yml           # Actualizaciones semanales
 ├── app/                         # Módulo principal (:app)
 │   ├── src/

@@ -11,20 +11,44 @@ internal object PhotoSession {
     private const val MAX_BYTES = 1024 * 1024
     private val domains = listOf("facebook.com", "instagram.com", "tiktok.com")
 
-    fun isPresent(context: Context): Boolean = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).isFile
+    internal const val LEGACY_FILE = "photo-session-cookies.txt"
+    internal const val IMPORT_NOTICE =
+        "Importa solo tu propia sesión. Baja.pe cifra las cookies en este dispositivo y las usa al " +
+            "descargar fotos. Pueden dar acceso a contenido privado. El archivo original se borra por separado."
+    private const val HEADER = "# Netscape HTTP Cookie File\n"
+    private const val MAX_STORED_BYTES = MAX_BYTES + 64
 
-    /** Local presence and expiry only; Facebook may still revoke any cookie at any time. */
+    fun isPresent(context: Context): Boolean =
+        EncryptedPhotoSession.exists(context) || legacy(context).exists()
+
+    /** Local presence and expiry only; Facebook may revoke cookies at any time. */
     fun hasFacebookLogin(context: Context): Boolean = facebookCookieState(context) == FacebookCookieState.PRESENT
 
-    fun facebookCookieState(context: Context): FacebookCookieState {
-        val file = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE)
-        return when {
-            !file.isFile -> FacebookCookieState.MISSING
-            file.length() > MAX_BYTES -> FacebookCookieState.INCOMPLETE
-            else ->
-                runCatching { facebookCookieStateFromText(file.readText()) }
-                    .getOrDefault(FacebookCookieState.INCOMPLETE)
+    fun facebookCookieState(context: Context): FacebookCookieState =
+        runCatching {
+            read(context)?.let { facebookCookieStateFromText(it) } ?: FacebookCookieState.MISSING
+        }.getOrDefault(FacebookCookieState.INCOMPLETE)
+
+    @Synchronized
+    fun read(context: Context): String? {
+        val old = legacy(context)
+        if (!EncryptedPhotoSession.exists(context)) {
+            if (!old.isFile) return null
+            require(old.length() <= MAX_STORED_BYTES)
+            EncryptedPhotoSession.write(context, old.readText())
         }
+        val contents = EncryptedPhotoSession.read(context, MAX_STORED_BYTES)
+        removeLegacy(context)
+        return contents
+    }
+
+    private fun legacy(context: Context): File = File(context.noBackupFilesDir, LEGACY_FILE)
+
+    private fun removeLegacy(context: Context) {
+        val old = legacy(context)
+        check(!old.exists() || old.delete())
+        val temporary = File(context.noBackupFilesDir, "photo-session.tmp")
+        check(!temporary.exists() || temporary.delete())
     }
 
     internal fun hasFacebookLoginCookies(contents: String): Boolean {
@@ -55,11 +79,14 @@ internal object PhotoSession {
         }
     }
 
+    @Synchronized
     fun delete(context: Context) {
-        File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).delete()
+        removeLegacy(context)
+        EncryptedPhotoSession.delete(context)
         FacebookSessionHealth.reset(context)
     }
 
+    @Synchronized
     fun import(
         context: Context,
         uri: Uri,
@@ -78,15 +105,9 @@ internal object PhotoSession {
         require(bytes.size <= MAX_BYTES) { "El archivo de sesión es demasiado grande." }
         val entries = sanitize(bytes.toString(Charsets.UTF_8))
         require(entries.isNotEmpty()) { "El archivo no contiene cookies compatibles." }
-        val target = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE)
-        val temp = File(context.noBackupFilesDir, "photo-session.tmp")
-        try {
-            temp.writeText("# Netscape HTTP Cookie File\n" + entries.joinToString("\n") + "\n")
-            check(temp.renameTo(target))
-            FacebookSessionHealth.reset(context)
-        } finally {
-            temp.delete()
-        }
+        EncryptedPhotoSession.write(context, HEADER + entries.joinToString("\n") + "\n")
+        removeLegacy(context)
+        FacebookSessionHealth.reset(context)
         return entries.size
     }
 

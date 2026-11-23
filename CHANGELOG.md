@@ -1,12 +1,11 @@
 # Registro de cambios
 
-## Sin publicar
+## 0.5.1
 
-### Añadido
-- Pendiente.
-
-### Corregido
-- Pendiente.
+- Cifrado de las sesiones de fotos con Android Keystore y migración de sesiones importadas anteriormente.
+- Aviso de privacidad antes de importar cookies, con indicaciones para eliminar la sesión y revocarla.
+- Validación del hash de yt-dlp antes de ejecutar una actualización descargada.
+- Firma de release mediante ejecución manual. El flujo exige CI exitoso en el commit del tag, verifica bibliotecas nativas y genera un borrador de publicación.
 
 ## 0.5.0
 

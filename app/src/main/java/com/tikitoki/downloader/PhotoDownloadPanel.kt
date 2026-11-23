@@ -67,8 +67,14 @@ internal fun PhotoDownloadPanel(
             message = ""
         }
     }
-    var sessionPresent by remember { mutableStateOf(PhotoSession.isPresent(context)) }
-    var facebookReady by remember { mutableStateOf(PhotoSession.hasFacebookLogin(context)) }
+    var sessionPresent by remember { mutableStateOf(false) }
+    var facebookReady by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+        sessionPresent = PhotoSession.isPresent(context)
+    }
+    var showImport by remember { mutableStateOf(false) }
+    var showDeleteSession by remember { mutableStateOf(false) }
     var showSessionHelp by remember { mutableStateOf(false) }
     val isFacebook = IncomingLinkValidator.validate(url)?.platform == MediaPlatform.FACEBOOK
     val cookiePicker =
@@ -79,7 +85,7 @@ internal fun PhotoDownloadPanel(
                         try {
                             val count = withContext(Dispatchers.IO) { PhotoSession.import(context, uri) }
                             sessionPresent = PhotoSession.isPresent(context)
-                            facebookReady = PhotoSession.hasFacebookLogin(context)
+                            facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
                             if (isFacebook && !facebookReady) {
                                 "Archivo importado ($count cookies), pero faltan c_user o xs de Facebook."
                             } else {
@@ -143,6 +149,39 @@ internal fun PhotoDownloadPanel(
             },
         )
     }
+    if (showImport) {
+        PhotoSessionImportDialog(
+            onDismiss = { showImport = false },
+            onContinue = {
+                showImport = false
+                cookiePicker.launch(arrayOf("text/plain", "*/*"))
+            },
+        )
+    }
+    if (showDeleteSession) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSession = false },
+            title = { Text("Borrar sesiones importadas") },
+            text = { Text("Se borrarán las sesiones de Facebook, Instagram y TikTok guardadas en Baja.pe.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteSession = false
+                    scope.launch {
+                        message =
+                            try {
+                                withContext(Dispatchers.IO) { PhotoSession.delete(context) }
+                                "Sesiones eliminadas de Baja.pe."
+                            } catch (_: Exception) {
+                                "No se pudo eliminar la sesión. Vuelve a intentarlo."
+                            }
+                        sessionPresent = PhotoSession.isPresent(context)
+                        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+                    }
+                }) { Text("Borrar") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteSession = false }) { Text("Cancelar") } },
+        )
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = {
@@ -163,7 +202,7 @@ internal fun PhotoDownloadPanel(
             OutlinedButton(
                 enabled = !active,
                 modifier = Modifier.weight(1f),
-                onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) },
+                onClick = { showImport = true },
             ) {
                 Text("Importar sesión")
             }
@@ -175,12 +214,7 @@ internal fun PhotoDownloadPanel(
             }
         }
         if (sessionPresent) {
-            OutlinedButton(enabled = !active, onClick = {
-                PhotoSession.delete(context)
-                sessionPresent = false
-                facebookReady = false
-                message = "Sesión borrada del dispositivo."
-            }) { Text("Borrar sesión") }
+            OutlinedButton(enabled = !active, onClick = { showDeleteSession = true }) { Text("Borrar sesión") }
         }
         if (isFacebook) {
             OutlinedButton(onClick = onManageFacebook) { Text("Gestionar cuenta de Facebook") }
@@ -205,4 +239,19 @@ internal fun PhotoDownloadPanel(
         Text("Con sesión pueden aparecer fotos no públicas; la app no puede distinguir su privacidad.")
         Text("El archivo cookies.txt contiene tu sesión. No lo compartas ni envíes tus contraseñas.")
     }
+}
+
+@Composable
+@Suppress("ktlint:standard:function-naming")
+internal fun PhotoSessionImportDialog(
+    onDismiss: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Importar sesión para fotos") },
+        text = { Text(PhotoSession.IMPORT_NOTICE) },
+        confirmButton = { TextButton(onClick = onContinue) { Text("Elegir archivo") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }

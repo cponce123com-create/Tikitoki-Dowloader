@@ -9,6 +9,13 @@ import java.nio.file.Files
 
 class ExtractorVerifierTest {
     @Test
+    fun onlyPinnedArtifactHashesReturnAnApprovedVersion() {
+        val bundledHash = "89a0d9058ea9018e380b7771898ff46e393a1986dcd13fef331693c87ce1fca4"
+        assertEquals("2025.11.12", ExtractorVerifier.approvedVersion(bundledHash))
+        assertEquals(null, ExtractorVerifier.approvedVersion("0".repeat(bundledHash.length)))
+    }
+
+    @Test
     fun computesSha256Correctly() {
         val dir = Files.createTempDirectory("verifier-test").toFile()
         try {
