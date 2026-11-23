@@ -21,6 +21,7 @@ class PhotoSessionTest {
             ).joinToString("\n")
         assertEquals(2, PhotoSession.sanitize(input).size)
     }
+
     @Test
     fun detectsFacebookSessionOnlyWithBothAuthenticationCookies() {
         val cUser = "#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t123"
@@ -28,9 +29,8 @@ class PhotoSessionTest {
         val instagram = ".instagram.com\tTRUE\t/\tTRUE\t0\tsessionid\t456"
         val lookalike = ".facebook.com.evil.example\tTRUE\t/\tTRUE\t0\txs\tbad"
         assertFalse(PhotoSession.hasFacebookLoginCookies(cUser))
-        assertFalse(PhotoSession.hasFacebookLoginCookies("$cUser\\n$instagram"))
-        assertFalse(PhotoSession.hasFacebookLoginCookies("$cUser\\n$lookalike"))
-        assertTrue(PhotoSession.hasFacebookLoginCookies("$cUser\\n$xs"))
+        assertFalse(PhotoSession.hasFacebookLoginCookies("$cUser\n$instagram"))
+        assertFalse(PhotoSession.hasFacebookLoginCookies("$cUser\n$lookalike"))
+        assertTrue(PhotoSession.hasFacebookLoginCookies("$cUser\n$xs"))
     }
-
 }
