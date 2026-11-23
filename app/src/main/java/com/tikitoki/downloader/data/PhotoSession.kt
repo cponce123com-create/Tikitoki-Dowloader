@@ -21,8 +21,9 @@ internal object PhotoSession {
         return when {
             !file.isFile -> FacebookCookieState.MISSING
             file.length() > MAX_BYTES -> FacebookCookieState.INCOMPLETE
-            else -> runCatching { facebookCookieStateFromText(file.readText()) }
-                .getOrDefault(FacebookCookieState.INCOMPLETE)
+            else ->
+                runCatching { facebookCookieStateFromText(file.readText()) }
+                    .getOrDefault(FacebookCookieState.INCOMPLETE)
         }
     }
 
