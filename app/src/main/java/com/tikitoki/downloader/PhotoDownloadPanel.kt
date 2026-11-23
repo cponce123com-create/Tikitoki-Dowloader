@@ -35,8 +35,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.tikitoki.downloader.data.DownloadSettings
-import com.tikitoki.downloader.data.PhotoDownloadWorker
 import com.tikitoki.downloader.data.FacebookCookieState
+import com.tikitoki.downloader.data.PhotoDownloadWorker
 import com.tikitoki.downloader.data.PhotoSession
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -70,6 +70,7 @@ internal fun PhotoDownloadPanel(
     }
     var sessionPresent by remember { mutableStateOf(false) }
     var facebookReady by remember { mutableStateOf(false) }
+
     suspend fun hasFacebookSession(): Boolean =
         withContext(Dispatchers.IO) {
             PhotoSession.facebookCookieState(context) == FacebookCookieState.PRESENT
