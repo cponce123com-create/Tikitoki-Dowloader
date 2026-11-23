@@ -101,7 +101,7 @@ internal fun FacebookAccountPanel() {
                         "Chrome y Baja.pe no comparten cookies. Facebook Login oficial entrega " +
                         "un token para Graph API, no las cookies que utiliza gallery-dl.\n\n" +
                         "No compartas tu archivo ni tu contraseña. Solo se guardan las cookies " +
-                        "en almacenamiento privado del dispositivo.",
+                        "cifradas en almacenamiento privado del dispositivo.",
                 )
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("Entendido") } },
@@ -114,10 +114,17 @@ internal fun FacebookAccountPanel() {
             text = { Text("Se eliminará el archivo de cookies utilizado para Facebook y otras plataformas.") },
             confirmButton = {
                 TextButton(onClick = {
-                    PhotoSession.delete(context)
-                    message = "Sesiones eliminadas de este teléfono."
-                    revision++
                     showDelete = false
+                    scope.launch {
+                        message =
+                            try {
+                                withContext(Dispatchers.IO) { PhotoSession.delete(context) }
+                                "Sesiones eliminadas de Baja.pe."
+                            } catch (_: Exception) {
+                                "No se pudo eliminar la sesión. Vuelve a intentarlo."
+                            }
+                        revision++
+                    }
                 }) { Text("Borrar") }
             },
             dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancelar") } },
@@ -159,6 +166,7 @@ internal fun FacebookAccountPanel() {
                 color = TechMuted,
                 style = MaterialTheme.typography.bodySmall,
             )
+            Text(PhotoSession.IMPORT_NOTICE, style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = { picker.launch(arrayOf("text/plain", "*/*")) },

@@ -30,9 +30,20 @@ internal class PhotoDownloadWorker(
         const val URL_KEY = "url"
         const val RESULT_KEY = "message"
         const val COUNT_KEY = "count"
-        const val COOKIE_FILE = "photo-session-cookies.txt"
         private const val NOTIFICATION_ID = 903
         private const val CHANNEL = "bajape_photo_download"
+        private const val JOB_PREFIX = "photo-job-"
+        private const val SESSION_FILE = "session.txt"
+        private var cleanedStaleSessions = false
+
+        @Synchronized
+        private fun cleanStaleSessions(cacheDir: File) {
+            if (cleanedStaleSessions) return
+            cacheDir.listFiles()?.filter { it.name.startsWith(JOB_PREFIX) }?.forEach { directory ->
+                File(directory, SESSION_FILE).delete()
+            }
+            cleanedStaleSessions = true
+        }
     }
 
     @Suppress("LongMethod", "CyclomaticComplexMethod", "TooGenericExceptionCaught", "MagicNumber")
@@ -48,7 +59,8 @@ internal class PhotoDownloadWorker(
             } catch (_: IllegalStateException) {
                 return@withContext Result.retry()
             }
-            val temp = File(applicationContext.cacheDir, "photo-job-$id")
+            cleanStaleSessions(applicationContext.cacheDir)
+            val temp = File(applicationContext.cacheDir, "$JOB_PREFIX$id")
             temp.deleteRecursively()
             if (!temp.mkdirs()) {
                 return@withContext Result.failure(workDataOf(RESULT_KEY to "No se pudo preparar el espacio temporal."))
@@ -62,7 +74,11 @@ internal class PhotoDownloadWorker(
                 val url = if (parsed.platform == MediaPlatform.FACEBOOK) resolveShare(parsed.url) else parsed.url
                 val account = DestinationNaming.account(url)
                 val directory = "Pictures/Baja.pe/${parsed.platform.name.lowercase()}/$account/"
-                val cookies = File(applicationContext.noBackupFilesDir, COOKIE_FILE)
+                val session = PhotoSession.read(applicationContext)
+                val cookies =
+                    session?.let {
+                        File(temp, SESSION_FILE).apply { writeText(it) }
+                    }
                 val arguments =
                     mutableListOf(
                         "--config-ignore",
@@ -92,7 +108,7 @@ internal class PhotoDownloadWorker(
                         "-D",
                         temp.absolutePath,
                     )
-                if (cookies.isFile) arguments.addAll(listOf("--cookies", cookies.absolutePath))
+                if (cookies != null) arguments.addAll(listOf("--cookies", cookies.absolutePath))
                 arguments.add("--")
                 arguments.add(url)
                 val root = temp.canonicalPath + File.separator
@@ -130,7 +146,7 @@ internal class PhotoDownloadWorker(
                 if (parsed.platform == MediaPlatform.FACEBOOK) {
                     when {
                         loginNeeded -> FacebookSessionHealth.recordLoginRequired(applicationContext)
-                        exitCode == 0 && cookies.isFile && PhotoSession.hasFacebookLogin(applicationContext) ->
+                        exitCode == 0 && session != null && PhotoSession.hasFacebookLoginCookies(session) ->
                             FacebookSessionHealth.recordNoAuthError(applicationContext)
                     }
                 }
@@ -138,8 +154,8 @@ internal class PhotoDownloadWorker(
                     when {
                         loginNeeded && parsed.platform == MediaPlatform.FACEBOOK ->
                             when {
-                                !cookies.isFile -> "Facebook exige sesión. Importa las cookies de tu cuenta."
-                                !PhotoSession.hasFacebookLogin(applicationContext) ->
+                                session == null -> "Facebook exige sesión. Importa las cookies de tu cuenta."
+                                !PhotoSession.hasFacebookLoginCookies(session) ->
                                     "El archivo no contiene las cookies de Facebook c_user y xs."
                                 else -> "Facebook rechazó la sesión o caducó. Vuelve a importarla."
                             }

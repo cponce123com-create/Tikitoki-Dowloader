@@ -5,23 +5,34 @@
 # KEY_PASSWORD: contraseña de la clave de firma.
 name: Release Android
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
 permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - name: Validar tag y versionado Android
+      - name: Validar tag y CI del commit
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: python3 scripts/verify_release_version.py
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          git merge-base --is-ancestor HEAD origin/main
+          python3 scripts/verify_release_version.py "$GITHUB_REF_NAME"
+          for workflow in android.yml license-compliance.yml dependency-check.yml; do
+            run=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs" \
+              -f head_sha="$(git rev-parse HEAD)" -f branch=main -f event=push -f per_page=1 \
+              --jq '.workflow_runs[0].conclusion // "sin resultado"')
+            if [ "$run" != success ]; then
+              echo "::error::$workflow en el commit del tag: $run"
+              exit 1
+            fi
+          done
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with:
           distribution: temurin
@@ -63,6 +74,7 @@ jobs:
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$apk"
             cp "$apk" release-artifacts/
           done
+          python3 scripts/verify_native_pages.py "${apks[@]}"
           cd release-artifacts
           sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -80,8 +92,13 @@ jobs:
         with:
           name: signed-release-apks
           path: release-artifacts
-      - name: Publicar GitHub Release
+      - name: Crear borrador de GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "$GITHUB_REF_NAME" release-artifacts/*.apk release-artifacts/SHA256SUMS.txt --verify-tag --generate-notes
+        run: |
+          cd release-artifacts
+          sha256sum --check SHA256SUMS.txt
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME" --jq .sha)
+          test "$tag_sha" = "$GITHUB_SHA"
+          gh release create "$GITHUB_REF_NAME" ./*.apk SHA256SUMS.txt --verify-tag --generate-notes --draft

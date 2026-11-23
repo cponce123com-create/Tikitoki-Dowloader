@@ -67,8 +67,13 @@ internal fun PhotoDownloadPanel(
             message = ""
         }
     }
-    var sessionPresent by remember { mutableStateOf(PhotoSession.isPresent(context)) }
-    var facebookReady by remember { mutableStateOf(PhotoSession.hasFacebookLogin(context)) }
+    var sessionPresent by remember { mutableStateOf(false) }
+    var facebookReady by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+        sessionPresent = PhotoSession.isPresent(context)
+    }
+    var showDeleteSession by remember { mutableStateOf(false) }
     var showSessionHelp by remember { mutableStateOf(false) }
     val isFacebook = IncomingLinkValidator.validate(url)?.platform == MediaPlatform.FACEBOOK
     val cookiePicker =
@@ -79,7 +84,7 @@ internal fun PhotoDownloadPanel(
                         try {
                             val count = withContext(Dispatchers.IO) { PhotoSession.import(context, uri) }
                             sessionPresent = PhotoSession.isPresent(context)
-                            facebookReady = PhotoSession.hasFacebookLogin(context)
+                            facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
                             if (isFacebook && !facebookReady) {
                                 "Archivo importado ($count cookies), pero faltan c_user o xs de Facebook."
                             } else {
@@ -143,6 +148,30 @@ internal fun PhotoDownloadPanel(
             },
         )
     }
+    if (showDeleteSession) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSession = false },
+            title = { Text("Borrar sesiones importadas") },
+            text = { Text("Se borrarán las sesiones de Facebook, Instagram y TikTok guardadas en Baja.pe.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteSession = false
+                    scope.launch {
+                        message =
+                            try {
+                                withContext(Dispatchers.IO) { PhotoSession.delete(context) }
+                                "Sesiones eliminadas de Baja.pe."
+                            } catch (_: Exception) {
+                                "No se pudo eliminar la sesión. Vuelve a intentarlo."
+                            }
+                        sessionPresent = PhotoSession.isPresent(context)
+                        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+                    }
+                }) { Text("Borrar") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteSession = false }) { Text("Cancelar") } },
+        )
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = {
@@ -175,12 +204,7 @@ internal fun PhotoDownloadPanel(
             }
         }
         if (sessionPresent) {
-            OutlinedButton(enabled = !active, onClick = {
-                PhotoSession.delete(context)
-                sessionPresent = false
-                facebookReady = false
-                message = "Sesión borrada del dispositivo."
-            }) { Text("Borrar sesión") }
+            OutlinedButton(enabled = !active, onClick = { showDeleteSession = true }) { Text("Borrar sesión") }
         }
         if (isFacebook) {
             OutlinedButton(onClick = onManageFacebook) { Text("Gestionar cuenta de Facebook") }
