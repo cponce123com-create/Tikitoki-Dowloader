@@ -30,7 +30,11 @@ internal object AnalysisErrors {
                     if (platform == MediaPlatform.TIKTOK) {
                         R.string.analysis_error_tiktok
                     } else {
-                        R.string.analysis_error_generic
+                        if (platform == MediaPlatform.FACEBOOK) {
+                            R.string.analysis_error_facebook
+                        } else {
+                            R.string.analysis_error_generic
+                        }
                     }
             }
         return app.getString(resource)

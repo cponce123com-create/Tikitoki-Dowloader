@@ -142,6 +142,7 @@
     <string name="analysis_error_update_requested">TikTok devolvió una respuesta que el motor no pudo interpretar. Se solicitó una actualización; requiere una red sin medición y que no haya descargas pendientes. Cuando termine, vuelve a intentar.</string>
     <string name="analysis_error_update_manual">TikTok devolvió una respuesta que el motor no pudo interpretar. En Ajustes, solicita la actualización del motor con una red sin medición y vuelve a intentar.</string>
     <string name="analysis_error_tiktok">No se pudo analizar TikTok. Comprueba la conexión y, si el problema continúa, actualiza el motor desde Ajustes con una red sin medición.</string>
+    <string name="analysis_error_facebook">No se pudo analizar el enlace de Facebook. Baja.pe aún no descarga fotos de perfiles; si buscas un video, prueba su enlace directo. Facebook también puede limitar el acceso.</string>
     <string name="analysis_error_generic">No se pudo analizar el enlace. Comprueba la conexión y que el contenido esté disponible.</string>
     <string name="collections_explore">Explorar colecciones</string>
     <string name="collections_back">Volver</string>
