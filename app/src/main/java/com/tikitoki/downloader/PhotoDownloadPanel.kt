@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +53,9 @@ internal fun PhotoDownloadPanel(url: String) {
     val active = current?.state in setOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)
     var message by remember { mutableStateOf("") }
     var sessionPresent by remember { mutableStateOf(PhotoSession.isPresent(context)) }
+    var facebookReady by remember { mutableStateOf(PhotoSession.hasFacebookLogin(context)) }
+    var showSessionHelp by remember { mutableStateOf(false) }
+    val isFacebook = IncomingLinkValidator.validate(url)?.platform == MediaPlatform.FACEBOOK
     val cookiePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
@@ -58,8 +63,13 @@ internal fun PhotoDownloadPanel(url: String) {
                     message =
                         try {
                             val count = withContext(Dispatchers.IO) { PhotoSession.import(context, uri) }
-                            sessionPresent = true
-                            "Sesión importada ($count cookies). Se guarda solo en este dispositivo."
+                            sessionPresent = PhotoSession.isPresent(context)
+                            facebookReady = PhotoSession.hasFacebookLogin(context)
+                            if (isFacebook && !facebookReady) {
+                                "Archivo importado ($count cookies), pero faltan c_user o xs de Facebook."
+                            } else {
+                                "Sesión importada ($count cookies). Se guarda solo en este dispositivo."
+                            }
                         } catch (_: Exception) {
                             "No se pudo importar la sesión. Selecciona un archivo cookies.txt válido."
                         }
@@ -95,6 +105,27 @@ internal fun PhotoDownloadPanel(url: String) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) enqueue() else message = "Se necesita permiso de almacenamiento para guardar fotos."
         }
+    if (showSessionHelp) {
+        AlertDialog(
+            onDismissRequest = { showSessionHelp = false },
+            title = { Text("Cómo importar tu sesión de Facebook") },
+            text = {
+                Text(
+                    "1. Inicia sesión en Facebook desde un navegador de confianza.\n" +
+                        "2. Exporta solamente las cookies de facebook.com en formato Netscape (cookies.txt) " +
+                        "usando una herramienta que conozcas y en la que confíes.\n" +
+                        "3. En Baja.pe, pulsa Importar sesión y selecciona ese archivo.\n\n" +
+                        "El archivo equivale a una sesión iniciada. No lo compartas ni lo subas a internet. " +
+                        "El inicio de sesión en Chrome no se transmite automáticamente a Baja.pe.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showSessionHelp = false }) {
+                    Text("Entendido")
+                }
+            },
+        )
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = {
@@ -115,12 +146,26 @@ internal fun PhotoDownloadPanel(url: String) {
             OutlinedButton(enabled = !active, onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) {
                 Text("Importar sesión")
             }
+            OutlinedButton(onClick = { showSessionHelp = true }) {
+                Text("Cómo importar")
+            }
             if (sessionPresent) {
                 OutlinedButton(enabled = !active, onClick = {
                     PhotoSession.delete(context)
                     sessionPresent = false
+                    facebookReady = false
+                    message = "Sesión borrada del dispositivo."
                 }) { Text("Borrar sesión") }
             }
+        }
+        if (isFacebook && sessionPresent) {
+            Text(
+                if (facebookReady) {
+                    "Cookies de Facebook detectadas; su validez se comprueba al descargar."
+                } else {
+                    "Archivo incompleto: faltan las cookies de Facebook c_user o xs."
+                },
+            )
         }
         if (active) Text("Fotos guardadas: ${current?.progress?.getInt(PhotoDownloadWorker.COUNT_KEY, 0) ?: 0}")
         val result = current?.outputData?.getString(PhotoDownloadWorker.RESULT_KEY)
