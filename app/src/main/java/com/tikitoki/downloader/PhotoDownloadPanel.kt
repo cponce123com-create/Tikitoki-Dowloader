@@ -30,6 +30,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.tikitoki.downloader.data.DownloadSettings
 import com.tikitoki.downloader.data.PhotoDownloadWorker
 import com.tikitoki.downloader.data.PhotoSession
 import com.tikitoki.downloader.domain.IncomingLinkValidator
@@ -76,8 +77,13 @@ internal fun PhotoDownloadPanel(url: String) {
         val request =
             OneTimeWorkRequestBuilder<PhotoDownloadWorker>()
                 .setInputData(workDataOf(PhotoDownloadWorker.URL_KEY to link.url))
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .build()
+                .setConstraints(
+                    Constraints
+                        .Builder()
+                        .setRequiredNetworkType(
+                            if (DownloadSettings.allowMetered(context)) NetworkType.CONNECTED else NetworkType.UNMETERED,
+                        ).build(),
+                ).build()
         manager.enqueueUniqueWork(PhotoDownloadWorker.UNIQUE, ExistingWorkPolicy.KEEP, request)
         message = "Descarga de fotos añadida."
     }
@@ -102,9 +108,9 @@ internal fun PhotoDownloadPanel(url: String) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) { Text("Importar sesión") }
+            OutlinedButton(enabled = !active, onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) { Text("Importar sesión") }
             if (sessionPresent) {
-                OutlinedButton(onClick = {
+                OutlinedButton(enabled = !active, onClick = {
                     PhotoSession.delete(context)
                     sessionPresent = false
                 }) { Text("Borrar sesión") }
@@ -117,6 +123,8 @@ internal fun PhotoDownloadPanel(url: String) {
         } else if (message.isNotBlank()) {
             Text(message)
         }
-        Text("Las fotos se guardan en Imágenes/Baja.pe. Facebook puede requerir una sesión.")
+        Text("Las fotos se guardan en Imágenes/Baja.pe. Algunas galerías requieren un archivo cookies.txt.")
+        Text("Con sesión pueden aparecer fotos no públicas; la app no puede distinguir su privacidad.")
+        Text("El archivo cookies.txt contiene tu sesión. No lo compartas ni envíes tus contraseñas.")
     }
 }

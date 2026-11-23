@@ -39,7 +39,7 @@ internal class PhotoDownloadWorker(
         private const val CHANNEL = "bajape_photo_download"
     }
 
-    @Suppress("LongMethod", "CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    @Suppress("LongMethod", "CyclomaticComplexMethod", "TooGenericExceptionCaught", "MagicNumber")
     override suspend fun doWork(): Result =
         withContext(Dispatchers.IO) {
             val parsed = IncomingLinkValidator.validate(inputData.getString(URL_KEY))
@@ -53,8 +53,12 @@ internal class PhotoDownloadWorker(
                 return@withContext Result.retry()
             }
             val temp = File(applicationContext.cacheDir, "photo-job-$id")
-            temp.mkdirs()
+            temp.deleteRecursively()
+            if (!temp.mkdirs()) {
+                return@withContext Result.failure(workDataOf(RESULT_KEY to "No se pudo preparar el espacio temporal."))
+            }
             var count = 0
+            var notifiedCount = 0
             var skipped = 0
             var errors = 0
             var loginNeeded = false
@@ -83,6 +87,8 @@ internal class PhotoDownloadWorker(
                         "extractor.instagram.videos=false",
                         "-o",
                         "extractor.tiktok.videos=false",
+                        "-o",
+                        "extractor.cookies-update=false",
                         "--filter",
                         "extension.lower() in ('jpg','jpeg','png','webp','gif')",
                         "-D",
@@ -111,6 +117,10 @@ internal class PhotoDownloadWorker(
                                     file.delete()
                                 }
                                 setProgressAsync(workDataOf(COUNT_KEY to count))
+                                if (count > 0 && count % 5 == 0 && count != notifiedCount) {
+                                    setForegroundAsync(foreground("Guardando fotos: $count"))
+                                    notifiedCount = count
+                                }
                             }
                         }
                     }

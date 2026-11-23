@@ -58,6 +58,7 @@ internal class GalleryEngine(
                     process.destroy()
                 }
             }
+        reader.isDaemon = true
         reader.start()
         try {
             val code = process.waitFor()
