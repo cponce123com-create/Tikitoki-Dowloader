@@ -18,8 +18,9 @@ class PhotoSessionTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val legacy = File(context.noBackupFilesDir, PhotoSession.LEGACY_FILE)
     private val encrypted = File(context.noBackupFilesDir, "photo-session-v1.enc")
-    private val sample = ".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\tfixture\n" +
-        ".facebook.com\tTRUE\t/\tTRUE\t0\txs\tsynthetic-session\n"
+    private val sample =
+        ".facebook.com\tTRUE\t/\tTRUE\t0\tc_user\tfixture\n" +
+            ".facebook.com\tTRUE\t/\tTRUE\t0\txs\tsynthetic-session\n"
 
     @Before
     @After
