@@ -28,6 +28,7 @@ import com.tikitoki.downloader.data.BatchSummary
 import com.tikitoki.downloader.data.DiagnosticHistory
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadSelection
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -142,7 +143,9 @@ internal fun AppDialogs(
                                 preview,
                                 thumbnailResolver,
                                 Modifier.width(144.dp).aspectRatio(
-                                    if (MediaLinkParser.parse(preview.url)?.platform ==
+                                    if (TikTokPhotoSource.isPhotoEntry(preview)) {
+                                        1f
+                                    } else if (MediaLinkParser.parse(preview.url)?.platform ==
                                         MediaPlatform.TIKTOK
                                     ) {
                                         PORTRAIT_VIDEO_RATIO
@@ -158,7 +161,10 @@ internal fun AppDialogs(
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.SemiBold,
                                 )
-                                Text("${preview.durationSeconds}s", color = TechMuted)
+                                Text(
+                                    if (TikTokPhotoSource.isPhotoEntry(preview)) "Imagen original" else "${preview.durationSeconds}s",
+                                    color = TechMuted,
+                                )
                             }
                         }
                     }
@@ -221,10 +227,10 @@ internal fun AppDialogs(
     deleteCandidate?.let { item ->
         AlertDialog(
             onDismissRequest = onDismissDelete,
-            title = { Text("Eliminar video") },
+            title = { Text(if (TikTokPhotoSource.isPhotoFormat(item.formatId)) "Eliminar foto" else "Eliminar video") },
             text = {
                 Text(
-                    "¿Eliminar este video del dispositivo y del historial de Baja.pe? " +
+                    "¿Eliminar este elemento del dispositivo y del historial de Baja.pe? " +
                         "Esta acción no se puede deshacer.",
                 )
             },

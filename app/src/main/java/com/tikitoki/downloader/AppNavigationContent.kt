@@ -80,6 +80,7 @@ import com.tikitoki.downloader.data.DownloadState
 import com.tikitoki.downloader.data.ExtractorUpdateWorker
 import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileMonitor
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
@@ -458,6 +459,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                                     .substringAfter("tiktok.com/")
                                                     .substringBefore("?")
                                                     .substringBefore("/video/")
+                                                    .substringBefore("/photo/")
                                                     .take(PLAYLIST_PREVIEW_LIMIT)
                                                     .ifBlank { selectedPlatform ?: "Perfil" },
                                                 fontWeight = FontWeight.Bold,
@@ -532,7 +534,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                 value = search,
                                 onValueChange = { search = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Buscar videos") },
+                                placeholder = { Text("Buscar videos o fotos") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions =
@@ -580,7 +582,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Box(
                                     Modifier.fillMaxWidth().aspectRatio(
-                                        if (MediaLinkParser.parse(video.url)?.platform ==
+                                        if (TikTokPhotoSource.isPhotoEntry(video)) {
+                                            1f
+                                        } else if (MediaLinkParser.parse(video.url)?.platform ==
                                             MediaPlatform.TIKTOK
                                         ) {
                                             PORTRAIT_VIDEO_RATIO
@@ -621,7 +625,9 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             ) {
                                 Box(
                                     Modifier.width(116.dp).aspectRatio(
-                                        if (MediaLinkParser.parse(video.url)?.platform ==
+                                        if (TikTokPhotoSource.isPhotoEntry(video)) {
+                                            1f
+                                        } else if (MediaLinkParser.parse(video.url)?.platform ==
                                             MediaPlatform.TIKTOK
                                         ) {
                                             PORTRAIT_VIDEO_RATIO

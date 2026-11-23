@@ -46,6 +46,7 @@ import coil.ImageLoader
 import coil.request.videoFrameMillis
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.LibraryVisibility
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.domain.DownloadIdentity
@@ -115,10 +116,15 @@ internal fun LibraryScreen(
     }
     val completed =
         allCompleted.filter { record ->
+            val photo = TikTokPhotoSource.isPhotoFormat(record.formatId)
             val audio =
                 audioKinds[libraryKey(record)]
                     ?: PlaybackKind.isAudio(record.formatId, null, record.savedUri)
-            audio == (libraryKind == "Música")
+            when (libraryKind) {
+                "Música" -> audio
+                "Fotos" -> photo
+                else -> !audio && !photo
+            }
         }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 105.dp),
@@ -145,24 +151,22 @@ internal fun LibraryScreen(
             Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TechHeader(onSettings = onSettings)
                 Text("Biblioteca", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Tus descargas, listas para reproducir", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Tus descargas, listas para ver o escuchar", color = TechMuted, style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = onCollections, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.collections_explore))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Videos", "Música").forEach { kind ->
+                    listOf("Videos", "Fotos", "Música").forEach { kind ->
                         FilterChip(selected = libraryKind == kind, onClick = { onKindChange(kind) }, label = { Text(kind) })
                     }
                     if (libraryKind == "Música") OutlinedButton(onClick = onMusic) { Text("Reproductor") }
                 }
                 if (completed.isEmpty()) {
                     Text(
-                        if (libraryKind ==
-                            "Música"
-                        ) {
-                            "Aún no hay música descargada."
-                        } else {
-                            "Aún no hay videos descargados."
+                        when (libraryKind) {
+                            "Música" -> "Aún no hay música descargada."
+                            "Fotos" -> "Aún no hay fotos descargadas."
+                            else -> "Aún no hay videos descargados."
                         },
                         color = TechMuted,
                     )

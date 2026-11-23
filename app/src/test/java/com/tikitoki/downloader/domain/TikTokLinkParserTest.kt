@@ -27,6 +27,7 @@ class TikTokLinkParserTest {
         assertEquals(TikTokLinkType.VIDEO, result.link.type)
         assertEquals("123456789", result.link.videoId)
         assertEquals("demo", result.link.username)
+        assertTrue(result.link.isPhoto)
         assertNull(TikTokLinkParser.canonicalProfile(url))
     }
 
