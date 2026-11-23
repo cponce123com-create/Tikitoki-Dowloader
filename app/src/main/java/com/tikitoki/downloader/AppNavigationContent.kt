@@ -378,6 +378,8 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             },
                         )
 
+                        PhotoDownloadPanel(url)
+
                         // Force refresh remains available from the analysis action on repeat requests.
                         if (profileState.loading || profileState.loadingMore || profileState.countingTotal) {
                             AnalysisAnimation(
