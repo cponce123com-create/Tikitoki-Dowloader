@@ -27,9 +27,10 @@ internal object PhotoSession {
         }
     }
 
-    internal fun hasFacebookLoginCookies(
-        contents: String,
-    ): Boolean = facebookCookieStateFromText(contents) == FacebookCookieState.PRESENT
+    internal fun hasFacebookLoginCookies(contents: String): Boolean {
+        val state = facebookCookieStateFromText(contents)
+        return state == FacebookCookieState.PRESENT
+    }
 
     internal fun facebookCookieStateFromText(
         contents: String,
