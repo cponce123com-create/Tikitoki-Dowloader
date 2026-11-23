@@ -77,6 +77,10 @@ internal fun LibraryScreen(
     onOpen: (DownloadRecord) -> Unit,
     onDelete: (DownloadRecord) -> Unit,
 ) {
+    if (libraryKind == "Fotos") {
+        PhotoLibrary(insets, onSettings, onKindChange)
+        return
+    }
     val context = LocalContext.current
     val allCompleted = remember(records) { records.filter { LibraryVisibility.inLibrary(it.status, it.savedUri) } }
     // Show known downloads immediately; resolve older records one at a time in the background.
@@ -150,7 +154,7 @@ internal fun LibraryScreen(
                     Text(stringResource(R.string.collections_explore))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Videos", "Música").forEach { kind ->
+                    listOf("Videos", "Música", "Fotos").forEach { kind ->
                         FilterChip(selected = libraryKind == kind, onClick = { onKindChange(kind) }, label = { Text(kind) })
                     }
                     if (libraryKind == "Música") OutlinedButton(onClick = onMusic) { Text("Reproductor") }

@@ -4,6 +4,7 @@ Baja.pe incorpora o utiliza componentes de terceros. Sus derechos de autor y mar
 
 | Componente | Función | Licencia y fuente |
 | --- | --- | --- |
+| gallery-dl 1.32.21 | Extracción de imágenes mediante un proceso separado | [GPL-2.0-only](https://github.com/mikf/gallery-dl/blob/v1.32.21/LICENSE). Licencias de sus dependencias incluidas en el archivo del motor. |
 | yt-dlp | Extracción de metadatos y medios | [The Unlicense](https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE); sus componentes y dependencias pueden tener otras licencias. |
 | youtubedl-android | Integración Android del extractor, incluida la variante `io.github.junkfood02` declarada en el proyecto | [GPL-3.0](https://github.com/junkfood02/youtubedl-android/blob/master/LICENSE). |
 | FFmpeg | Procesamiento multimedia del módulo FFmpeg | [LGPL-2.1 o posterior; GPL-2.0 o posterior según opciones y componentes habilitados](https://ffmpeg.org/legal.html). Verificar la configuración y licencias exactas de cada binario distribuido. |

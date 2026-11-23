@@ -52,6 +52,7 @@ import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.data.rethrowIfFatal
 import com.tikitoki.downloader.domain.DownloadFormatPreference
+import com.tikitoki.downloader.domain.FacebookPhotoLinks
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.PlaybackKind
 import com.tikitoki.downloader.ui.DownloadsViewModel
@@ -210,6 +211,8 @@ internal fun AppContent(
     }
     LaunchedEffect(url, analysisRevision) {
         val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
+        // Facebook profiles and photo share links belong to gallery-dl, not the video extractor.
+        if (FacebookPhotoLinks.isPhotoCollection(link)) return@LaunchedEffect
         delay(CLIPBOARD_DEBOUNCE_MS)
         if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, false)
     }
