@@ -73,6 +73,7 @@ internal fun PhotoDownloadPanel(
         facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
         sessionPresent = PhotoSession.isPresent(context)
     }
+    var showImport by remember { mutableStateOf(false) }
     var showDeleteSession by remember { mutableStateOf(false) }
     var showSessionHelp by remember { mutableStateOf(false) }
     val isFacebook = IncomingLinkValidator.validate(url)?.platform == MediaPlatform.FACEBOOK
@@ -148,6 +149,15 @@ internal fun PhotoDownloadPanel(
             },
         )
     }
+    if (showImport) {
+        PhotoSessionImportDialog(
+            onDismiss = { showImport = false },
+            onContinue = {
+                showImport = false
+                cookiePicker.launch(arrayOf("text/plain", "*/*"))
+            },
+        )
+    }
     if (showDeleteSession) {
         AlertDialog(
             onDismissRequest = { showDeleteSession = false },
@@ -192,7 +202,7 @@ internal fun PhotoDownloadPanel(
             OutlinedButton(
                 enabled = !active,
                 modifier = Modifier.weight(1f),
-                onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) },
+                onClick = { showImport = true },
             ) {
                 Text("Importar sesión")
             }
@@ -229,4 +239,19 @@ internal fun PhotoDownloadPanel(
         Text("Con sesión pueden aparecer fotos no públicas; la app no puede distinguir su privacidad.")
         Text("El archivo cookies.txt contiene tu sesión. No lo compartas ni envíes tus contraseñas.")
     }
+}
+
+@Composable
+@Suppress("ktlint:standard:function-naming")
+internal fun PhotoSessionImportDialog(
+    onDismiss: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Importar sesión para fotos") },
+        text = { Text(PhotoSession.IMPORT_NOTICE) },
+        confirmButton = { TextButton(onClick = onContinue) { Text("Elegir archivo") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }
