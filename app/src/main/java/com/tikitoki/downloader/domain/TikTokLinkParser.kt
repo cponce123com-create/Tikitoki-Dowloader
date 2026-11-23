@@ -22,7 +22,7 @@ sealed interface LinkParseResult {
  * Avoid claiming a profile is downloadable until an authorized source has responded.
  */
 object TikTokLinkParser {
-    private val profileOrVideo = Regex("^/@([A-Za-z0-9._]{1,50})(?:/video/([0-9]+))?/?$")
+    private val profileOrVideo = Regex("^/@([A-Za-z0-9._]{1,50})(?:/(?:video|photo)/([0-9]+))?/?$")
     private val directVideo = Regex("^/video/([0-9]+)/?$")
 
     fun canonicalProfile(raw: String): String? {
@@ -91,7 +91,7 @@ object TikTokLinkParser {
         }
 
         return LinkParseResult.Error(
-            "Escribe el enlace de un perfil (@usuario) o de un video de TikTok."
+            "Escribe el enlace de un perfil (@usuario) o de una publicación de TikTok."
         )
     }
 }
