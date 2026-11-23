@@ -62,6 +62,7 @@
         <li>Detección automática de plataforma</li>
         <li>Extracción de metadatos (título, duración, miniatura, formatos)</li>
         <li>Selección individual/múltiple de formatos (video/audio)</li>
+        <li>Descarga por lotes de las imágenes de publicaciones TikTok /photo/</li>
       </ul>
     </div>
   </details>
@@ -226,7 +227,7 @@ graph TB
 
 | Plataforma | Dominios | Extractor | Estado | Notas |
 |------------|----------|-----------|--------|-------|
-| **TikTok** | `tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com` | yt-dlp | ✅ Activo | Videos, slideshows, live (si público) |
+| **TikTok** | `tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com` | yt-dlp + motor Kotlin de fotos | ✅ Activo | Videos y fotos públicas de carruseles /photo/ |
 | **YouTube** | `youtube.com`, `youtu.be`, `music.youtube.com` | yt-dlp | ✅ Activo | Videos, Shorts, Music, playlists |
 | **Instagram** | `instagram.com` | yt-dlp | ✅ Activo | Reels, posts, stories, IGTV |
 | **Facebook** | `facebook.com`, `fb.watch` | yt-dlp | ✅ Activo | Videos públicos, reels |

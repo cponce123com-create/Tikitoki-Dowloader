@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tikitoki.downloader.data.DownloadRecord
 import com.tikitoki.downloader.data.DownloadState
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.VideoThumbnailResolver
 import com.tikitoki.downloader.domain.DownloadIdentity
@@ -90,7 +91,7 @@ internal fun DownloadHistoryCard(
             VideoThumbnail(
                 VideoEntry(DownloadIdentity.sourceId(record.videoId), record.videoUrl, record.title, record.thumbnail),
                 resolver,
-                Modifier.width(86.dp).aspectRatio(16f / 9f),
+                Modifier.width(86.dp).aspectRatio(if (TikTokPhotoSource.isPhotoFormat(record.formatId)) 1f else 16f / 9f),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
@@ -105,9 +106,33 @@ internal fun DownloadHistoryCard(
                         DownloadState.QUEUED -> "En espera"
                         DownloadState.DOWNLOADING ->
                             when {
-                                record.progress <= 0 -> "Preparando descarga…"
-                                record.progress >= 100 -> "Procesando archivo…"
-                                else -> "Descargando ${record.progress}%"
+                                record.progress <= 0 ->
+                                    if (TikTokPhotoSource.isPhotoFormat(
+                                            record.formatId,
+                                        )
+                                    ) {
+                                        "Preparando foto…"
+                                    } else {
+                                        "Preparando descarga…"
+                                    }
+                                record.progress >= 100 ->
+                                    if (TikTokPhotoSource.isPhotoFormat(
+                                            record.formatId,
+                                        )
+                                    ) {
+                                        "Guardando foto…"
+                                    } else {
+                                        "Procesando archivo…"
+                                    }
+                                else ->
+                                    if (TikTokPhotoSource.isPhotoFormat(
+                                            record.formatId,
+                                        )
+                                    ) {
+                                        "Descargando foto ${record.progress}%"
+                                    } else {
+                                        "Descargando ${record.progress}%"
+                                    }
                             }
                         DownloadState.PAUSED -> "Pausada"
                         DownloadState.COMPLETED -> "Completada"
@@ -187,7 +212,15 @@ internal fun VideoThumbnail(
                             .crossfade(true)
                             .apply { if (video.url.contains("tiktok.com")) addHeader("Referer", "https://www.tiktok.com/") }
                             .build(),
-                    contentDescription = "Miniatura del video: ${video.title}",
+                    contentDescription =
+                        if (TikTokPhotoSource.isPhotoEntry(
+                                video,
+                            )
+                        ) {
+                            "Foto: ${video.title}"
+                        } else {
+                            "Miniatura del video: ${video.title}"
+                        },
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     loading = {

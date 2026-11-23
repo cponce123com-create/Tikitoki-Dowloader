@@ -52,6 +52,7 @@ private data class DownloadFileMetadata(
     val account: String,
     val displayName: String,
     val mime: String,
+    val image: Boolean = false,
 )
 
 /** Persist only changed percentages, except that completion bypasses the time interval. */
@@ -139,7 +140,7 @@ class DownloadWorker(
             }
         try {
             activeProgress[item.videoId] = 0
-            setForeground(notification("Descargando ${activeIds.size} videos"))
+            setForeground(notification("Descargando ${activeIds.size} elementos"))
             stopMonitor =
                 progressScope.launch {
                     // CoroutineWorker.onStopped is final. Observe cancellation from a
@@ -186,7 +187,7 @@ class DownloadWorker(
                                 NotificationManagerCompat
                                     .from(
                                         applicationContext,
-                                    ).notify(901, notification("Descargando ${activeIds.size} videos").notification)
+                                    ).notify(901, notification("Descargando ${activeIds.size} elementos").notification)
                             }
                         }
                     }
@@ -232,7 +233,9 @@ class DownloadWorker(
                 progressWriter.join()
                 val status = runCatching { dao.find(item.videoId)?.status }.getOrNull()
                 // A stopped DOWNLOADING task is requeued by doWork's finally block.
-                val resumable = retainVideoTemporaryFiles(status, isStopped)
+                val resumable =
+                    !TikTokPhotoSource.isPhotoFormat(item.formatId) &&
+                        retainVideoTemporaryFiles(status, isStopped)
                 if (!resumable && status != null) {
                     runCatching { clearVideoTemporaryFiles(safeTemporaryDirectory(applicationContext.cacheDir), item.videoId) }
                 }
@@ -251,7 +254,7 @@ class DownloadWorker(
                     NotificationManagerCompat
                         .from(
                             applicationContext,
-                        ).notify(901, notification("Descargando ${activeIds.size} videos").notification)
+                        ).notify(901, notification("Descargando ${activeIds.size} elementos").notification)
                 } catch (_: SecurityException) {
                     // Notification permission can be revoked at any time.
                 }
@@ -314,12 +317,13 @@ class DownloadWorker(
         val extension = file.extension.lowercase().ifBlank { "mp4" }
         val account = DestinationNaming.account(item.videoUrl)
         val displayName = DestinationNaming.filename(item.title, item.videoId, extension)
+        val image = TikTokPhotoSource.isPhotoFormat(item.formatId)
         val mime = mimeType(extension, item.formatId)
         val folderUri =
             context
                 .getSharedPreferences("tikitoki_settings", Context.MODE_PRIVATE)
                 .getString("download_tree", null)
-        val metadata = DownloadFileMetadata(account, displayName, mime)
+        val metadata = DownloadFileMetadata(account, displayName, mime, image)
         return when {
             folderUri != null -> publishToSelectedFolder(context, file, folderUri, metadata)
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> publishToMediaStore(context, file, metadata)
@@ -332,6 +336,9 @@ class DownloadWorker(
         formatId: String,
     ): String =
         when (extension) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
             "mp4" -> "video/mp4"
             "webm" -> if (PlaybackKind.isAudio(formatId, null, null)) "audio/webm" else "video/webm"
             "mkv" -> "video/x-matroska"
@@ -384,14 +391,16 @@ class DownloadWorker(
                 put(MediaStore.MediaColumns.MIME_TYPE, metadata.mime)
                 put(
                     MediaStore.MediaColumns.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS + "/TikitokiDownloader/" + metadata.account,
+                    (if (metadata.image) Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_DOWNLOADS) +
+                        "/TikitokiDownloader/" + metadata.account,
                 )
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
         val resolver = context.contentResolver
+        val collection = if (metadata.image) MediaStore.Images.Media.EXTERNAL_CONTENT_URI else MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val uri =
-            resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: error("No se pudo crear el archivo en Descargas.")
+            resolver.insert(collection, values)
+                ?: error(if (metadata.image) "No se pudo crear la imagen en Fotos." else "No se pudo crear el archivo en Descargas.")
         try {
             resolver.openOutputStream(uri)?.use { output ->
                 file.copyToOutput(output)
@@ -419,15 +428,15 @@ class DownloadWorker(
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            error("Android necesita permiso para guardar en Descargas.")
+            error("Android necesita permiso para guardar archivos en el dispositivo.")
         }
         @Suppress("DEPRECATION")
-        val folder =
-            File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "TikitokiDownloader/${metadata.account}",
+        val baseDirectory =
+            Environment.getExternalStoragePublicDirectory(
+                if (metadata.image) Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_DOWNLOADS,
             )
-        if (!folder.exists() && !folder.mkdirs()) error("No se pudo crear Descargas.")
+        val folder = File(baseDirectory, "TikitokiDownloader/${metadata.account}")
+        if (!folder.exists() && !folder.mkdirs()) error("No se pudo crear la carpeta de destino.")
         val destination = reserveUniqueFile(folder, metadata.displayName)
         try {
             destination.outputStream().use { output -> file.copyToOutput(output) }

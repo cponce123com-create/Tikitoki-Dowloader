@@ -36,6 +36,7 @@ import com.tikitoki.downloader.data.DownloadFormatPlan
 import com.tikitoki.downloader.data.FormatChoice
 import com.tikitoki.downloader.data.FormatInspection
 import com.tikitoki.downloader.data.FormatOptions
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.VideoEntry
 import com.tikitoki.downloader.data.checkDownloadFormats
 import com.tikitoki.downloader.data.downloadFormatPlans
@@ -60,11 +61,12 @@ internal fun DownloadFormatSheetContent(
         checkDownloadFormats(videos, readFormats) { inspected = it }
     }
     val batch = videos.size > 1
+    val photosOnly = videos.all(TikTokPhotoSource::isPhotoEntry)
     val plans = remember(inspected, batch) { downloadFormatPlans(inspected, batch) }
     var tabIsAudio by remember { mutableStateOf<Boolean?>(null) }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var rememberFormat by remember { mutableStateOf(false) }
-    val audio = tabIsAudio ?: defaultAudioTab(saved, plans)
+    val audio = if (photosOnly) false else tabIsAudio ?: defaultAudioTab(saved, plans)
     val visible = plans.filter { it.choice.isAudio == audio }
     val selected = selectDownloadPlan(visible, selectedId, saved)
 
@@ -82,11 +84,11 @@ internal fun DownloadFormatSheetContent(
                 fontWeight = FontWeight.Bold,
             )
             preview()
-            FormatTabs(audio, onTabSelect = { tabIsAudio = it })
-            FormatStatus(visible, audio, inspected, videos.size)
+            if (!photosOnly) FormatTabs(audio, onTabSelect = { tabIsAudio = it })
+            FormatStatus(visible, audio, inspected, videos.size, photosOnly)
             FormatRows(visible, selected, onSelect = { selectedId = it.choice.id })
         }
-        DownloadFormatActions(selected, videos.size, rememberFormat, { rememberFormat = it }, onConfirm)
+        DownloadFormatActions(selected, videos.size, rememberFormat, { rememberFormat = it }, onConfirm, allowRemember = !photosOnly)
     }
 }
 
@@ -134,6 +136,7 @@ private fun FormatStatus(
     audio: Boolean,
     inspected: List<FormatInspection>,
     total: Int,
+    photosOnly: Boolean,
 ) {
     val checking = inspected.size < total
     val failed = inspected.count { it.choices == null }
@@ -147,6 +150,7 @@ private fun FormatStatus(
             when {
                 failed == total -> R.string.format_check_failed
                 audio -> R.string.format_no_audio
+                photosOnly -> R.string.format_no_photo
                 else -> R.string.format_no_video
             }
         Text(stringResource(empty), color = TechMuted)
@@ -185,13 +189,16 @@ private fun DownloadFormatActions(
     rememberFormat: Boolean,
     onRemember: (Boolean) -> Unit,
     onConfirm: (DownloadFormatPlan, Boolean) -> Unit,
+    allowRemember: Boolean,
 ) {
     if (selected != null && selected.downloads.size < total) {
         Text(stringResource(R.string.format_partial_download, selected.downloads.size, total), color = TechMuted)
     }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = rememberFormat, onCheckedChange = onRemember, enabled = selected != null)
-        Text(stringResource(R.string.format_remember))
+    if (allowRemember) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = rememberFormat, onCheckedChange = onRemember, enabled = selected != null)
+            Text(stringResource(R.string.format_remember))
+        }
     }
     TechPrimaryButton(
         stringResource(R.string.format_download),

@@ -46,6 +46,7 @@ import com.tikitoki.downloader.data.DownloadSettings
 import com.tikitoki.downloader.data.DownloadTelemetry
 import com.tikitoki.downloader.data.ProfileAvatarResolver
 import com.tikitoki.downloader.data.ProfileMonitor
+import com.tikitoki.downloader.data.TikTokPhotoSource
 import com.tikitoki.downloader.data.TikTokVideoSource
 import com.tikitoki.downloader.data.UniversalMediaSource
 import com.tikitoki.downloader.data.VideoEntry
@@ -220,7 +221,12 @@ internal fun AppContent(
             scope.launch {
                 try {
                     val result = DownloadQueue.enqueue(context, items)
-                    message = "${result.added} videos añadidos. Duplicados omitidos: ${result.duplicates}."
+                    message =
+                        if (items.all { TikTokPhotoSource.isPhotoEntry(it.video) }) {
+                            "${result.added} fotos añadidas. Duplicados omitidos: ${result.duplicates}."
+                        } else {
+                            "${result.added} elementos añadidos. Duplicados omitidos: ${result.duplicates}."
+                        }
                     if (result.added > 0 || result.duplicates > 0) items.forEach { selected.remove(it.video.id) }
                     if (selected.isEmpty()) tab = 1
                 } catch (e: Exception) {
@@ -301,7 +307,14 @@ internal fun AppContent(
                                 null to uri.lastPathSegment
                             }
                         }
-                    if (PlaybackKind.isAudio(record.formatId, mime, name)) {
+                    if (TikTokPhotoSource.isPhotoFormat(record.formatId)) {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mime ?: "image/*")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            },
+                        )
+                    } else if (PlaybackKind.isAudio(record.formatId, mime, name)) {
                         musicRequestUri = saved
                         musicRequestTitle = record.title
                         tab = MUSIC_TAB
@@ -385,7 +398,12 @@ internal fun AppContent(
                     try {
                         message =
                             when (DownloadQueue.deleteCompleted(context, item.videoId)) {
-                                DeleteCompletedResult.DELETED -> "Video eliminado del dispositivo y del historial."
+                                DeleteCompletedResult.DELETED ->
+                                    if (TikTokPhotoSource.isPhotoFormat(item.formatId)) {
+                                        "Foto eliminada del dispositivo y del historial."
+                                    } else {
+                                        "Video eliminado del dispositivo y del historial."
+                                    }
                                 DeleteCompletedResult.FILE_MISSING ->
                                     "El archivo ya no existía. Se eliminó del historial."
                                 DeleteCompletedResult.FAILED ->

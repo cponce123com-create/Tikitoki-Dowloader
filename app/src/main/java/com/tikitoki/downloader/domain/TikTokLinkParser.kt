@@ -10,11 +10,17 @@ data class TikTokLink(
     val type: TikTokLinkType,
     val username: String? = null,
     val videoId: String? = null,
+    val isPhoto: Boolean = false,
 )
 
 sealed interface LinkParseResult {
-    data class Success(val link: TikTokLink) : LinkParseResult
-    data class Error(val message: String) : LinkParseResult
+    data class Success(
+        val link: TikTokLink,
+    ) : LinkParseResult
+
+    data class Error(
+        val message: String,
+    ) : LinkParseResult
 }
 
 /**
@@ -32,7 +38,10 @@ object TikTokLinkParser {
         return "https://www.tiktok.com/@$username"
     }
 
-    fun sameProfile(first: String, second: String): Boolean {
+    fun sameProfile(
+        first: String,
+        second: String,
+    ): Boolean {
         val a = canonicalProfile(first) ?: return false
         val b = canonicalProfile(second) ?: return false
         return a.equals(b, ignoreCase = true)
@@ -42,15 +51,21 @@ object TikTokLinkParser {
         val raw = rawInput.trim()
         if (raw.isEmpty()) return LinkParseResult.Error("Pega un enlace de TikTok.")
 
-        val normalized = if (raw.startsWith("https://", ignoreCase = true) ||
-            raw.startsWith("http://", ignoreCase = true)
-        ) raw else "https://$raw"
+        val normalized =
+            if (raw.startsWith("https://", ignoreCase = true) ||
+                raw.startsWith("http://", ignoreCase = true)
+            ) {
+                raw
+            } else {
+                "https://$raw"
+            }
 
-        val uri = try {
-            URI(normalized)
-        } catch (_: Exception) {
-            return LinkParseResult.Error("El enlace no tiene un formato válido.")
-        }
+        val uri =
+            try {
+                URI(normalized)
+            } catch (_: Exception) {
+                return LinkParseResult.Error("El enlace no tiene un formato válido.")
+            }
 
         if (uri.scheme?.lowercase(Locale.ROOT) != "https") {
             return LinkParseResult.Error("Por seguridad, utiliza un enlace HTTPS.")
@@ -59,14 +74,16 @@ object TikTokLinkParser {
             return LinkParseResult.Error("El enlace tiene credenciales o un puerto no permitido.")
         }
 
-        val host = uri.host?.lowercase(Locale.ROOT)?.trimEnd('.')
-            ?: return LinkParseResult.Error("No se pudo reconocer el dominio.")
+        val host =
+            uri.host?.lowercase(Locale.ROOT)?.trimEnd('.')
+                ?: return LinkParseResult.Error("No se pudo reconocer el dominio.")
         if (host != "tiktok.com" && !host.endsWith(".tiktok.com")) {
             return LinkParseResult.Error("El enlace debe pertenecer a TikTok.")
         }
         val path = uri.path ?: ""
 
-        if (host == "vm.tiktok.com" || host == "vt.tiktok.com" ||
+        if (host == "vm.tiktok.com" ||
+            host == "vt.tiktok.com" ||
             path.startsWith("/t/")
         ) {
             return LinkParseResult.Success(TikTokLink(normalized, TikTokLinkType.SHORT_LINK))
@@ -81,12 +98,13 @@ object TikTokLinkParser {
                     if (id == null) TikTokLinkType.PROFILE else TikTokLinkType.VIDEO,
                     username,
                     id,
-                )
+                    isPhoto = id != null && path.contains("/photo/"),
+                ),
             )
         }
         directVideo.matchEntire(path)?.let { match ->
             return LinkParseResult.Success(
-                TikTokLink(normalized, TikTokLinkType.VIDEO, videoId = match.groupValues[1])
+                TikTokLink(normalized, TikTokLinkType.VIDEO, videoId = match.groupValues[1]),
             )
         }
 
@@ -95,4 +113,3 @@ object TikTokLinkParser {
         )
     }
 }
-

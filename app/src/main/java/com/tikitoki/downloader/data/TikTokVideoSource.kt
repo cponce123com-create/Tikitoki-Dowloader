@@ -39,6 +39,7 @@ data class FormatChoice(
 class TikTokVideoSource(
     private val context: Context,
 ) {
+    private val photoSource = TikTokPhotoSource(context.applicationContext)
     private var initialized = false
     private var updateAttempted = false
     private val profileCache = context.applicationContext.getSharedPreferences("profile_cache_v1", Context.MODE_PRIVATE)
@@ -61,14 +62,21 @@ class TikTokVideoSource(
         forceRefresh: Boolean = false,
     ): List<VideoEntry> =
         withContext(Dispatchers.IO) {
-            if (link.type != TikTokLinkType.PROFILE) ensureReady()
+            if (link.type != TikTokLinkType.PROFILE && !link.isPhoto) ensureReady()
             when (link.type) {
                 TikTokLinkType.PROFILE -> {
                     if (!forceRefresh) cachedProfile(link.url)?.let { return@withContext it }
                     ensureReady()
                     inspectProfile(link).also { if (it.isNotEmpty()) saveProfile(link.url, it) }
                 }
-                TikTokLinkType.VIDEO, TikTokLinkType.SHORT_LINK -> listOf(fetchSingle(link.url))
+                TikTokLinkType.VIDEO -> if (link.isPhoto) photoSource.inspect(link.url) else listOf(fetchSingle(link.url))
+                TikTokLinkType.SHORT_LINK ->
+                    try {
+                        listOf(fetchSingle(link.url))
+                    } catch (error: Exception) {
+                        if (error is kotlinx.coroutines.CancellationException) throw error
+                        photoSource.inspectIfPhoto(link.url) ?: throw error
+                    }
             }
         }
 
@@ -248,6 +256,15 @@ class TikTokVideoSource(
         compact: Boolean = false,
     ): List<FormatChoice> =
         withContext(Dispatchers.IO) {
+            if (TikTokPhotoSource.isPhotoEntry(video)) {
+                return@withContext listOf(
+                    FormatChoice(
+                        id = TikTokPhotoSource.PHOTO_FORMAT_ID,
+                        label = "Imagen original",
+                        shortLabel = "Foto",
+                    ),
+                )
+            }
             ensureReady()
             val info =
                 try {
@@ -278,6 +295,15 @@ class TikTokVideoSource(
         onProgress: (Int) -> Unit,
     ): File =
         withContext(Dispatchers.IO) {
+            val safeFormatId =
+                com.tikitoki.downloader.domain.DownloadInputPolicy
+                    .safeFormatId(formatId)
+            if (TikTokPhotoSource.isPhotoEntry(video)) {
+                require(TikTokPhotoSource.isPhotoFormat(safeFormatId)) { "La foto no tiene un formato de descarga compatible." }
+                val imageUrl = video.thumbnail ?: throw IllegalArgumentException("No se encontró la URL de la imagen.")
+                return@withContext photoSource.downloadToCache(imageUrl, video.id, onProgress)
+            }
+            require(!TikTokPhotoSource.isPhotoFormat(safeFormatId)) { "El formato de imagen requiere una entrada de foto TikTok." }
             ensureReady()
             val folder = File(context.cacheDir, "tikitoki")
             if (!folder.exists() && !folder.mkdirs()) {
@@ -296,7 +322,7 @@ class TikTokVideoSource(
             val mp3Bitrate =
                 FormatOptions.mp3Bitrate(
                     com.tikitoki.downloader.domain.DownloadInputPolicy
-                        .safeFormatId(formatId),
+                        .safeFormatId(safeFormatId),
                 )
             val selector =
                 when (mp3Bitrate) {
@@ -400,7 +426,10 @@ class TikTokVideoSource(
     }
 
     fun cancel(videoId: String) {
-        YoutubeDL.getInstance().destroyProcessById(processId(videoId))
+        photoSource.cancel(videoId)
+        if (!videoId.startsWith(TikTokPhotoSource.PHOTO_ENTRY_PREFIX)) {
+            YoutubeDL.getInstance().destroyProcessById(processId(videoId))
+        }
     }
 
     private fun processId(id: String) =

@@ -41,6 +41,7 @@
     <string name="format_partial_download">Se añadirán %1$d de %2$d elementos. Los demás seguirán seleccionados.</string>
     <string name="format_no_audio">No se encontró una pista de audio descargable.</string>
     <string name="format_no_video">No se encontró ninguna de las resoluciones compatibles.</string>
+    <string name="format_no_photo">No se encontraron imágenes descargables para esta publicación.</string>
     <string name="format_video_resolution">%1$dp</string>
     <string name="format_video_hd">HD (720p)</string>
     <string name="format_video_fhd">FHD (1080p)</string>
@@ -69,7 +70,7 @@
     <string name="first_run_body">Usa Baja.pe solo con contenido propio o para el que tengas autorización. Respeta los términos de cada plataforma. La aplicación admite sitios con contenido para mayores de 18 años.</string>
     <string name="first_run_accept">Entendido</string>
     <string name="home_profile_photo">Foto del perfil</string>
-    <string name="home_videos_found">%1$d videos detectados</string>
+    <string name="home_videos_found">%1$d elementos detectados</string>
     <string name="home_detected">Detectados</string>
     <string name="home_loaded">Cargados</string>
     <string name="home_selected">Seleccionados</string>
@@ -164,8 +165,6 @@
     <string name="collections_limit">Se muestran hasta 1000 listas del canal.</string>
     <string name="collections_classification">Las secciones se organizan automáticamente según los nombres de las listas. Busca por autor, género o tema en Todas las listas.</string>
 </resources>
-
-
 
 
 
