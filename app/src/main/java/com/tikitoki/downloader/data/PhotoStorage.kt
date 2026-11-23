@@ -34,7 +34,12 @@ internal object PhotoStorage {
             check(folder.isDirectory || folder.mkdirs())
             val dest = File(folder, name)
             if (dest.exists()) return false
-            file.copyTo(dest)
+            try {
+                file.copyTo(dest)
+            } catch (error: Exception) {
+                dest.delete()
+                throw error
+            }
             MediaScannerConnection.scanFile(context, arrayOf(dest.absolutePath), arrayOf(mime), null)
             return true
         }
@@ -64,7 +69,7 @@ internal object PhotoStorage {
             }
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            resolver.update(target, values, null, null)
+            check(resolver.update(target, values, null, null) == 1) { "No se pudo publicar la foto" }
             return true
         } catch (error: Exception) {
             resolver.delete(target, null, null)
