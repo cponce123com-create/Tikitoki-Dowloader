@@ -147,7 +147,11 @@ internal fun FacebookAccountPanel() {
             Text(detail, style = MaterialTheme.typography.bodyMedium)
             if (summary.lastAttemptAt > 0L) {
                 val last = DateFormat.getDateTimeInstance().format(Date(summary.lastAttemptAt))
-                Text("Última comprobación por descarga: $last", color = TechMuted, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Última comprobación por descarga: $last",
+                    color = TechMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             Text(
                 "Baja.pe reutiliza la sesión local. El estado no garantiza acceso a todos los perfiles.",
