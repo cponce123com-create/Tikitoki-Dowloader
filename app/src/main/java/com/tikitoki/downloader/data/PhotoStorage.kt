@@ -25,24 +25,7 @@ internal object PhotoStorage {
                 "gif" -> "image/gif"
                 else -> "image/jpeg"
             }
-        if (Build.VERSION.SDK_INT < 29) {
-            val folder =
-                File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-                    directory.removePrefix("Pictures/"),
-                )
-            check(folder.isDirectory || folder.mkdirs())
-            val dest = File(folder, name)
-            if (dest.exists()) return false
-            try {
-                file.copyTo(dest)
-            } catch (error: Exception) {
-                dest.delete()
-                throw error
-            }
-            MediaScannerConnection.scanFile(context, arrayOf(dest.absolutePath), arrayOf(mime), null)
-            return true
-        }
+        if (Build.VERSION.SDK_INT < 29) return publishLegacy(context, file, directory, name, mime)
         val resolver = context.contentResolver
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         resolver
@@ -75,5 +58,31 @@ internal object PhotoStorage {
             resolver.delete(target, null, null)
             throw error
         }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun publishLegacy(
+        context: Context,
+        file: File,
+        directory: String,
+        name: String,
+        mime: String,
+    ): Boolean {
+        val folder =
+            File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                directory.removePrefix("Pictures/"),
+            )
+        check(folder.isDirectory || folder.mkdirs())
+        val destination = File(folder, name)
+        if (destination.exists()) return false
+        try {
+            file.copyTo(destination)
+        } catch (error: Exception) {
+            destination.delete()
+            throw error
+        }
+        MediaScannerConnection.scanFile(context, arrayOf(destination.absolutePath), arrayOf(mime), null)
+        return true
     }
 }
