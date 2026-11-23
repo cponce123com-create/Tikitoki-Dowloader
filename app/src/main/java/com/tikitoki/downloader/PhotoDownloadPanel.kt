@@ -36,6 +36,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.tikitoki.downloader.data.DownloadSettings
 import com.tikitoki.downloader.data.PhotoDownloadWorker
+import com.tikitoki.downloader.data.FacebookCookieState
 import com.tikitoki.downloader.data.PhotoSession
 import com.tikitoki.downloader.domain.IncomingLinkValidator
 import com.tikitoki.downloader.domain.MediaPlatform
@@ -69,8 +70,13 @@ internal fun PhotoDownloadPanel(
     }
     var sessionPresent by remember { mutableStateOf(false) }
     var facebookReady by remember { mutableStateOf(false) }
+    suspend fun hasFacebookSession(): Boolean =
+        withContext(Dispatchers.IO) {
+            PhotoSession.facebookCookieState(context) == FacebookCookieState.PRESENT
+        }
+
     LaunchedEffect(context) {
-        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+        facebookReady = hasFacebookSession()
         sessionPresent = PhotoSession.isPresent(context)
     }
     var showImport by remember { mutableStateOf(false) }
@@ -85,7 +91,7 @@ internal fun PhotoDownloadPanel(
                         try {
                             val count = withContext(Dispatchers.IO) { PhotoSession.import(context, uri) }
                             sessionPresent = PhotoSession.isPresent(context)
-                            facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+                            facebookReady = hasFacebookSession()
                             if (isFacebook && !facebookReady) {
                                 "Archivo importado ($count cookies), pero faltan c_user o xs de Facebook."
                             } else {
@@ -175,7 +181,7 @@ internal fun PhotoDownloadPanel(
                                 "No se pudo eliminar la sesión. Vuelve a intentarlo."
                             }
                         sessionPresent = PhotoSession.isPresent(context)
-                        facebookReady = withContext(Dispatchers.IO) { PhotoSession.hasFacebookLogin(context) }
+                        facebookReady = hasFacebookSession()
                     }
                 }) { Text("Borrar") }
             },
