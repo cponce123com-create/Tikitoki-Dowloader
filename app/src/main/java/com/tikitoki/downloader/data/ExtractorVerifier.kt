@@ -22,7 +22,7 @@ internal object ExtractorVerifier {
 
     /**
      * Known-good SHA-256 hashes for yt-dlp binary versions.
-     * Format: version -> lowercase hex SHA-256 of the linux_x86_64 binary.
+     * Format: version -> lowercase hex SHA-256 of the exact Python archive installed by the app.
      * Source: https://github.com/yt-dlp/yt-dlp/releases
      *
      * These hashes are pinned to the exact binary shipped by the dependency version in the
@@ -80,6 +80,8 @@ internal object ExtractorVerifier {
 
     internal fun isTrusted(result: VerificationResult): Boolean = result is VerificationResult.Verified
 
+    internal fun approvedVersion(hash: String): String? = KNOWN_HASHES.entries.firstOrNull { it.value == hash }?.key
+
     /**
      * Verifies the currently installed yt-dlp binary.
      * Called after an update to ensure the binary matches official releases.
@@ -91,11 +93,14 @@ internal object ExtractorVerifier {
                 return VerificationResult.Error("yt-dlp binary not found at ${binary.absolutePath}")
             }
 
+            val actualHash = computeSha256(binary)
+            if (approvedVersion(actualHash) == null) {
+                return VerificationResult.UnknownVersion("sin verificar", actualHash)
+            }
+
             val version =
                 ExtractorVersion.read(context)
                     ?: return VerificationResult.Error("Cannot read yt-dlp version")
-
-            val actualHash = computeSha256(binary)
 
             return when (val expectedHash = KNOWN_HASHES[version]) {
                 null -> VerificationResult.UnknownVersion(version, actualHash)
@@ -131,7 +136,7 @@ internal object ExtractorVerifier {
                 Log.w(
                     TAG,
                     "⚠️ yt-dlp version UNKNOWN (no reference hash): version=${result.version}, hash=${result.actualHash}. " +
-                        "Update KNOWN_HASHES in ExtractorVerifier.kt with the official hash from https://github.com/yt-dlp/yt-dlp/releases/tag/${result.version}",
+                        "Update KNOWN_HASHES only after verifying the exact asset from an official release.",
                 )
                 // Fail closed: a new extractor must be explicitly reviewed and pinned
                 // before an update can replace the known-good binary.

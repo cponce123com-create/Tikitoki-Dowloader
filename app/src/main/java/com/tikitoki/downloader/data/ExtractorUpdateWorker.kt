@@ -51,18 +51,15 @@ class ExtractorUpdateWorker(
                         ExtractorRecovery.snapshot(applicationContext)
                         ExtractorRollback.run(binary, restoreMetadata = { ExtractorRecovery.restoreMetadata(applicationContext) }) {
                             updated = engine.updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                            if (!ExtractorVerifier.verifyAndLog(applicationContext)) {
+                                throw SecurityException("Versión de yt-dlp sin hash aprobado")
+                            }
                             val response = engine.execute(YoutubeDLRequest(emptyList()).addOption("--version"))
                             check(response.exitCode == 0) { "Cannot verify extractor version" }
                             effectiveVersion = ExtractorVersion.parse(response.out)
                                 ?: throw IllegalStateException("Cannot verify extractor version")
                             val smoke = engine.execute(YoutubeDLRequest(emptyList()).addOption("--list-extractors"))
                             check(extractorSmokePassed(smoke.exitCode, smoke.out)) { "Extractor smoke test failed" }
-
-                            // Verify cryptographic integrity of the updated binary against official yt-dlp release
-                            val verified = ExtractorVerifier.verifyAndLog(applicationContext)
-                            if (!verified) {
-                                throw SecurityException("yt-dlp binary verification failed - potential supply chain attack")
-                            }
                         }
                     }
                 if (!acquired) return@withContext Result.retry()
@@ -84,7 +81,7 @@ class ExtractorUpdateWorker(
                     .edit()
                     .putString("last_result", "Falló: ${e.message.orEmpty().take(120)}")
                     .apply()
-                Result.retry()
+                if (e is SecurityException) Result.failure() else Result.retry()
             }
         }
 
