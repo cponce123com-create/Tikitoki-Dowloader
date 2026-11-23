@@ -13,6 +13,8 @@ class PhotoSessionTest {
                 ".instagram.com\tTRUE\t/\tTRUE\t0\tsessionid\t456",
                 ".facebook.com.evil.example\tTRUE\t/\tTRUE\t0\tbad\tvalue",
                 ".example.org\tTRUE\t/\tTRUE\t0\tbad\tvalue",
+                ".facebook.com\tTRUE\t/\tTRUE\tnan\tbad\tvalue",
+                ".facebook.com\tTRUE\t/\tTRUE\t0\t\tvalue",
                 "invalid",
             ).joinToString("\n")
         assertEquals(2, PhotoSession.sanitize(input).size)

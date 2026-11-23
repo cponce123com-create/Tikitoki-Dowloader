@@ -80,6 +80,8 @@ internal class PhotoDownloadWorker(
                         "-o",
                         "extractor.facebook.videos=false",
                         "-o",
+                        "extractor.facebook.include=photos,albums",
+                        "-o",
                         "extractor.instagram.videos=false",
                         "-o",
                         "extractor.tiktok.videos=false",

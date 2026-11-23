@@ -57,6 +57,9 @@ internal object PhotoSession {
                 val host = fields[0].removePrefix("#HttpOnly_").trimStart('.').lowercase(Locale.ROOT)
                 if (domains.none { host == it || host.endsWith(".$it") }) return@mapNotNull null
                 if (fields.any { field -> field.any { it.isISOControl() } }) return@mapNotNull null
+                if (fields[1] !in setOf("TRUE", "FALSE") || fields[3] !in setOf("TRUE", "FALSE")) return@mapNotNull null
+                if (!fields[2].startsWith("/") || fields[5].isBlank()) return@mapNotNull null
+                if (fields[4].isNotEmpty() && fields[4].any { !it.isDigit() }) return@mapNotNull null
                 line
             }.toList()
 }
