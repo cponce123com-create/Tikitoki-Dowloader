@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -49,7 +50,7 @@ import java.util.Date
  * Facebook Login button: Meta's OAuth token does not authenticate gallery-dl.
  */
 @Composable
-@Suppress("ktlint:standard:function-naming", "LongMethod")
+@Suppress("ktlint:standard:function-naming", "LongMethod", "CyclomaticComplexMethod")
 internal fun FacebookAccountPanel() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -124,7 +125,7 @@ internal fun FacebookAccountPanel() {
     }
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = TechPanel),
+        colors = CardDefaults.cardColors(containerColor = TechPanel),
         border = BorderStroke(1.dp, TechBorder),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
