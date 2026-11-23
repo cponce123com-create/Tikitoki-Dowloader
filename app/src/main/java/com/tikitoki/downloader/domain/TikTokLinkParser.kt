@@ -91,7 +91,7 @@ object TikTokLinkParser {
         }
 
         return LinkParseResult.Error(
-            "Escribe el enlace de un perfil (@usuario) o de una publicación de TikTok."
+            "Escribe el enlace de un perfil (@usuario) o de una publicación de TikTok.",
         )
     }
 }
