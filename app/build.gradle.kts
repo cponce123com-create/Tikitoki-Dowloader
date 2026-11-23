@@ -92,7 +92,8 @@ detekt {
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 abstract class RebuildFfmpegWebp
-    @Inject constructor(
+    @Inject
+    constructor(
         private val processes: ExecOperations,
     ) : DefaultTask() {
         @get:InputFiles

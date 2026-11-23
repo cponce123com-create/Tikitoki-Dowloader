@@ -73,17 +73,27 @@ class ExtractorUpdateWorker(
                 Result.success()
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: SecurityException) {
+                recordFailure(e)
+                Result.failure()
+            } catch (e: RestoreFailedException) {
+                ExtractorAccess.setRecoveryReady(false)
+                recordFailure(e)
+                Result.retry()
             } catch (e: Exception) {
-                if (e is RestoreFailedException) ExtractorAccess.setRecoveryReady(false)
-                DiagnosticHistory.record(applicationContext, e.message)
-                applicationContext
-                    .getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("last_result", "Falló: ${e.message.orEmpty().take(120)}")
-                    .apply()
-                if (e is SecurityException) Result.failure() else Result.retry()
+                recordFailure(e)
+                Result.retry()
             }
         }
+
+    private fun recordFailure(error: Exception) {
+        DiagnosticHistory.record(applicationContext, error.message)
+        applicationContext
+            .getSharedPreferences("extractor_status", Context.MODE_PRIVATE)
+            .edit()
+            .putString("last_result", "Falló: ${error.message.orEmpty().take(120)}")
+            .apply()
+    }
 
     companion object {
         private const val WORK = "tikitoki_extractor_update"
