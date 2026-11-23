@@ -129,7 +129,14 @@ internal class PhotoDownloadWorker(
                 if (isStopped) return@withContext Result.failure()
                 val message =
                     when {
-                        loginNeeded -> "La plataforma requiere sesión. Importa tus cookies y vuelve a intentar."
+                        loginNeeded && parsed.platform == MediaPlatform.FACEBOOK ->
+                            when {
+                                !cookies.isFile -> "Facebook exige sesión. Importa las cookies de tu cuenta."
+                                !PhotoSession.hasFacebookLogin(applicationContext) ->
+                                    "El archivo no contiene las cookies de Facebook c_user y xs."
+                                else -> "Facebook rechazó la sesión o caducó. Vuelve a importarla."
+                            }
+                        loginNeeded -> "Se requiere iniciar sesión. Importa una sesión válida."
                         exitCode != 0 -> "Se guardaron $count fotos; no se pudo completar la consulta."
                         errors > 0 -> "Se guardaron $count fotos; $errors no se pudieron guardar."
                         count == 0 && skipped == 0 -> "No se encontraron fotos accesibles para este enlace."
