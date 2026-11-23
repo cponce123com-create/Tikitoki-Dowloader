@@ -1,6 +1,7 @@
 package com.tikitoki.downloader
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,6 +16,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,9 +51,19 @@ internal fun PhotoDownloadPanel(url: String) {
     val manager = remember(context) { WorkManager.getInstance(context) }
     val work by remember(manager) { manager.getWorkInfosForUniqueWorkFlow(PhotoDownloadWorker.UNIQUE) }
         .collectAsState(initial = emptyList())
-    val current = work.firstOrNull()
+    val lastWorkPrefs = remember(context) { context.getSharedPreferences("bajape_photo_job", Context.MODE_PRIVATE) }
+    var lastWorkId by remember { mutableStateOf(lastWorkPrefs.getString("last_work_id", null)) }
+    val current =
+        work.firstOrNull { it.id.toString() == lastWorkId }
+            ?: work.firstOrNull { it.state in setOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING) }
+            ?: work.lastOrNull()
     val active = current?.state in setOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)
     var message by remember { mutableStateOf("") }
+    LaunchedEffect(current?.id, current?.state) {
+        if (current?.state in setOf(WorkInfo.State.SUCCEEDED, WorkInfo.State.FAILED, WorkInfo.State.CANCELLED)) {
+            message = ""
+        }
+    }
     var sessionPresent by remember { mutableStateOf(PhotoSession.isPresent(context)) }
     var facebookReady by remember { mutableStateOf(PhotoSession.hasFacebookLogin(context)) }
     var showSessionHelp by remember { mutableStateOf(false) }
@@ -98,6 +110,8 @@ internal fun PhotoDownloadPanel(url: String) {
                             },
                         ).build(),
                 ).build()
+        lastWorkId = request.id.toString()
+        lastWorkPrefs.edit().putString("last_work_id", lastWorkId).apply()
         manager.enqueueUniqueWork(PhotoDownloadWorker.UNIQUE, ExistingWorkPolicy.KEEP, request)
         message = "Descarga de fotos añadida."
     }
@@ -143,20 +157,27 @@ internal fun PhotoDownloadPanel(url: String) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled = !active, onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) {
+            OutlinedButton(
+                enabled = !active,
+                modifier = Modifier.weight(1f),
+                onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) },
+            ) {
                 Text("Importar sesión")
             }
-            OutlinedButton(onClick = { showSessionHelp = true }) {
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = { showSessionHelp = true },
+            ) {
                 Text("Cómo importar")
             }
-            if (sessionPresent) {
-                OutlinedButton(enabled = !active, onClick = {
-                    PhotoSession.delete(context)
-                    sessionPresent = false
-                    facebookReady = false
-                    message = "Sesión borrada del dispositivo."
-                }) { Text("Borrar sesión") }
-            }
+        }
+        if (sessionPresent) {
+            OutlinedButton(enabled = !active, onClick = {
+                PhotoSession.delete(context)
+                sessionPresent = false
+                facebookReady = false
+                message = "Sesión borrada del dispositivo."
+            }) { Text("Borrar sesión") }
         }
         if (isFacebook && sessionPresent) {
             Text(
@@ -169,10 +190,10 @@ internal fun PhotoDownloadPanel(url: String) {
         }
         if (active) Text("Fotos guardadas: ${current?.progress?.getInt(PhotoDownloadWorker.COUNT_KEY, 0) ?: 0}")
         val result = current?.outputData?.getString(PhotoDownloadWorker.RESULT_KEY)
-        if (!result.isNullOrBlank()) {
-            Text(result)
-        } else if (message.isNotBlank()) {
+        if (message.isNotBlank()) {
             Text(message)
+        } else if (!result.isNullOrBlank()) {
+            Text(result)
         }
         Text("Las fotos se guardan en Imágenes/Baja.pe. Algunas galerías requieren un archivo cookies.txt.")
         Text("Con sesión pueden aparecer fotos no públicas; la app no puede distinguir su privacidad.")
