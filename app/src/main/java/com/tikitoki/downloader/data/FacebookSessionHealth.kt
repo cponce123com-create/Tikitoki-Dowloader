@@ -51,7 +51,10 @@ internal object FacebookSessionHealth {
             .apply()
     }
 
-    private fun record(context: Context, outcome: String) {
+    private fun record(
+        context: Context,
+        outcome: String,
+    ) {
         context
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
