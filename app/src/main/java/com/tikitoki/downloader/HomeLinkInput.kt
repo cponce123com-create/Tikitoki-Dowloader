@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.tikitoki.downloader.domain.FacebookPhotoLinks
 import com.tikitoki.downloader.ui.TechBorder
 import com.tikitoki.downloader.ui.TechPink
 import com.tikitoki.downloader.ui.TechPlatformStrip
@@ -36,13 +37,13 @@ internal fun HomeLinkInput(
     url: String,
     loading: Boolean,
     loadingMore: Boolean,
-    showAnalyze: Boolean = true,
     onPlatformChange: (String) -> Unit,
     onUrlChange: (String) -> Unit,
     onKeyboardDone: () -> Unit,
     onPaste: () -> Unit,
     onAnalyze: () -> Unit,
 ) {
+    val showAnalyze = !FacebookPhotoLinks.isPhotoCollection(url)
     TechPlatformStrip(selectedPlatform, onPlatformChange)
     OutlinedTextField(
         value = url,

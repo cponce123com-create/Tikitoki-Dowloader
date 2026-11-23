@@ -329,7 +329,6 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             url = url,
                             loading = profileState.loading,
                             loadingMore = profileState.loadingMore,
-                            showAnalyze = !facebookPhotos,
                             onPlatformChange = { selectedPlatform = it },
                             onUrlChange = {
                                 val extracted =
