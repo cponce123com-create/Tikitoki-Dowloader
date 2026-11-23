@@ -13,30 +13,51 @@ internal object PhotoSession {
 
     fun isPresent(context: Context): Boolean = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).isFile
 
-    /** Only checks whether the two Facebook authentication cookies are present locally.
-     * The server may still reject an expired or revoked session.
-     */
-    fun hasFacebookLogin(context: Context): Boolean {
+    /** Local presence and expiry only; Facebook may still revoke any cookie at any time. */
+    fun hasFacebookLogin(context: Context): Boolean = facebookCookieState(context) == FacebookCookieState.PRESENT
+
+    fun facebookCookieState(context: Context): FacebookCookieState {
         val file = File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE)
-        if (!file.isFile || file.length() > MAX_BYTES) return false
-        return runCatching { hasFacebookLoginCookies(file.readText()) }.getOrDefault(false)
+        return when {
+            !file.isFile -> FacebookCookieState.MISSING
+            file.length() > MAX_BYTES -> FacebookCookieState.INCOMPLETE
+            else ->
+                runCatching { facebookCookieStateFromText(file.readText()) }
+                    .getOrDefault(FacebookCookieState.INCOMPLETE)
+        }
     }
 
     internal fun hasFacebookLoginCookies(contents: String): Boolean {
-        val names =
-            sanitize(contents)
-                .asSequence()
-                .map { it.split('\t') }
-                .filter { fields ->
-                    val host = fields[0].removePrefix("#HttpOnly_").trimStart('.').lowercase(Locale.ROOT)
-                    host == "facebook.com" || host.endsWith(".facebook.com")
-                }.map { it[5] }
-                .toSet()
-        return "c_user" in names && "xs" in names
+        val state = facebookCookieStateFromText(contents)
+        return state == FacebookCookieState.PRESENT
+    }
+
+    internal fun facebookCookieStateFromText(
+        contents: String,
+        nowSeconds: Long = System.currentTimeMillis() / 1000L,
+    ): FacebookCookieState {
+        val present = mutableSetOf<String>()
+        val expired = mutableSetOf<String>()
+        sanitize(contents).forEach { line ->
+            val fields = line.split('\t')
+            val host = fields[0].removePrefix("#HttpOnly_").trimStart('.').lowercase(Locale.ROOT)
+            if (host != "facebook.com" && !host.endsWith(".facebook.com")) return@forEach
+            val name = fields[5]
+            if (name !in setOf("c_user", "xs")) return@forEach
+            val expiry = fields[4].toLongOrNull() ?: return@forEach
+            if (expiry == 0L || expiry > nowSeconds) present.add(name) else expired.add(name)
+        }
+        val required = setOf("c_user", "xs")
+        return when {
+            present.containsAll(required) -> FacebookCookieState.PRESENT
+            (present + expired).containsAll(required) -> FacebookCookieState.EXPIRED
+            else -> FacebookCookieState.INCOMPLETE
+        }
     }
 
     fun delete(context: Context) {
         File(context.noBackupFilesDir, PhotoDownloadWorker.COOKIE_FILE).delete()
+        FacebookSessionHealth.reset(context)
     }
 
     fun import(
@@ -62,6 +83,7 @@ internal object PhotoSession {
         try {
             temp.writeText("# Netscape HTTP Cookie File\n" + entries.joinToString("\n") + "\n")
             check(temp.renameTo(target))
+            FacebookSessionHealth.reset(context)
         } finally {
             temp.delete()
         }
@@ -84,4 +106,11 @@ internal object PhotoSession {
                 if (fields[4].isNotEmpty() && fields[4].any { !it.isDigit() }) return@mapNotNull null
                 line
             }.toList()
+}
+
+internal enum class FacebookCookieState {
+    MISSING,
+    INCOMPLETE,
+    EXPIRED,
+    PRESENT,
 }

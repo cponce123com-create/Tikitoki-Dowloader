@@ -23,6 +23,42 @@ class PhotoSessionTest {
     }
 
     @Test
+    fun identifiesExpiredFacebookCookiesWithoutTryingNetwork() {
+        val user = ".facebook.com\tTRUE\t/\tTRUE\t2000\tc_user\t123"
+        val session = ".facebook.com\tTRUE\t/\tTRUE\t999\txs\tvalue"
+        assertEquals(
+            FacebookCookieState.EXPIRED,
+            PhotoSession.facebookCookieStateFromText("$user\n$session", nowSeconds = 1000L),
+        )
+    }
+
+    @Test
+    fun acceptsCurrentOrSessionCookiesButNotUnrelatedDomains() {
+        val user = ".facebook.com\tTRUE\t/\tTRUE\t2000\tc_user\t123"
+        val session = "#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\txs\tvalue"
+        val unrelated = ".facebook.com.evil.example\tTRUE\t/\tTRUE\t2000\txs\tbad"
+        assertEquals(
+            FacebookCookieState.PRESENT,
+            PhotoSession.facebookCookieStateFromText("$user\n$session", nowSeconds = 1000L),
+        )
+        assertEquals(
+            FacebookCookieState.INCOMPLETE,
+            PhotoSession.facebookCookieStateFromText("$user\n$unrelated", nowSeconds = 1000L),
+        )
+    }
+
+    @Test
+    fun validReplacementOverridesExpiredDuplicate() {
+        val user = ".facebook.com\tTRUE\t/\tTRUE\t999\tc_user\told"
+        val replacement = ".facebook.com\tTRUE\t/\tTRUE\t2000\tc_user\tnew"
+        val session = ".facebook.com\tTRUE\t/\tTRUE\t2000\txs\tvalue"
+        assertEquals(
+            FacebookCookieState.PRESENT,
+            PhotoSession.facebookCookieStateFromText("$user\n$replacement\n$session", nowSeconds = 1000L),
+        )
+    }
+
+    @Test
     fun detectsFacebookSessionOnlyWithBothAuthenticationCookies() {
         val cUser = "#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\tc_user\t123"
         val xs = "#HttpOnly_.facebook.com\tTRUE\t/\tTRUE\t0\txs\tsession"

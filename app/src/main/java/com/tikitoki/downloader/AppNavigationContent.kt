@@ -388,7 +388,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             IncomingLinkValidator.validate(url)?.platform in
                             setOf(MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)
                         ) {
-                            PhotoDownloadPanel(url)
+                            PhotoDownloadPanel(url, onManageFacebook = { tab = TOOLS_TAB })
                         }
 
                         // Force refresh remains available from the analysis action on repeat requests.
