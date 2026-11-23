@@ -108,7 +108,11 @@ internal class PhotoDownloadWorker(
                                 file.extension.lowercase() in IMAGE_EXTENSIONS
                             ) {
                                 try {
-                                    if (PhotoStorage.publish(applicationContext, file, directory)) count++ else skipped++
+                                    if (PhotoStorage.publish(applicationContext, file, directory)) {
+                                        count++
+                                    } else {
+                                        skipped++
+                                    }
                                 } catch (_: Exception) {
                                     errors++
                                 } finally {

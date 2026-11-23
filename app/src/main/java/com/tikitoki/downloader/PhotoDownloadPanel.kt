@@ -81,7 +81,11 @@ internal fun PhotoDownloadPanel(url: String) {
                     Constraints
                         .Builder()
                         .setRequiredNetworkType(
-                            if (DownloadSettings.allowMetered(context)) NetworkType.CONNECTED else NetworkType.UNMETERED,
+                            if (DownloadSettings.allowMetered(context)) {
+                                NetworkType.CONNECTED
+                            } else {
+                                NetworkType.UNMETERED
+                            },
                         ).build(),
                 ).build()
         manager.enqueueUniqueWork(PhotoDownloadWorker.UNIQUE, ExistingWorkPolicy.KEEP, request)
@@ -108,7 +112,9 @@ internal fun PhotoDownloadPanel(url: String) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled = !active, onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) { Text("Importar sesión") }
+            OutlinedButton(enabled = !active, onClick = { cookiePicker.launch(arrayOf("text/plain", "*/*")) }) {
+                Text("Importar sesión")
+            }
             if (sessionPresent) {
                 OutlinedButton(enabled = !active, onClick = {
                     PhotoSession.delete(context)
