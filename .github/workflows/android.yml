@@ -30,7 +30,7 @@ jobs:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
           accept-android-sdk-licenses: true
       - name: Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Build debug APK
@@ -82,7 +82,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Run Detekt
@@ -122,7 +122,7 @@ jobs:
         with:
           accept-android-sdk-licenses: true
       - name: Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Enable KVM acceleration
@@ -188,7 +188,7 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
         with:
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Generar SBOM CycloneDX
@@ -212,7 +212,7 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
         with:
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Verificar estilo con línea base
@@ -241,7 +241,7 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
           accept-android-sdk-licenses: true
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
         with:
           gradle-version: '9.3.1'
       - name: Crear clave temporal de prueba
