@@ -371,7 +371,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                 when (val link = IncomingLinkValidator.validate(url)) {
                                     null -> message = invalidLinkMessage
                                     else -> {
-                                        if (FacebookPhotoLinks.isPhotoCollection(link.url)) {
+                                        if (FacebookPhotoLinks.isPhotoOnly(link.url)) {
                                             message = "Para este enlace, abre Opciones de fotos."
                                         } else {
                                             selected.clear()

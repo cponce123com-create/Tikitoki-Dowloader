@@ -43,7 +43,7 @@ internal fun HomeLinkInput(
     onPaste: () -> Unit,
     onAnalyze: () -> Unit,
 ) {
-    val showAnalyze = !FacebookPhotoLinks.isPhotoCollection(url)
+    val showAnalyze = !FacebookPhotoLinks.isPhotoOnly(url)
     TechPlatformStrip(selectedPlatform, onPlatformChange)
     OutlinedTextField(
         value = url,
