@@ -18,6 +18,25 @@ class FacebookPhotoLinksTest {
     }
 
     @Test
+    fun onlyExplicitPhotoLinksSkipVideoAnalysis() {
+        listOf(
+            "https://www.facebook.com/example.user/photos",
+            "https://www.facebook.com/example.user/albums/123",
+            "https://www.facebook.com/photo/?fbid=9876",
+            "https://www.facebook.com/photo.php?fbid=9876",
+        ).forEach { assertTrue(it, FacebookPhotoLinks.isPhotoOnly(it)) }
+
+        listOf(
+            "https://www.facebook.com/example.user",
+            "https://www.facebook.com/profile.php?id=1234",
+            "https://www.facebook.com/share/p/ABC/",
+            "https://www.facebook.com/share/1AbNn9bpny/",
+            "https://www.facebook.com/watch/?v=123",
+            "https://www.youtube.com/photos",
+        ).forEach { assertFalse(it, FacebookPhotoLinks.isPhotoOnly(it)) }
+    }
+
+    @Test
     fun videosAndReelsUseExistingVideoAnalyzer() {
         listOf(
             "https://www.facebook.com/watch/?v=123",
