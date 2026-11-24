@@ -211,8 +211,8 @@ internal fun AppContent(
     }
     LaunchedEffect(url, analysisRevision) {
         val link = IncomingLinkValidator.validate(url)?.url ?: return@LaunchedEffect
-        // Facebook profiles and photo share links belong to gallery-dl, not the video extractor.
-        if (FacebookPhotoLinks.isPhotoCollection(link)) return@LaunchedEffect
+        // Skip automatic video analysis for explicit Facebook photo and album links.
+        if (FacebookPhotoLinks.isPhotoOnly(link)) return@LaunchedEffect
         delay(CLIPBOARD_DEBOUNCE_MS)
         if (!profileViewModel.isCurrentLink(link)) profileViewModel.inspect(link, false)
     }

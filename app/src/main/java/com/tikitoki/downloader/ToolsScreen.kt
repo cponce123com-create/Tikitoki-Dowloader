@@ -57,7 +57,6 @@ internal fun ToolsScreen(
         color = TechMuted,
         style = MaterialTheme.typography.bodySmall,
     )
-    FacebookAccountPanel()
     if (failedCount > 0) {
         Text(stringResource(R.string.tools_failed_count, failedCount), style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -150,4 +149,5 @@ internal fun ToolsScreen(
     ) {
         Text(message, style = MaterialTheme.typography.bodySmall, color = TechMuted)
     }
+    FacebookAccountEntry()
 }

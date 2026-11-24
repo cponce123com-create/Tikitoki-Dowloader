@@ -16,3 +16,7 @@ Baja.pe incorpora o utiliza componentes de terceros. Sus derechos de autor y mar
 | AndroidX WorkManager | Trabajo persistente en segundo plano | [Apache-2.0](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/LICENSE.txt). |
 
 Para cada publicación hay que conservar los avisos exigidos, revisar licencias y configuración de las dependencias directas y transitivas, y proporcionar el código fuente correspondiente y las instrucciones de instalación cuando sean exigibles. La actualización de yt-dlp puede cambiar el binario efectivo sin cambiar la versión de la biblioteca Android; debe revisarse en el proceso de publicación.
+
+## libwebp en FFmpeg para ARM64
+
+El APK de release reconstruye libwebp 1.6.0 y sus bibliotecas auxiliares con el NDK de Android para páginas de 16 KiB. El código fuente y la licencia BSD se encuentran en https://github.com/webmproject/libwebp/tree/v1.6.0. El script reproducible, la URL del archivo fuente y su SHA-256 se incluyen en `scripts/rebuild_ffmpeg_webp.py`.

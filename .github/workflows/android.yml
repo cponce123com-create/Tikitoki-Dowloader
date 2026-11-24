@@ -27,7 +27,7 @@ jobs:
       - name: Install Android 36
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
         with:
-          packages: 'platforms;android-36 build-tools;36.0.0'
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
           accept-android-sdk-licenses: true
       - name: Gradle 9.3.1
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
@@ -239,7 +239,7 @@ jobs:
           accept-android-sdk-licenses: true
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
         with:
-          packages: 'platforms;android-36 build-tools;36.0.0'
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
           accept-android-sdk-licenses: true
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
@@ -263,3 +263,4 @@ jobs:
             # (only emulators). Release APKs should only contain arm64-v8a and armeabi-v7a.
             if unzip -Z1 "$apk" | grep -q '^lib/x86_64/'; then exit 1; fi
           done
+          python3 scripts/verify_native_pages.py "${apks[@]}"

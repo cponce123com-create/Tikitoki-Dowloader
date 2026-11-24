@@ -18,11 +18,7 @@ internal object PhotoSession {
     private const val HEADER = "# Netscape HTTP Cookie File\n"
     private const val MAX_STORED_BYTES = MAX_BYTES + 64
 
-    fun isPresent(context: Context): Boolean =
-        EncryptedPhotoSession.exists(context) || legacy(context).exists()
-
-    /** Local presence and expiry only; Facebook may revoke cookies at any time. */
-    fun hasFacebookLogin(context: Context): Boolean = facebookCookieState(context) == FacebookCookieState.PRESENT
+    fun isPresent(context: Context): Boolean = EncryptedPhotoSession.exists(context) || legacy(context).exists()
 
     fun facebookCookieState(context: Context): FacebookCookieState =
         runCatching {

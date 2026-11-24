@@ -1,4 +1,6 @@
 import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.agp)
@@ -68,7 +70,12 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
-    packaging { jniLibs { useLegacyPackaging = true } }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            pickFirsts.add("lib/arm64-v8a/libffmpeg.zip.so")
+        }
+    }
 }
 
 ktlint {
@@ -84,8 +91,61 @@ detekt {
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
+abstract class RebuildFfmpegWebp
+    @Inject
+    constructor(
+        private val processes: ExecOperations,
+    ) : DefaultTask() {
+        @get:InputFiles
+        @get:PathSensitive(PathSensitivity.RELATIVE)
+        abstract val scripts: ConfigurableFileCollection
+
+        @get:InputFile
+        @get:PathSensitive(PathSensitivity.NONE)
+        abstract val ffmpegAar: RegularFileProperty
+
+        @get:Internal
+        abstract val ndk: DirectoryProperty
+
+        @get:Input
+        abstract val ndkVersion: Property<String>
+
+        @get:OutputDirectory
+        abstract val nativeLibraries: DirectoryProperty
+
+        @TaskAction
+        fun rebuild() {
+            processes.exec {
+                commandLine(
+                    "python3",
+                    scripts.files.single { it.name == "rebuild_ffmpeg_webp.py" }.absolutePath,
+                    "--aar",
+                    ffmpegAar.get().asFile.absolutePath,
+                    "--ndk",
+                    ndk.get().asFile.absolutePath,
+                    "--output",
+                    nativeLibraries.get().asFile.absolutePath,
+                )
+            }
+        }
+    }
+
+val ffmpegSourceAar by configurations.creating {
+    isCanBeConsumed = false
+    isTransitive = false
+}
+val ffmpegNdkVersion = "28.2.13676358"
+val rebuildFfmpegWebp by tasks.registering(RebuildFfmpegWebp::class) {
+    scripts.from(rootProject.file("scripts/rebuild_ffmpeg_webp.py"), rootProject.file("scripts/verify_native_pages.py"))
+    ffmpegAar.fileProvider(ffmpegSourceAar.elements.map { it.single().asFile })
+    ndkVersion.set(ffmpegNdkVersion)
+    ndk.set(androidComponents.sdkComponents.sdkDirectory.map { it.dir("ndk/$ffmpegNdkVersion") })
+    nativeLibraries.set(layout.buildDirectory.dir("generated/ffmpeg-webp"))
+}
+
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(rebuildFfmpegWebp, RebuildFfmpegWebp::nativeLibraries)
         variant.outputs.forEach { output ->
             val abi = output.filters.find { it.filterType == ABI }?.identifier
             // Exclude x86_64: virtually no production Android devices use x86_64
@@ -130,6 +190,7 @@ dependencies {
     // GPL-3.0: consult redistribution obligations before publishing.
     implementation(libs.youtubedlAndroidLibrary)
     implementation(libs.youtubedlAndroidFfmpeg)
+    ffmpegSourceAar("io.github.junkfood02.youtubedl-android:ffmpeg:${libs.versions.youtubedlAndroid.get()}@aar")
 
     debugImplementation(libs.androidxComposeUiTooling)
     testImplementation(libs.junit)

@@ -280,6 +280,8 @@ export KEY_PASSWORD=***
 ./gradlew testDebugUnitTest lintDebug assembleRelease verifyM1Coverage
 ```
 
+Para compilar `assembleRelease`, instala Python 3.12 o posterior, CMake, Ninja y el NDK `28.2.13676358` mediante el SDK Manager. La compilación verifica y recompila el código fuente de libwebp para el APK ARM64.
+
 **APKs firmados**: `app/build/outputs/apk/release/` (arm64-v8a, armeabi-v7a)
 
 #### Versionado y publicación
