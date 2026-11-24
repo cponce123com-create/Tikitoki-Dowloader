@@ -36,7 +36,7 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' --stacktrace assembleDebug
       - name: Upload debug APK
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: Baja-pe-debug
           path: app/build/outputs/apk/debug/*universal*debug*.apk
@@ -50,21 +50,21 @@ jobs:
           ./gradlew --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' --stacktrace assembleRelease
       - name: Upload M1 coverage report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: M1-URL-security-coverage
           path: app/build/reports/jacoco/m1CoverageReport/
           if-no-files-found: warn
       - name: Upload global coverage
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: global-coverage
           path: app/build/reports/jacoco/globalCoverageReport/
           if-no-files-found: warn
       - name: Upload Room schemas
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: room-schema-v2
           path: app/schemas/
@@ -89,7 +89,7 @@ jobs:
         run: ./gradlew --no-daemon :app:detekt
       - name: Upload Detekt report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: detekt-report
           path: app/build/reports/detekt/
@@ -154,7 +154,7 @@ jobs:
             [ "${{ matrix.api }}" -lt 29 ] || adb pull /sdcard/Download/music-playing.png "$GITHUB_WORKSPACE/music-playing.png"
       - name: Upload instrumented test results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: instrumented-results-api-${{ matrix.api }}
           path: |
@@ -163,7 +163,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload music layout
         if: matrix.api >= 29
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: music-layout-api-${{ matrix.api }}
           path: |
@@ -193,7 +193,7 @@ jobs:
           gradle-version: '9.3.1'
       - name: Generar SBOM CycloneDX
         run: ./gradlew --no-daemon cyclonedxBom
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: cyclonedx-sbom
           path: build/reports/cyclonedx/
@@ -217,7 +217,7 @@ jobs:
           gradle-version: '9.3.1'
       - name: Verificar estilo con línea base
         run: ./gradlew --no-daemon :app:ktlintCheck
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: ktlint-report
