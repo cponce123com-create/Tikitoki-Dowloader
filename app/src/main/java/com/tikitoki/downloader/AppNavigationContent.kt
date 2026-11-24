@@ -372,7 +372,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                                     null -> message = invalidLinkMessage
                                     else -> {
                                         if (FacebookPhotoLinks.isPhotoCollection(link.url)) {
-                                            message = "Para este enlace usa Descargar fotos."
+                                            message = "Para este enlace, abre Opciones de fotos."
                                         } else {
                                             selected.clear()
                                             profileViewModel.inspect(link.url, forceRefresh)
@@ -388,7 +388,7 @@ internal fun AppNavigationContent(state: AppNavigationState) {
                             IncomingLinkValidator.validate(url)?.platform in
                             setOf(MediaPlatform.INSTAGRAM, MediaPlatform.TIKTOK)
                         ) {
-                            PhotoDownloadPanel(url, onManageFacebook = { tab = TOOLS_TAB })
+                            PhotoToolsEntry(url)
                         }
 
                         // Force refresh remains available from the analysis action on repeat requests.

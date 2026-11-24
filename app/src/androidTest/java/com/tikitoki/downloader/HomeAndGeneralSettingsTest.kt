@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -47,6 +48,22 @@ class HomeAndGeneralSettingsTest {
         assertEquals("https://youtube.com/watch?v=xyz", input)
         assertEquals(1, pastes)
         assertEquals(1, analyses)
+    }
+
+    @Test
+    fun photoControlsOnlyOpenOnRequest() {
+        compose.setContent {
+            PhotoToolsEntry("https://www.facebook.com/photo/?fbid=123")
+        }
+
+        compose.onNodeWithText("Descargar fotos").assertDoesNotExist()
+        compose.onNodeWithText("Importar sesión").assertDoesNotExist()
+        compose.onNodeWithText("Opciones de fotos").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Descargar fotos").assertIsDisplayed()
+        compose.onNodeWithText("Gestionar cuenta de Facebook").performScrollTo().performClick()
+        compose.onNodeWithText("Cuenta de Facebook").assertIsDisplayed()
+        compose.onNodeWithText("Volver a fotos").performClick()
+        compose.onNodeWithText("Descargar fotos").assertIsDisplayed()
     }
 
     @Test
